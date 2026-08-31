@@ -24,7 +24,7 @@ safe execution, testing, and observability.
 ## Get started
 
 ```sh
-npm install @signet/webmcp@alpha
+npm install @signet/webmcp
 ```
 
 Signet is pre-release; see [Stability](#stability) for what may change.
@@ -268,15 +268,10 @@ polyfill, Signet JSON format, or compiler.
 
 ## Stability
 
-Signet is published as an alpha under the `alpha` dist-tag:
-
-```sh
-npm install @signet/webmcp@alpha
-```
-
-Pre-1.0 versions may make breaking changes in a minor release. Every breaking change
-is recorded in [`CHANGELOG.md`](./CHANGELOG.md) with the migration step. Pin an exact
-version if you need a stable surface today.
+Signet is in `0.0.x`. Any release may change the public surface. This is deliberate:
+under `0.0.x`, a `^0.0.1` range resolves to that exact version, so a breaking change
+can never reach you without an explicit upgrade. Every change is recorded in
+[`CHANGELOG.md`](./CHANGELOG.md) with its migration step.
 
 | Surface                                                                        | Expectation                                                                    |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |

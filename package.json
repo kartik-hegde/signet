@@ -1,7 +1,7 @@
 {
   "name": "@signet/webmcp",
-  "version": "0.1.0-alpha.0",
-  "description": "Make website capabilities reliable and agent-ready through WebMCP.",
+  "version": "0.0.1",
+  "description": "WebMCP toolkit for turning website capabilities into discoverable, reliable, testable agent tools.",
   "type": "module",
   "sideEffects": false,
   "files": [
@@ -101,7 +101,15 @@
   },
   "keywords": [
     "webmcp",
+    "web-mcp",
+    "mcp",
+    "model-context-protocol",
+    "modelcontext",
+    "browser-agents",
     "ai-agents",
+    "agentic-web",
+    "agent-tools",
+    "tool-calling",
     "typescript",
     "json-schema",
     "observability",

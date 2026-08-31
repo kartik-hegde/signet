@@ -7,7 +7,7 @@ described in [Stability](./README.md#stability).
 
 ## [Unreleased]
 
-## [0.1.0-alpha.0] — 2026-08-31
+## [0.0.1] — 2026-08-31
 
 First published release. WebMCP is an experimental browser API and this package is
 pre-release: the surface below is usable, but not frozen.
@@ -48,5 +48,5 @@ pre-release: the surface below is usable, but not frozen.
 - The consumer side of WebMCP (tool enumeration and invocation) is not yet covered by
   the official type declarations and varies across browser builds.
 
-[unreleased]: https://github.com/kartik-hegde/signet/compare/v0.1.0-alpha.0...HEAD
-[0.1.0-alpha.0]: https://github.com/kartik-hegde/signet/releases/tag/v0.1.0-alpha.0
+[unreleased]: https://github.com/kartik-hegde/signet/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/kartik-hegde/signet/releases/tag/v0.0.1

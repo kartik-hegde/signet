@@ -46,12 +46,12 @@ jobs:
 
       - name: Publish
         if: ${{ github.event_name == 'push' }}
-        run: npm publish --tag alpha
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Dry run
         if: ${{ github.event_name == 'workflow_dispatch' }}
-        run: npm publish --tag alpha --dry-run
+        run: npm publish --dry-run
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
