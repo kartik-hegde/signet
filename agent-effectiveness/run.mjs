@@ -524,7 +524,7 @@ function renderConsole(scorecard) {
     `\nP1 KPI SCORECARD\n\n${rows}\n\n` +
     `Raw WebMCP vs UI: ${scorecard.comparisons.rawWebMcpVsUi.medianDurationRatio}x median speed, ${scorecard.comparisons.rawWebMcpVsUi.medianActionReductionPercent}% fewer actions\n` +
     `Signet vs UI:     ${scorecard.comparisons.signetWebMcpVsUi.medianDurationRatio}x median speed, ${scorecard.comparisons.signetWebMcpVsUi.medianActionReductionPercent}% fewer actions\n` +
-    `Signet vs raw:    ${scorecard.comparisons.signetVsRawWebMcp.medianDurationReductionPercent}% median duration change\n\n` +
+    `Signet vs raw:    ${signedChange(scorecard.comparisons.signetVsRawWebMcp.medianDurationReductionPercent, "faster", "slower")} median duration\n\n` +
     `Wrote results/p1/latest.json and results/p1/latest.md\n`
   );
 }
@@ -540,6 +540,16 @@ function renderMarkdown(scorecard) {
   const signet = scorecard.comparisons.signetWebMcpVsUi;
   const direct = scorecard.comparisons.signetVsRawWebMcp;
   const selected = scorecard.comparisons.selectedWebMcpPath;
+  const directDuration = signedChange(
+    direct.medianDurationReductionPercent,
+    "faster",
+    "slower",
+  );
+  const directTokens = signedChange(
+    direct.medianTokenReductionPercent,
+    "fewer tokens",
+    "more tokens",
+  );
   return `# P1 real-agent KPI scorecard
 
 Generated: ${scorecard.generatedAt}
@@ -554,7 +564,7 @@ ${rows}
 
 - Raw WebMCP was **${raw.medianDurationRatio}x** the UI condition's median speed with **${raw.medianActionReductionPercent}%** fewer actions.
 - Signet WebMCP was **${signet.medianDurationRatio}x** the UI condition's median speed with **${signet.medianActionReductionPercent}%** fewer actions.
-- Signet versus raw WebMCP changed median duration by **${direct.medianDurationReductionPercent}%** and median tokens by **${direct.medianTokenReductionPercent}%**.
+- Signet's all-run median was **${directDuration}** and used **${directTokens}** than raw WebMCP.
 - On runs where the agent selected WebMCP, raw median time was **${Math.round(scorecard.aggregates.hybrid_raw.medianWebMcpPathDurationMs)} ms** and Signet median time was **${Math.round(scorecard.aggregates.hybrid_signet.medianWebMcpPathDurationMs)} ms**.
 - Conditional on WebMCP selection, raw was **${selected.rawVsUi.medianDurationRatio}x** and Signet was **${selected.signetVsUi.medianDurationRatio}x** the UI condition's median speed; these conditional figures diagnose the interface mechanism and are not the primary hybrid result.
 
@@ -745,6 +755,10 @@ function wilson(successes, total) {
 
 function percent(value) {
   return `${Math.round(value * 100)}%`;
+}
+
+function signedChange(reductionPercent, improvement, regression) {
+  return `${Math.abs(reductionPercent)}% ${reductionPercent >= 0 ? improvement : regression}`;
 }
 
 function round(value) {
