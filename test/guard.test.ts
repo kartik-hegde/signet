@@ -356,7 +356,7 @@ describe("guard", () => {
     ]);
   });
 
-  it("preserves the execution error when recovery cannot prove an outcome", async () => {
+  it("reports an unknown outcome when no journal proves a pre-effect failure", async () => {
     const failure = new Error("upstream unavailable");
     const recover = vi.fn(() => ({ recovered: false as const }));
     const store = new MemoryIdempotencyStore();
@@ -370,7 +370,9 @@ describe("guard", () => {
       },
     );
 
-    await expect(guarded({}, active())).rejects.toBe(failure);
+    await expect(guarded({}, active())).rejects.toBeInstanceOf(
+      OutcomeUnknownError,
+    );
     expect(recover).toHaveBeenCalledWith(
       expect.objectContaining({ error: failure }),
     );
@@ -470,9 +472,7 @@ describe("guard", () => {
     );
 
     await expect(guarded({}, active())).resolves.toBe("shared-key");
-    expect(journal.read("shared-key", active())).toEqual({
-      state: "recorded",
-    });
+    expect(journal.read("shared-key", active())).toBeUndefined();
   });
 
   it("requires a journal key when idempotency is not configured", async () => {
@@ -487,6 +487,7 @@ describe("guard", () => {
 
   it("keeps a proven pre-effect failure retryable", async () => {
     const store = new MemoryIdempotencyStore();
+    const journal = new MemoryOperationJournal();
     const failure = new Error("failed before effect");
     let committed = false;
     const execute = vi
@@ -498,6 +499,7 @@ describe("guard", () => {
       });
     const guarded = guard(execute, {
       idempotency: { key: () => "operation-1", store },
+      journal: { store: journal },
       recover: () =>
         committed
           ? { recovered: true, output: { state: "complete" } }
@@ -507,6 +509,130 @@ describe("guard", () => {
     await expect(guarded({}, active())).rejects.toBe(failure);
     await expect(guarded({}, active())).resolves.toEqual({ state: "complete" });
     expect(execute).toHaveBeenCalledTimes(2);
+  });
+
+  it("recovers abandoned in-flight work without executing again", async () => {
+    const store = new MemoryIdempotencyStore();
+    const journal = new MemoryOperationJournal();
+    await store.begin("operation-1", active());
+    journal.write("operation-1", { orderId: "order-1" }, active());
+    await store.abandon("operation-1", active());
+    const execute = vi.fn(async () => ({ orderId: "duplicate" }));
+    const confirm = vi.fn(() => true);
+    const recover = vi.fn(async ({ operation }) => ({
+      recovered: true as const,
+      output: (await operation?.read()) as { orderId: string },
+    }));
+    const guarded = guard(execute, {
+      idempotency: { key: () => "operation-1", store },
+      journal: { store: journal },
+      confirm: { mode: "effect-only", request: confirm },
+      recover,
+    });
+
+    await expect(guarded({}, active())).resolves.toEqual({
+      orderId: "order-1",
+    });
+    await expect(guarded({}, active())).resolves.toEqual({
+      orderId: "order-1",
+    });
+    expect(execute).not.toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(recover).toHaveBeenCalledOnce();
+    expect(journal.read("operation-1", active())).toBeUndefined();
+  });
+
+  it("keeps a journaled unknown outcome recoverable on a later invocation", async () => {
+    const store = new MemoryIdempotencyStore();
+    const journal = new MemoryOperationJournal();
+    const lostResponse = new Error("response lost after commit");
+    let authoritative: { orderId: string } | undefined;
+    const execute = vi.fn(async (_input, { operation }) => {
+      authoritative = { orderId: "order-1" };
+      await operation?.write({ orderId: "order-1" });
+      throw lostResponse;
+    });
+    const recover = vi
+      .fn()
+      .mockReturnValueOnce({ recovered: false })
+      .mockImplementation(() => ({
+        recovered: true,
+        output: authoritative,
+      }));
+    const guarded = guard(execute, {
+      idempotency: { key: () => "operation-1", store },
+      journal: { store: journal },
+      recover,
+    });
+
+    await expect(guarded({}, active())).rejects.toBeInstanceOf(
+      OutcomeUnknownError,
+    );
+    await expect(guarded({}, active())).resolves.toEqual({
+      orderId: "order-1",
+    });
+    expect(execute).toHaveBeenCalledOnce();
+    expect(recover).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats a failed pre-effect journal read as an unknown outcome", async () => {
+    const failure = new Error("handler failed");
+    const journalFailure = new Error("journal unavailable");
+    const guarded = guard(
+      async () => {
+        throw failure;
+      },
+      {
+        idempotency: {
+          key: () => "operation-1",
+          store: new MemoryIdempotencyStore(),
+        },
+        journal: {
+          store: {
+            read() {
+              throw journalFailure;
+            },
+            write() {},
+            remove() {},
+          },
+        },
+        recover: () => ({ recovered: false }),
+      },
+    );
+
+    await expect(guarded({}, active())).rejects.toEqual(
+      expect.objectContaining({
+        code: "outcome_unknown",
+        cause: expect.any(AggregateError),
+      }),
+    );
+  });
+
+  it("preserves the operation outcome when abandoning the live claim fails", async () => {
+    const abandonFailure = new Error("lock release failed");
+    const store = {
+      async begin() {
+        return { state: "fresh" as const };
+      },
+      async complete() {},
+      async release() {},
+      async abandon() {
+        throw abandonFailure;
+      },
+    };
+    const guarded = guard(
+      async () => {
+        throw new Error("ambiguous handler failure");
+      },
+      {
+        idempotency: { key: () => "operation-1", store },
+        recover: () => ({ recovered: false }),
+      },
+    );
+
+    await expect(guarded({}, active())).rejects.toBeInstanceOf(
+      OutcomeUnknownError,
+    );
   });
 
   it("does not conceal an idempotency-store failure", async () => {
@@ -519,9 +645,12 @@ describe("guard", () => {
       idempotency: {
         key: () => "operation-1",
         store: {
-          async execute() {
+          async begin() {
             throw failure;
           },
+          async complete() {},
+          async release() {},
+          async abandon() {},
         },
       },
       recover,
@@ -553,10 +682,13 @@ describe("guard", () => {
     const controller = new AbortController();
     const key = vi.fn(() => "operation-1");
     const store = {
-      execute: vi.fn(async (_key, operation, options) => {
+      begin: vi.fn(async (_key, options) => {
         expect(options.signal).toBe(controller.signal);
-        return { value: await operation(), replayed: false };
+        return { state: "fresh" as const };
       }),
+      complete: vi.fn(async () => undefined),
+      release: vi.fn(async () => undefined),
+      abandon: vi.fn(async () => undefined),
     };
     const guarded = guard(async () => "done", {
       idempotency: { key, store },
@@ -569,11 +701,12 @@ describe("guard", () => {
       context: undefined,
       signal: controller.signal,
     });
-    expect(store.execute).toHaveBeenCalledOnce();
+    expect(store.begin).toHaveBeenCalledOnce();
   });
 
   it("rejects an empty idempotency key before reaching storage", async () => {
-    const store = { execute: vi.fn() };
+    const store = new MemoryIdempotencyStore();
+    const begin = vi.spyOn(store, "begin");
     const guarded = guard(async () => "done", {
       idempotency: { key: () => "", store },
     });
@@ -581,13 +714,14 @@ describe("guard", () => {
     await expect(guarded({}, active())).rejects.toThrow(
       "idempotency key must not be empty",
     );
-    expect(store.execute).not.toHaveBeenCalled();
+    expect(begin).not.toHaveBeenCalled();
   });
 
   it("stops before storage when cancellation arrives during keying", async () => {
     const controller = new AbortController();
     const cancelled = new Error("cancelled during keying");
-    const store = { execute: vi.fn() };
+    const store = new MemoryIdempotencyStore();
+    const begin = vi.spyOn(store, "begin");
     const guarded = guard(async () => "done", {
       idempotency: {
         key: async () => {
@@ -601,7 +735,7 @@ describe("guard", () => {
     await expect(guarded({}, { signal: controller.signal })).rejects.toBe(
       cancelled,
     );
-    expect(store.execute).not.toHaveBeenCalled();
+    expect(begin).not.toHaveBeenCalled();
   });
 
   it("rejects an unverifiable result without disguising it as success", async () => {
@@ -790,95 +924,58 @@ describe("guard", () => {
 });
 
 describe("MemoryIdempotencyStore", () => {
-  it("coalesces concurrent operations and replays the shared result", async () => {
+  it("waits for a live owner and replays its completed result", async () => {
     const store = new MemoryIdempotencyStore();
-    let finish: ((value: string) => void) | undefined;
-    const operation = vi.fn(
-      () =>
-        new Promise<string>((resolve) => {
-          finish = resolve;
-        }),
-    );
-
-    const first = store.execute("same-operation", operation, active());
-    await Promise.resolve();
-    const second = store.execute("same-operation", operation, active());
-    finish?.("complete");
-
-    await expect(first).resolves.toEqual({
-      value: "complete",
-      replayed: false,
+    await expect(store.begin("same-operation", active())).resolves.toEqual({
+      state: "fresh",
     });
+    const second = store.begin<string>("same-operation", active());
+    await store.complete("same-operation", "complete", active());
     await expect(second).resolves.toEqual({
+      state: "completed",
       value: "complete",
-      replayed: true,
     });
-    expect(operation).toHaveBeenCalledOnce();
   });
 
-  it("removes failed work so a later call can retry", async () => {
+  it("only releases work proven not to have crossed the effect boundary", async () => {
     const store = new MemoryIdempotencyStore();
-    const operation = vi
-      .fn<() => Promise<string>>()
-      .mockRejectedValueOnce(new Error("temporary failure"))
-      .mockResolvedValueOnce("complete");
-
-    await expect(
-      store.execute("retryable", operation, active()),
-    ).rejects.toThrow("temporary failure");
-    await expect(
-      store.execute("retryable", operation, active()),
-    ).resolves.toEqual({ value: "complete", replayed: false });
-    expect(operation).toHaveBeenCalledTimes(2);
+    await store.begin("retryable", active());
+    await store.release("retryable", active());
+    await expect(store.begin("retryable", active())).resolves.toEqual({
+      state: "fresh",
+    });
   });
 
   it("does not start work for an already-aborted caller", async () => {
     const store = new MemoryIdempotencyStore();
     const controller = new AbortController();
     controller.abort(new Error("already cancelled"));
-    const operation = vi.fn(async () => "complete");
-
     await expect(
-      store.execute("cancelled", operation, { signal: controller.signal }),
+      store.begin("cancelled", { signal: controller.signal }),
     ).rejects.toThrow("already cancelled");
-    expect(operation).not.toHaveBeenCalled();
   });
 
   it("can clear completed demo state", async () => {
     const store = new MemoryIdempotencyStore();
-    const operation = vi.fn(async () => "complete");
-
-    await store.execute("operation", operation, active());
+    await store.begin("operation", active());
+    await store.complete("operation", "complete", active());
     store.clear();
-    await store.execute("operation", operation, active());
-
-    expect(operation).toHaveBeenCalledTimes(2);
+    await expect(store.begin("operation", active())).resolves.toEqual({
+      state: "fresh",
+    });
   });
 
   it("lets a duplicate caller stop waiting without cancelling owner work", async () => {
     const store = new MemoryIdempotencyStore();
     const controller = new AbortController();
-    let finish: ((value: string) => void) | undefined;
-    const operation = vi.fn(
-      () =>
-        new Promise<string>((resolve) => {
-          finish = resolve;
-        }),
-    );
-
-    const first = store.execute("same-operation", operation, active());
-    await Promise.resolve();
-    const second = store.execute("same-operation", operation, {
+    await store.begin("same-operation", active());
+    const second = store.begin("same-operation", {
       signal: controller.signal,
     });
     controller.abort(new Error("caller stopped waiting"));
     await expect(second).rejects.toThrow("caller stopped waiting");
-    finish?.("complete");
-
-    await expect(first).resolves.toEqual({
-      value: "complete",
-      replayed: false,
-    });
-    expect(operation).toHaveBeenCalledOnce();
+    await expect(
+      store.complete("same-operation", "complete", active()),
+    ).resolves.toBeUndefined();
   });
 });

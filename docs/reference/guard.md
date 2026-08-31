@@ -84,10 +84,12 @@ idempotency?: {
 };
 ```
 
-The key must not be empty. The store atomically executes or returns a prior result and
-reports whether it was replayed. Once a call starts the operation, it must persist and
-return successful owner work despite a late caller abort. A caller joining existing
-work may cancel its own wait.
+The key must not be empty. The store atomically returns `fresh`, `in_flight`, or a
+`completed` result. Signet executes only a fresh claim. It recovers abandoned in-flight
+work without executing again, completes recovered results, and returns
+`OutcomeUnknownError` when recovery cannot prove the outcome. It calls `release` only
+when an empty configured journal proves the handler failed before the effect boundary;
+otherwise it calls `abandon` and preserves the durable claim.
 
 ### `journal`
 
@@ -133,13 +135,15 @@ recover?: ({ input, context, error, operation, signal }) =>
   | Promise<RecoveryDecision<Output>>;
 ```
 
-Runs after the application handler throws. Use it to read authoritative state when the
-effect may have committed but its response was lost. A recovered output is cached by
-the configured idempotency store and proceeds through `verify`; returning
-`recovered: false` preserves the original error. Signet never retries automatically or
-conceals an idempotency-store failure. Explicitly returning `outcome: "unknown"`, or
-throwing while authoritative recovery is running, produces `OutcomeUnknownError` and
-the terminal `outcome_unknown` lifecycle stage.
+Runs after the application handler throws or when a durable in-flight record has no
+live owner. Use it to read authoritative state when the effect may have committed but
+its response was lost. A recovered output is cached by the configured idempotency store
+and proceeds through `verify`. With idempotency configured, `recovered: false` preserves
+the original error only when a configured journal is empty and therefore proves a
+pre-effect failure. Otherwise the outcome is unknown. Signet never retries the effect
+automatically. Explicitly returning `outcome: "unknown"`, or throwing while
+authoritative recovery is running, produces `OutcomeUnknownError` and the terminal
+`outcome_unknown` lifecycle stage.
 
 ### `observe`
 

@@ -97,12 +97,14 @@ hooks only when the workflow needs them.
   resource access here. Put mutable eligibility that the successful operation changes
   (for example, `status === "open"`) inside `execute`; otherwise a valid replay can be
   denied before its stored result is returned.
-- `idempotency.store.execute(key, operation, { signal })` must atomically coalesce
-  equal keys and return `{ value, replayed }`. Once a call starts `operation`, its
-  successful result wins a late abort and must be persisted and returned; callers
-  joining existing work may cancel their own wait. Include principal, operation ID,
-  and every intent-changing argument in the key. Signet intentionally ships no
-  durable production store. Use `checkIdempotencyStore()` to verify an adapter.
+- `idempotency.store` uses phased `begin`, `complete`, `release`, and `abandon`
+  methods. `begin` atomically claims fresh work, waits for a live equal-key owner, or
+  reports durable abandoned work. Signet executes only `fresh`, recovers `in_flight`,
+  and replays `completed`. `release` is reserved for a journal-proven pre-effect
+  failure; `abandon` keeps an ambiguous claim recoverable. Include principal,
+  operation ID, and every intent-changing argument in the key. Use the conservative
+  browser adapter from `@signet/webmcp/stores` or the PostgreSQL recipe, and verify
+  adapters with `checkIdempotencyStore()`.
 - A function-valued `confirm` obtains consent on every invocation before idempotency,
   preserving the original behavior. Use
   `confirm: { mode: "effect-only", request }` to prompt only inside a new store
@@ -113,7 +115,8 @@ hooks only when the workflow needs them.
   commonly follow an irreversible effect. The application still owns durable storage.
 - `execute(input, { context, operation?, signal })` runs at most once per store
   operation. Signet never retries it automatically.
-- `recover({ input, context, error, operation?, signal })` runs only after the handler throws. It
+- `recover({ input, context, error, operation?, signal })` runs after the handler throws or
+  when an abandoned in-flight claim is encountered. It
   may return `{ recovered: true, output }` only after authoritative proof; otherwise
   return `{ recovered: false }` for an ordinary failure. Return
   `{ recovered: false, outcome: "unknown", reason? }` when an effect may exist but

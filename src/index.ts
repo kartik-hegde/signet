@@ -29,7 +29,7 @@ export type {
   GuardObserver,
   GuardOptions,
   GuardStage,
-  IdempotencyResult,
+  IdempotencyBeginResult,
   IdempotencyStore,
   MaybePromise,
   OperationHandle,

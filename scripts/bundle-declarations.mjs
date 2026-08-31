@@ -8,7 +8,14 @@ import dts from "rollup-plugin-dts";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const dist = resolve(root, "dist");
 const bundled = resolve(dist, ".bundled");
-const entrypoints = ["index", "testing", "opentelemetry", "inspector", "react"];
+const entrypoints = [
+  "index",
+  "testing",
+  "stores",
+  "opentelemetry",
+  "inspector",
+  "react",
+];
 
 for (const entrypoint of entrypoints) {
   const bundle = await rollup({
