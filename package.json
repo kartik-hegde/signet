@@ -1,0 +1,14 @@
+{
+  "name": "signet-benchmarks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "bench:p0": "node scripts/run-p0.mjs",
+    "bench:safety": "npm --prefix execution-safety run bench -- --no-history",
+    "install:p0": "npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd apps/cypress-realworld-app install --frozen-lockfile"
+  }
+}

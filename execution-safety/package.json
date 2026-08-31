@@ -1,0 +1,15 @@
+{
+  "name": "agent-execution-safety-benchmark",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Deterministic safety conformance benchmark for agent-invoked mutations.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "bench": "node --no-warnings=ExperimentalWarning run.js",
+    "bench:verbose": "node --no-warnings=ExperimentalWarning run.js --verbose",
+    "bench:json": "node --no-warnings=ExperimentalWarning run.js --json"
+  }
+}
