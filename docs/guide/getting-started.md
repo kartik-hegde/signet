@@ -1,7 +1,8 @@
 # Getting started
 
-Signet is pre-release. The repository is the current distribution while the package
-name and first npm release are finalized.
+Signet is pre-release. The repository currently ships production controls and a native
+WebMCP reference integration. The definition, exposure, and inspector APIs described on
+the home page are the next implementation milestones.
 
 ## Run the repository
 
@@ -20,89 +21,80 @@ cd ../your-application
 npm install ../signet
 ```
 
-## Register a native tool
+## Expose a native WebMCP tool
 
-Install the official WebMCP declarations in the application:
+Install the official declarations:
 
 ```sh
 npm install --save-dev webmcp-types
 ```
 
-Add `webmcp-types` to `compilerOptions.types`, then register through the browser API:
+Add `webmcp-types` to `compilerOptions.types`, validate callback input at runtime, and
+register a capability your application already owns:
 
 ```ts
 /// <reference types="webmcp-types" />
 
-import { guard, type Execute } from "@signet/webmcp";
+const searchProducts: WebMCP.ToolExecuteCallback = async (
+  input,
+  { signal },
+) => {
+  const query = typeof input.query === "string" ? input.query.trim() : "";
+  if (!query) throw new TypeError("query must be a non-empty string");
 
-type CancelledOrder = {
-  orderId: string;
-  state: "cancelled";
+  const response = await fetch(`/api/products?q=${encodeURIComponent(query)}`, {
+    signal,
+  });
+  if (!response.ok) throw new Error(`Search failed: ${response.status}`);
+  return response.json();
 };
-
-const cancelOrder: Execute<Record<string, unknown>, CancelledOrder> = guard(
-  async (input, { signal }) => {
-    if (typeof input.orderId !== "string" || input.orderId.length === 0) {
-      throw new TypeError("orderId must be a non-empty string");
-    }
-
-    const response = await fetch(`/api/orders/${input.orderId}/cancel`, {
-      method: "POST",
-      signal,
-    });
-    if (!response.ok)
-      throw new Error(`Cancellation failed: ${response.status}`);
-    return response.json() as Promise<CancelledOrder>;
-  },
-  {
-    context: () => currentSession(),
-    authorize: ({ input, context }) =>
-      context.userId === ownerOf(String(input.orderId)),
-    idempotency: {
-      key: ({ input, context }) =>
-        `${context.userId}:${String(input.orderId)}:cancel`,
-      store: durableStore,
-    },
-    verify: ({ output }) => output.state === "cancelled",
-  },
-);
 
 const registration = new AbortController();
 
 await document.modelContext?.registerTool(
   {
-    name: "cancel-order",
-    title: "Cancel an order",
+    name: "search_products",
+    title: "Search products",
     description:
-      "Cancels one unfulfilled order owned by the signed-in customer.",
+      "Finds products matching a query and returns stable product IDs.",
     inputSchema: {
       type: "object",
-      properties: { orderId: { type: "string" } },
-      required: ["orderId"],
+      properties: { query: { type: "string", minLength: 1 } },
+      required: ["query"],
       additionalProperties: false,
     },
-    execute: cancelOrder,
+    annotations: { readOnlyHint: true },
+    execute: searchProducts,
   },
   { signal: registration.signal },
 );
 ```
 
-The official WebMCP callback accepts untrusted records, so the handler validates input
-at runtime. The backend must validate and authorize again.
+Abort `registration` when the tool should disappear, such as on logout, navigation,
+or component teardown. The backend must still validate and authorize requests.
 
-## Choose only the controls you need
+## Add controls to a consequential action
 
-Every option is independent:
+The implemented `guard()` API wraps an ordinary WebMCP-compatible handler. Add only
+the controls the action needs:
 
 ```ts
+import { guard } from "@signet/webmcp";
+
 // Public read: native WebMCP is enough.
-execute: listPublicProducts;
+const listProducts = listPublicProducts;
 
-// Authenticated read: context and authorization.
-execute: guard(getInvoice, { context, authorize });
+// Authenticated read: resolve context and authorize.
+const getInvoice = guard(getInvoiceHandler, { context, authorize });
 
-// Durable mutation: add idempotency and verification.
-execute: guard(cancelOrder, { context, authorize, idempotency, verify });
+// Durable mutation: add replay control and verification.
+const cancelOrder = guard(cancelOrderHandler, {
+  context,
+  authorize,
+  idempotency,
+  verify,
+});
 ```
 
-Continue with the [production execution model](./production-webmcp).
+Use the resulting function as the tool's `execute` callback. Continue with the
+[production execution model](./production-webmcp).

@@ -1,23 +1,28 @@
 # Why Signet
 
-WebMCP gives an agent a structured way to reach functionality already present in a web
-application. That is a large improvement over reconstructing intent through screenshots,
-DOM inspection, clicks, and form filling.
+Web applications already contain precise capabilities: search inventory, retrieve an
+invoice, schedule a meeting, change a setting, or cancel an order. Agents usually reach
+those capabilities indirectly by reading a human interface and clicking through it.
 
-It does not make the underlying operation safe by itself.
+WebMCP gives cooperating applications a better primitive: register a structured tool
+in the page and let a compatible agent discover and invoke it. Signet is the developer
+workflow around turning application capabilities into useful WebMCP tools.
 
-## The missing execution boundary
+## The missing workflow
 
-Consider an agent cancelling an order. A valid tool schema does not answer:
+A raw registration call is intentionally small. Shipping a useful agent interface still
+requires product and engineering decisions:
 
-- Which signed-in customer caused this invocation?
-- Does that customer own this order?
-- What happens if the agent repeats the call after a timeout?
-- Did the order actually become cancelled?
-- Can operators diagnose the outcome without capturing sensitive inputs?
+- choose reusable capability boundaries;
+- write names and descriptions agents select correctly;
+- validate untrusted arguments at runtime;
+- expose each tool only in the right page and application state;
+- inspect the exact schemas and annotations an agent sees;
+- test discovery, lifecycle, invocation, errors, and outcomes;
+- add stronger controls when a tool can cause a consequential effect.
 
-Those are application concerns. They recur around consequential WebMCP handlers, so
-Signet gives them one small, consistent execution boundary.
+Signet aims to make that loop coherent without replacing WebMCP or taking ownership of
+application logic.
 
 ```text
 browser agent
@@ -26,41 +31,25 @@ browser agent
 native WebMCP tool
     │
     ▼
-Signet guard
-    ├── application context
-    ├── authorization
-    ├── idempotent execution
-    └── outcome verification
+Signet definition, exposure, and test workflow
     │
     ▼
-existing application handler and backend
+existing application function and backend
 ```
+
+## Progressive hardening
+
+A public product lookup should stay simple. An authenticated invoice read may need
+application context and authorization. A state-changing action may also need durable
+idempotency and authoritative outcome verification.
+
+The current `guard()` API provides those optional execution controls. It supports the
+larger exposure workflow; it does not define Signet's category.
 
 ## What Signet is not
 
-Signet is not another protocol. It does not define tools, register them, infer schemas,
-authenticate users, or patch unsupported browsers.
+Signet is not a new protocol, a production browser polyfill, a remote tool catalogue,
+or a hosted replacement for your application. Native WebMCP remains visible, and your
+identity, policy, data, handlers, and backend stay authoritative.
 
-Native WebMCP remains visible:
-
-```ts
-document.modelContext?.registerTool({
-  name: "update-shipping-address",
-  description: "Updates the shipping address for an unfulfilled order.",
-  inputSchema,
-  execute: guard(updateShippingAddress, controls),
-});
-```
-
-Removing `guard(..., controls)` leaves `updateShippingAddress`. That is an intentional
-product constraint, not a temporary omission.
-
-## When to use it
-
-Use Signet when a tool reads authenticated data, mutates durable state, or can be called
-more than once with consequences.
-
-For a cheap public read, call the handler directly. Infrastructure should be
-proportional to risk.
-
-Next: [get a native tool running with Signet](./getting-started).
+Next: [expose a native tool](./getting-started).

@@ -1,69 +1,108 @@
 # Signet
 
-Signet is a small TypeScript toolkit for making consequential WebMCP actions safe to ship.
+Signet helps web products expose their capabilities as tools that AI agents can use.
+It starts with WebMCP: define a clear tool around application code you already own,
+make it available through the browser, and test the experience an agent actually sees.
 
-WebMCP already defines how a page exposes tools to browser agents. Signet does not replace that API. It wraps a normal `execute` function with the controls that product teams otherwise rebuild around every state-changing action: app-owned authorization, durable idempotency, outcome verification, cancellation, and opt-in observability.
+```ts
+const searchProducts: WebMCP.ToolExecuteCallback = async (
+  input,
+  { signal },
+) => {
+  const query = typeof input.query === "string" ? input.query.trim() : "";
+  if (!query) throw new TypeError("query must be a non-empty string");
+
+  const response = await fetch(`/api/products?q=${encodeURIComponent(query)}`, {
+    signal,
+  });
+  if (!response.ok) throw new Error(`Search failed: ${response.status}`);
+  return response.json();
+};
+
+await document.modelContext?.registerTool({
+  name: "search_products",
+  title: "Search products",
+  description:
+    "Finds products matching a query and returns stable product IDs.",
+  inputSchema: {
+    type: "object",
+    properties: { query: { type: "string", minLength: 1 } },
+    required: ["query"],
+    additionalProperties: false,
+  },
+  annotations: { readOnlyHint: true },
+  execute: searchProducts,
+});
+```
+
+That native registration is the foundation, not something Signet replaces. The Signet
+toolkit is being built around the rest of the developer loop: tool definition and
+runtime validation, lifecycle-aware exposure, local inspection and invocation,
+contract tests, and agent-use evaluation.
+
+## Direction and current status
+
+Signet is pre-release. Today the repository contains the optional execution-control
+layer and a complete native WebMCP reference integration. The next implementation
+milestones add the authoring, exposure, and developer-tooling path described above.
+
+The intended progression is:
+
+1. Turn an existing function or endpoint into a well-described, validated tool.
+2. Expose it through native WebMCP for the right page, user, and application state.
+3. Inspect exactly what an agent sees and invoke it locally.
+4. Test discovery, lifecycle, arguments, results, and authoritative outcomes.
+5. Add production controls only when the tool's consequences require them.
+
+WebMCP is the first vehicle. Signet does not patch unsupported browsers, invent a
+discovery protocol, or require application logic to move into a hosted runtime.
+
+## Production controls when needed
+
+For an authenticated read or consequential mutation, the current `guard()` API adds
+application-owned authorization, durable idempotency, outcome verification,
+cancellation propagation, and opt-in observation to an ordinary handler:
 
 ```ts
 import { guard } from "@signet/webmcp";
 
-await document.modelContext?.registerTool({
-  name: "cancel-order",
-  description: "Cancels one order that belongs to the signed-in user.",
-  inputSchema: {
-    type: "object",
-    properties: { orderId: { type: "string" } },
-    required: ["orderId"],
-    additionalProperties: false,
+const cancelOrder = guard(cancelOrderHandler, {
+  name: "cancel_order",
+  context: () => currentSession(),
+  authorize: ({ input, context }) => context.userId === ownerOf(input.orderId),
+  idempotency: {
+    key: ({ input, context }) => `${context.userId}:${input.orderId}:cancel`,
+    store: durableStore,
   },
-  execute: guard(cancelOrder, {
-    name: "cancel-order",
-    context: () => currentSession(),
-    authorize: ({ input, context }) =>
-      context.userId === ownerOf(input.orderId),
-    idempotency: {
-      key: ({ input, context }) => `${context.userId}:${input.orderId}:cancel`,
-      store: durableStore,
-    },
-    verify: ({ output }) => output.state === "cancelled",
-  }),
+  verify: ({ output }) => output.state === "cancelled",
 });
 ```
 
-## Why this shape
+Use the guarded handler as the native tool's `execute` callback. Public reads and
+simple low-risk tools do not need this layer.
 
-The browser standard owns registration, discovery, schemas, origins, permissions, and lifecycle. Your application owns identity, authorization, business logic, persistence, and backend enforcement. Signet coordinates the execution boundary between them.
+`MemoryIdempotencyStore` is available from `@signet/webmcp/testing` for tests and
+demos. It is not durable and must not be treated as a production guarantee. The
+optional `@signet/webmcp/opentelemetry` entry point converts lifecycle events into
+spans without configuring an exporter or collecting inputs and outputs.
 
-There is deliberately no `defineTool`, registry, schema language, router, browser polyfill, retry policy, or hosted runtime. Removing `guard(...)` leaves an ordinary WebMCP handler. Signet also performs no network requests and collects no telemetry unless the application explicitly supplies an observer.
+## Product principles
 
-## API
+- **Native-first:** WebMCP names, descriptions, JSON Schemas, annotations, origins,
+  and signals stay visible.
+- **Application-owned:** your functions, identity, policy, data, and backend remain the
+  source of truth.
+- **Useful before consequential:** lookup and read tools should be easy; production
+  middleware is progressive enhancement.
+- **Agent-tested:** success means an agent discovers the right tool, calls it with valid
+  arguments, and reaches the expected application outcome.
+- **No fake compatibility:** test drivers are labeled as such and native compatibility
+  is tested separately.
+- **Ejectable:** Signet should leave understandable application code behind.
 
-`guard(execute, options)` returns another WebMCP-compatible execute function. Every option is optional and independently removable:
-
-- `context` resolves the application's authenticated session or resource context.
-- `authorize` fails closed before the operation.
-- `idempotency` delegates atomic execution and replay to an injected store.
-- `verify` checks the observed result after execution or replay.
-- `observe` receives lifecycle metadata; inputs and outputs are never included.
-
-The original `AbortSignal` is propagated unchanged. Application errors are rethrown unchanged. Signet only introduces `AuthorizationError` and `VerificationError` for decisions it owns.
-
-`MemoryIdempotencyStore` is available from `@signet/webmcp/testing` for tests and demos. It is not durable and must not be treated as a production guarantee.
-
-An optional `@signet/webmcp/opentelemetry` entry point converts lifecycle events into OpenTelemetry spans. It requires the standard `@opentelemetry/api` peer dependency and never configures an exporter.
-
-## Standards and scope
-
-- Use the official `webmcp-types` package for `document.modelContext` declarations.
-- Write native JSON Schema objects. Signet does not reinterpret them.
-- Validate agent input again at the application boundary; schema enforcement is still an active WebMCP design area.
-- Preserve the native `AbortSignal` for tool execution and use a registration signal to unregister tools.
-- Enforce authorization and idempotency again on the backend. Browser-side code is not a security boundary.
-
-See [the native example](./examples/native-webmcp.ts), [ecosystem research](./docs/ecosystem.md), and [design contract](./docs/design.md).
-
-The complete guide lives in [`docs/`](./docs/index.md). Run it locally with
-`npm run docs:dev` or produce the static site with `npm run docs:build`.
+See [the current native example](./examples/native-webmcp.ts), the
+[reference application](./examples/cypress-realworld-app/SIGNET.md), and the
+[design contract](./docs/design.md).
 
 ## Development
 
@@ -72,7 +111,8 @@ npm install
 npm run validate
 ```
 
-`validate` runs strict type checking, the coverage-gated test suite, a production
-build, and imports the built package through each public export path.
+`validate` runs linting, formatting checks, strict type checking, the coverage-gated
+test suite, a production build, package validation, and public-export smoke tests.
 
-Signet is experimental because WebMCP itself is evolving. The public surface will stay small until production evidence justifies another abstraction.
+Signet is experimental because WebMCP itself is evolving. The public surface will stay
+small until real integrations justify each abstraction.
