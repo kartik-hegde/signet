@@ -19,6 +19,8 @@ implementation: the public contract below is sufficient.
    `additionalProperties: false` unless extras are intentional.
 4. Start with the four required fields: `name`, `description`, `inputSchema`, and
    `execute`. Add hooks only for real production requirements.
+   For discovery and other read-only tools, set
+   `annotations: { readOnlyHint: true }`; there is no top-level `readOnly` option.
 5. Dispose registrations when the page state no longer makes the capability available.
 6. Test the contract with `createWebMcpTestHarness`; then run the website's normal tests
    and a native browser-agent path when available.
@@ -85,7 +87,10 @@ registration.dispose();
 - Execution order is: cancellation check, input validation, context, authorization,
   idempotent execute/replay, optional recovery, verification, result.
 - `authorize({ input, context, signal })` runs before the handler and returns a boolean
-  or `{ allowed, reason? }`.
+  or `{ allowed, reason? }`. It runs before every idempotency lookup, including replay.
+  Keep current identity, permission, tenant, and resource access here. Put mutable
+  eligibility changed by success, such as `status === "open"`, inside `execute` so a
+  valid replay can reach its stored result.
 - `idempotency.store.execute(key, operation, { signal })` is application-supplied. The
   key must include principal, operation ID, and every intent-changing argument. Signet
   deliberately has no default production store.
@@ -115,6 +120,7 @@ its `modelContext` to `createSignet`, and invoke the tool with
 `harness.invoke(name, input)`. Prove:
 
 - invalid and unauthorized input causes no effect;
+- a sequential repeat after success returns the same result with one effect;
 - concurrent equal intent causes one effect;
 - different intent does not collapse;
 - failed pre-effect work remains retryable;

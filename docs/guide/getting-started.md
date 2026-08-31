@@ -99,10 +99,8 @@ await signet.expose({
     required: ["orderId"],
     additionalProperties: false,
   },
-  authorize: async ({ input, context }) => {
-    const order = await getOrder(input.orderId);
-    return order?.userId === context.userId;
-  },
+  // Authorization runs before replay. Mutable order eligibility belongs in execute.
+  authorize: ({ context }) => context.scopes.includes("orders:cancel"),
   idempotency: {
     store: productionIdempotencyStore,
     key: ({ input, context }) => `${context.userId}:${input.orderId}:cancel`,
@@ -128,6 +126,10 @@ await signet.expose({
 The application still owns authentication, authorization, durable idempotency,
 business logic, and authoritative state. Signet coordinates and observes those checks
 at the agent boundary.
+
+Signet re-evaluates authorization before every replay. Keep current access policy in
+`authorize`, but put mutable conditions that success changes inside `execute` so they
+do not reject the stored result of a valid repeat.
 
 ## Test without a model or browser
 

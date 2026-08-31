@@ -47,7 +47,9 @@ authorize?: ({ input, context, signal }) =>
   | Promise<boolean | AuthorizationDecision>;
 ```
 
-A false decision throws `AuthorizationError` before execution.
+A false decision throws `AuthorizationError` before execution. Authorization is
+re-evaluated before every idempotency lookup, including replay. Mutable eligibility
+that the operation itself changes belongs inside the executed operation.
 
 ### `idempotency`
 

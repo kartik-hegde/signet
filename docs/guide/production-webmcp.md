@@ -20,6 +20,10 @@ Signet checks cancellation between stages and passes the identical `AbortSignal`
 every hook. Cancellation stops work that has not begun. It does not prove that a remote
 side effect was undone.
 
+Authorization runs on every invocation before the idempotency lookup. Keep current
+access policy there; put mutable eligibility changed by a successful operation inside
+the executed business path so later replays can return their stored result.
+
 ## Keep one business path
 
 The human UI and WebMCP tool should call the same application service:

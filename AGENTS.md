@@ -62,10 +62,17 @@ hooks only when the workflow needs them.
   `modelContext.registerTool`. It returns a synchronous, idempotent registration with
   `name`, `status`, `dispose()`, and `[Symbol.dispose]()`. Failed registration does not
   poison a later attempt.
+- `annotations` maps directly to native WebMCP metadata. Mark discovery and other
+  read-only tools with `annotations: { readOnlyHint: true }`; there is no top-level
+  `readOnly` option.
 - Execution order is: abort check, input validation, context, authorization,
   idempotent execute/replay, optional authoritative recovery, verification, result.
 - `authorize({ input, context, signal })` returns a boolean or
-  `{ allowed, reason? }`. Denial occurs before the handler.
+  `{ allowed, reason? }`. Denial occurs before the handler and before every
+  idempotency lookup, including replay. Keep current identity, permission, tenant, and
+  resource access here. Put mutable eligibility that the successful operation changes
+  (for example, `status === "open"`) inside `execute`; otherwise a valid replay can be
+  denied before its stored result is returned.
 - `idempotency.store.execute(key, operation, { signal })` must atomically coalesce
   equal keys and return `{ value, replayed }`. Include principal, operation ID, and
   every intent-changing argument in the key. Signet intentionally ships no durable
@@ -96,9 +103,10 @@ inspect package internals unless a compiler or test result contradicts this cont
 
 Use `createWebMcpTestHarness()` from `@signet/webmcp/testing`, inject its
 `modelContext`, and invoke the registered tool with `harness.invoke(name, input)`. At
-minimum prove invalid input and unauthorized calls cause no effect, concurrent equal
-intent causes one effect, different intent does not collapse, verification runs after
-replay, an aborted signal causes no work, and disposal removes the tool. Run the
+minimum prove invalid input and unauthorized calls cause no effect, sequential and
+concurrent equal intent return the same result with one effect, different intent does
+not collapse, verification runs after replay, an aborted signal causes no work, and
+disposal removes the tool. Run the
 project's normal test command; do not inspect Signet internals to re-prove these library
 guarantees.
 
