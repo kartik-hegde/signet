@@ -1,52 +1,21 @@
 ---
-layout: home
-
-hero:
-  name: Signet WebMCP
-  text: Let agents use your product. Know the action really happened.
-  tagline: Turn application functions into native WebMCP tools, then add the validation, application context, reliable execution, testing, and traces needed to ship with confidence.
-  actions:
-    - theme: brand
-      text: Get started →
-      link: /guide/getting-started
-    - theme: alt
-      text: Read the approach
-      link: /guide/why-signet
-
-features:
-  - title: 01 / Expose
-    details: Bind a clear tool to a function your application already owns. Native WebMCP stays visible.
-  - title: 02 / Prove
-    details: Test contracts, authorization, replay behavior, and authoritative outcomes without a model.
-  - title: 03 / Observe
-    details: Follow one action from agent intent through application effect and verified result.
+layout: page
+sidebar: false
+aside: false
+lastUpdated: false
+editLink: false
+footer: false
 ---
 
-## Existing logic in. Verifiable actions out.
-
-```text
-application function → Signet tool boundary → native WebMCP → browser agent → verified outcome
-```
-
-Signet does not replace your application, the browser standard, or the agent. It gives
-product teams a precise boundary around what agents can do—and evidence that consequential
-actions reached the intended state.
-
-## Start with four fields. Add rigor when the action earns it.
-
-```ts
-await signet.expose({
-  name: "cancel_order",
-  description: "Cancel one unshipped order.",
-  inputSchema,
-  execute: ({ orderId }) => cancelOrder(orderId),
-});
-```
-
-Public reads can stay this small. Authenticated or state-changing actions can add
-application context, authorization, idempotency, recovery, verification, and observation
-without changing the underlying handler.
-
-> [!TIP]
-> **The visual system follows the same rule.** Quiet foundations, explicit boundaries,
-> and color only when it carries information. [See the Signet Signal design kit →](/brand)
+<!-- prettier-ignore -->
+<div class="minimal-home">
+  <div class="minimal-home-copy">
+    <div class="home-wordmark">SIGNET</div>
+    <a class="home-update" href="https://github.com/kartik-hegde/signet/tree/main/skills/signet-webmcp"><span class="home-update-badge">NEW</span><span>Coding-agent skill for WebMCP integration</span></a>
+    <div class="home-prose">
+      <p>Agents are using a web built for humans. Pages and controls were designed to be seen and operated by people, not discovered and invoked reliably by software. WebMCP begins to solve this by giving websites a native way to expose capabilities to agents.</p>
+      <p>We built Signet to make it easy for web developers to prepare their websites for the agentic era. It is a small open-source TypeScript library that brings WebMCP together with identity, policy, idempotency, observability, verification, and deterministic testing. Developers can build production-ready tools for agents in less time while keeping application logic and state in their application.</p>
+    </div>
+    <div class="install-line" aria-label="Install Signet with npm"><span aria-hidden="true">$</span><code>npm install @signet/webmcp</code></div>
+  </div>
+</div>

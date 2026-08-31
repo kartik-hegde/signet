@@ -14,10 +14,16 @@ export default defineConfig({
   themeConfig: {
     siteTitle: "Signet",
     nav: [
-      { text: "Guide", link: "/guide/getting-started" },
-      { text: "API", link: "/reference/interface" },
-      { text: "Design", link: "/brand" },
-      { text: "GitHub", link: "https://github.com/kartik-hegde/signet" },
+      { text: "Docs", link: "/guide/getting-started" },
+      {
+        text: "Examples",
+        link: "https://github.com/kartik-hegde/signet/tree/main/examples",
+      },
+      { text: "Resources", link: "/resources" },
+      {
+        text: "Benchmarks",
+        link: "https://github.com/kartik-hegde/signet-benchmarks",
+      },
     ],
     sidebar: [
       {
@@ -55,7 +61,6 @@ export default defineConfig({
         items: [
           { text: "Production checklist", link: "/production-checklist" },
           { text: "Design contract", link: "/design" },
-          { text: "Brand system", link: "/brand" },
           { text: "Ecosystem research", link: "/ecosystem" },
         ],
       },
