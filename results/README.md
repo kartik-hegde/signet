@@ -17,3 +17,6 @@ Every published result must identify:
 
 Do not publish only a blended score. A headline may summarize a primary preregistered
 metric, but the component outcomes and uncertainty must remain visible.
+
+Reviewed aggregates currently live in `p0/` and `p1/`. Per-agent event streams,
+browser traces, screenshots, and logs remain under the ignored `raw/` tree.

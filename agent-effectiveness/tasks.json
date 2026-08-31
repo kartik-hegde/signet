@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "tasks": [
+    {
+      "id": "pay-lia-reference",
+      "intent": "Send Lia Rosenbaum $12.00 for \"Reference parity payment\". Complete the payment exactly once.",
+      "sender": { "id": "uBmeaz5pX", "username": "Heath93" },
+      "receiver": { "id": "WHjJ4qR2R2", "displayName": "Lia Rosenbaum" },
+      "amountCents": 1200,
+      "description": "Reference parity payment",
+      "expectedTools": ["search_payment_users", "list_payment_accounts", "send_payment"]
+    }
+  ]
+}

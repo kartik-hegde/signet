@@ -8,6 +8,8 @@
   },
   "scripts": {
     "bench:p0": "node scripts/run-p0.mjs",
+    "bench:p1": "node agent-effectiveness/run.mjs",
+    "bench:p1:smoke": "P1_TRIALS=1 node agent-effectiveness/run.mjs",
     "bench:safety": "npm --prefix execution-safety run bench -- --no-history",
     "demo": "node demo/server.mjs",
     "test:demo": "apps/cypress-realworld-app/node_modules/.bin/cypress run --project demo --config-file cypress.config.cjs",

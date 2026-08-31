@@ -21,7 +21,7 @@ success response.
 |---|---|---|
 | [`demo/`](./demo/) | Customer-ready speed race and fault-injection story | Runnable |
 | [`execution-safety/`](./execution-safety/) | Deterministic post-commit failure and concurrency suite | Runnable v0 |
-| [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies | Design stage |
+| [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies | Runnable P1 |
 | [`build-vs-buy/`](./build-vs-buy/) | Independent raw-controls versus Signet implementation study | Design stage |
 | [`apps/`](./apps/) | App manifests, patches, task definitions, reset hooks, and oracles | Design stage |
 | [`methodology/`](./methodology/) | Benchmark contract, KPIs, experimental design, and publication rules | Initial design |
@@ -69,6 +69,19 @@ npm run demo
 
 Use the Speed tab first, then inject the lost-response fault in the Trust tab. Run the
 browser regression with `npm run test:demo`.
+
+## Run the real-agent P1 pilot
+
+P1 gives the same natural-language payment intent to a real Codex agent ten times per
+condition and grades every run from application state:
+
+```sh
+npm run bench:p1
+```
+
+Use `npm run bench:p1:smoke` for one trial per condition. The aggregate scorecard is
+written to `results/p1/latest.json` and `results/p1/latest.md`; raw agent and browser
+traces remain under the ignored `results/raw/p1/` directory.
 
 ## Benchmark contract
 
