@@ -19,6 +19,7 @@ success response.
 
 | Path | Purpose | Status |
 |---|---|---|
+| [`demo/`](./demo/) | Customer-ready speed race and fault-injection story | Runnable |
 | [`execution-safety/`](./execution-safety/) | Deterministic post-commit failure and concurrency suite | Runnable v0 |
 | [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies | Design stage |
 | [`build-vs-buy/`](./build-vs-buy/) | Independent raw-controls versus Signet implementation study | Design stage |
@@ -55,6 +56,19 @@ publishable LLM-agent speed claim.
 The safety lane is intentionally model-free. A deterministic caller is the cleaner way
 to test execution invariants; models are introduced only where tool discovery, task
 planning, and UI interaction are part of the question.
+
+## Present the demo
+
+The interactive demo reads the latest P0 evidence and turns it into a two-part story:
+WebMCP removes UI work, then Signet makes consequential execution inspectable and safe.
+
+```sh
+npm run demo
+# open http://127.0.0.1:4173/demo/
+```
+
+Use the Speed tab first, then inject the lost-response fault in the Trust tab. Run the
+browser regression with `npm run test:demo`.
 
 ## Benchmark contract
 

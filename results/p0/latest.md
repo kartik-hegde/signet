@@ -1,6 +1,6 @@
 # P0 KPI scorecard
 
-Generated: 2026-08-31T04:13:24.380Z
+Generated: 2026-08-31T04:33:55.580Z
 
 > Deterministic application drivers establish parity and directional overhead. They are not an LLM-agent speed claim.
 

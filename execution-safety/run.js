@@ -92,6 +92,17 @@ const record = {
   subject,
   scores,
   scenarios: scenarios.map((scenario) => scenario.id),
+  ...(quiet
+    ? {
+        trials: results.map(({ scenario, arm, counts, reports, passed }) => ({
+          scenario,
+          arm,
+          counts,
+          reports: reports.map(({ step, reported, error }) => ({ step, reported, error })),
+          passed,
+        })),
+      }
+    : {}),
 };
 
 const history = readHistory(benchDir);

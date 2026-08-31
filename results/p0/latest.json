@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-31T04:13:24.380Z",
+  "generatedAt": "2026-08-31T04:33:55.580Z",
   "status": "p0_directional",
   "note": "Deterministic application drivers establish parity and directional overhead. They are not an LLM-agent speed claim.",
   "provenance": {
-    "benchmarkCommit": "fb66283",
+    "benchmarkCommit": "24a2185",
     "signetCommit": "9ab2c4d",
     "application": "Cypress Real World App payment fixture"
   },
@@ -94,7 +94,7 @@
         "honesty": 50,
         "scenariosPassed": 1,
         "scenariosRun": 3,
-        "medianInvocationMs": 0.4,
+        "medianInvocationMs": 0.3,
         "counters": {
           "duplicate_effects": 1,
           "false_success": 0,
@@ -112,7 +112,7 @@
         "honesty": 100,
         "scenariosPassed": 1,
         "scenariosRun": 3,
-        "medianInvocationMs": 0.5,
+        "medianInvocationMs": 0.4,
         "counters": {
           "duplicate_effects": 0,
           "false_success": 0,
@@ -122,6 +122,168 @@
           "indeterminate_disclosed": 1,
           "lost_update_disclosed": 1
         }
+      }
+    ],
+    "trials": [
+      {
+        "scenario": "retry-after-lost-response",
+        "arm": "A1_raw",
+        "counts": {
+          "duplicate_effects": 1,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "retry-after-lost-response",
+        "arm": "A3a_signet_memory",
+        "counts": {
+          "duplicate_effects": 1,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "retry-after-lost-response",
+        "arm": "A3b_signet_durable",
+        "counts": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 1
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "unknown",
+            "error": "IndeterminateError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "retry-after-upstream-error-on-idempotent-operation",
+        "arm": "A1_raw",
+        "counts": {
+          "duplicate_effects": 0,
+          "silent_effect": 0,
+          "needless_indeterminate": 0
+        },
+        "reports": [
+          {
+            "step": "cancel-booking",
+            "reported": "success"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "retry-after-upstream-error-on-idempotent-operation",
+        "arm": "A3a_signet_memory",
+        "counts": {
+          "duplicate_effects": 0,
+          "silent_effect": 0,
+          "needless_indeterminate": 0
+        },
+        "reports": [
+          {
+            "step": "cancel-booking",
+            "reported": "success"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "retry-after-upstream-error-on-idempotent-operation",
+        "arm": "A3b_signet_durable",
+        "counts": {
+          "duplicate_effects": 0,
+          "silent_effect": 0,
+          "needless_indeterminate": 1
+        },
+        "reports": [
+          {
+            "step": "cancel-booking",
+            "reported": "unknown",
+            "error": "IndeterminateError"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "concurrent-notes-overwrite",
+        "arm": "A1_raw",
+        "counts": {
+          "lost_updates": 1,
+          "lost_update_disclosed": 0
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "success"
+          },
+          {
+            "step": "update-booking-notes",
+            "reported": "success"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "concurrent-notes-overwrite",
+        "arm": "A3a_signet_memory",
+        "counts": {
+          "lost_updates": 1,
+          "lost_update_disclosed": 1
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "success"
+          },
+          {
+            "step": "update-booking-notes",
+            "reported": "unknown",
+            "error": "VerificationError"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "concurrent-notes-overwrite",
+        "arm": "A3b_signet_durable",
+        "counts": {
+          "lost_updates": 1,
+          "lost_update_disclosed": 1
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "success"
+          },
+          {
+            "step": "update-booking-notes",
+            "reported": "unknown",
+            "error": "VerificationError"
+          }
+        ],
+        "passed": false
       }
     ],
     "subject": "A3b_signet_durable",

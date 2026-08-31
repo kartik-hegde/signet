@@ -92,6 +92,7 @@ const scorecard = {
   safety: {
     scenarios: safetyResult.scenarios,
     scores: safetyResult.scores,
+    trials: safetyResult.trials,
     subject: safetyResult.subject,
     scoringVersion: safetyResult.scoringVersion,
   },
