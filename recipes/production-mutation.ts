@@ -62,6 +62,8 @@ export async function exposeCancelOrder(dependencies: CancelOrderDependencies) {
       required: ["orderId", "reason", "operationId"],
       additionalProperties: false,
     },
+    // Authorization is re-evaluated before replay. Keep mutable eligibility checks,
+    // such as open versus already cancelled, inside execute.
     authorize: ({ context }) => context.scopes.includes("orders:cancel"),
     idempotency: {
       store: dependencies.operationStore,

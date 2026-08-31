@@ -99,10 +99,9 @@ await signet.expose({
     additionalProperties: false,
   },
 
-  authorize: async ({ input, context }) => {
-    const order = await getOrder(input.orderId);
-    return order?.userId === context.userId;
-  },
+  // This runs on every call, including replay. Check current permission here;
+  // keep mutable order eligibility inside execute.
+  authorize: ({ context }) => context.scopes.includes("orders:cancel"),
 
   idempotency: {
     store: productionIdempotencyStore,
@@ -146,6 +145,11 @@ idempotency, and authoritative state. Signet is state-aware; it is not an applic
 state store or agent orchestrator.
 
 Signet never retries operations automatically.
+
+Authorization is re-evaluated before every idempotency lookup, including replay. Keep
+current identity, permission, tenant, and resource access in `authorize`. Put mutable
+eligibility that success changes—for example, whether an order is still open—inside
+`execute`, so a valid repeat can return its stored result.
 
 `recover` is for ambiguous failures such as a response lost after commit. It may report
 success only after reading authoritative application state. Recovered results still run

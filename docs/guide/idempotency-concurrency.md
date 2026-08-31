@@ -46,6 +46,11 @@ Signet has no global lock or queue. Coordination is per store key:
 | Same key, later      | Return the durable result according to retention policy |
 | Different keys       | Execute concurrently                                    |
 
+Authorization is evaluated before this lookup on every invocation. Keep mutable
+preconditions that successful execution changes inside `execute`; placing
+`status === "open"` in `authorize` would reject a later replay before the store can
+return the original result.
+
 This is the useful performance property: unrelated customer actions do not wait behind
 one another, while true duplicates converge on one effect.
 

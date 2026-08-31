@@ -55,8 +55,13 @@ principal + tenant + operation + resource + relevant input
 ```
 
 Checking only `role === "admin"` is often insufficient. Confirm that the resource
-belongs to the same tenant, that its current state allows the transition, and that the
-specific input is permitted.
+belongs to the same tenant and that the specific input is permitted.
+
+Authorization runs before every idempotency lookup, including replay. If successful
+execution changes an eligibility condition—such as an order moving from `open` to
+`cancelled`—check that condition inside `execute`, not `authorize`. Current identity,
+permission, tenant, and resource access still belong in `authorize` and are therefore
+re-evaluated for every caller.
 
 ## Enforce twice
 

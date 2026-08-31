@@ -154,6 +154,23 @@ describe("guard", () => {
     );
   });
 
+  it("re-evaluates authorization before replay without re-executing", async () => {
+    const store = new MemoryIdempotencyStore();
+    const authorize = vi.fn(() => true);
+    const execute = vi.fn(async () => ({ state: "cancelled" as const }));
+    const guarded = guard(execute, {
+      authorize,
+      idempotency: { key: () => "cancel-order-1", store },
+    });
+
+    const first = await guarded({}, active());
+    const replay = await guarded({}, active());
+
+    expect(replay).toEqual(first);
+    expect(authorize).toHaveBeenCalledTimes(2);
+    expect(execute).toHaveBeenCalledOnce();
+  });
+
   it("recovers an ambiguous execution from authoritative state and caches it", async () => {
     const store = new MemoryIdempotencyStore();
     const events: GuardEvent[] = [];
