@@ -12,7 +12,7 @@ Recorded 2026-08-31 against the pinned local Saleor stack.
 | Exact retry             | Replayed the same order ID without another approval |
 | Independent oracle      | One matching Postgres row, charge status `full`     |
 
-The returned and independently observed order is Saleor order **#25**. The Signet
+The returned and independently observed order is Saleor order **#26**. The Signet
 lifecycle was `started → validated → authorized → confirmation_requested → confirmed
 → recovered → output_validated → verified → succeeded`. Repeating the same logical
 intent produced `replayed → verified → succeeded`, did not prompt again, and did not
