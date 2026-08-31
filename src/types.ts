@@ -50,7 +50,7 @@ export interface GuardEvent {
   readonly error?: unknown;
 }
 
-export type GuardObserver = (event: GuardEvent) => void;
+export type GuardObserver = (event: GuardEvent) => MaybePromise<void>;
 
 export interface GuardOptions<
   Input extends Record<string, unknown>,
@@ -78,6 +78,7 @@ export interface GuardOptions<
     readonly key: (args: {
       readonly input: Input;
       readonly context: Context;
+      readonly signal: AbortSignal;
     }) => MaybePromise<string>;
     readonly store: IdempotencyStore;
   };

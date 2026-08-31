@@ -66,8 +66,10 @@ See [the native example](./examples/native-webmcp.ts), [ecosystem research](./do
 
 ```sh
 npm install
-npm run check
-npm run build
+npm run validate
 ```
+
+`validate` runs strict type checking, the coverage-gated test suite, a production
+build, and imports the built package through each public export path.
 
 Signet is experimental because WebMCP itself is evolving. The public surface will stay small until production evidence justifies another abstraction.

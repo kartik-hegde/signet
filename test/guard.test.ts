@@ -28,6 +28,48 @@ describe("guard", () => {
     expect(execute).toHaveBeenCalledOnce();
   });
 
+  it("does not allocate observability metadata when no observer is configured", async () => {
+    const invocationId = vi.fn(() => "unused");
+    const now = vi.fn(() => 1);
+    const guarded = guard(async () => "done", { invocationId, now });
+
+    await expect(guarded({}, active())).resolves.toBe("done");
+    expect(invocationId).not.toHaveBeenCalled();
+    expect(now).not.toHaveBeenCalled();
+  });
+
+  it("passes input and signal to context and authorization", async () => {
+    const controller = new AbortController();
+    const context = vi.fn(async () => ({ userId: "user-1" }));
+    const authorize = vi.fn(() => true);
+    const guarded = guard(async () => "done", { context, authorize });
+
+    await guarded({ resourceId: "resource-1" }, { signal: controller.signal });
+
+    expect(context).toHaveBeenCalledWith(
+      { resourceId: "resource-1" },
+      { signal: controller.signal },
+    );
+    expect(authorize).toHaveBeenCalledWith({
+      input: { resourceId: "resource-1" },
+      context: { userId: "user-1" },
+      signal: controller.signal,
+    });
+  });
+
+  it("preserves context errors and prevents execution", async () => {
+    const failure = new Error("session unavailable");
+    const execute = vi.fn(async () => "done");
+    const guarded = guard(execute, {
+      context: async () => {
+        throw failure;
+      },
+    });
+
+    await expect(guarded({}, active())).rejects.toBe(failure);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it("fails closed before executing when authorization is denied", async () => {
     const execute = vi.fn(async () => "secret");
     const guarded = guard(execute, {
@@ -45,6 +87,44 @@ describe("guard", () => {
         message: "An administrator is required.",
       }),
     );
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it("uses a stable default message for boolean authorization denial", async () => {
+    const guarded = guard(async () => "secret", {
+      authorize: () => false,
+    });
+
+    await expect(guarded({}, active())).rejects.toEqual(
+      expect.objectContaining({
+        name: "AuthorizationError",
+        message: "The operation is not authorized.",
+      }),
+    );
+  });
+
+  it("accepts a structured authorization decision", async () => {
+    const guarded = guard(async () => "done", {
+      authorize: () => ({ allowed: true }),
+    });
+
+    await expect(guarded({}, active())).resolves.toBe("done");
+  });
+
+  it("stops after authorization when cancellation arrives during the check", async () => {
+    const controller = new AbortController();
+    const cancelled = new Error("cancelled during policy check");
+    const execute = vi.fn(async () => "done");
+    const guarded = guard(execute, {
+      authorize: async () => {
+        controller.abort(cancelled);
+        return true;
+      },
+    });
+
+    await expect(
+      guarded({}, { signal: controller.signal }),
+    ).rejects.toBe(cancelled);
     expect(execute).not.toHaveBeenCalled();
   });
 
@@ -74,6 +154,61 @@ describe("guard", () => {
     );
   });
 
+  it("passes the signal through idempotency keying and storage", async () => {
+    const controller = new AbortController();
+    const key = vi.fn(() => "operation-1");
+    const store = {
+      execute: vi.fn(async (_key, operation, options) => {
+        expect(options.signal).toBe(controller.signal);
+        return { value: await operation(), replayed: false };
+      }),
+    };
+    const guarded = guard(async () => "done", {
+      idempotency: { key, store },
+    });
+
+    await guarded({}, { signal: controller.signal });
+
+    expect(key).toHaveBeenCalledWith({
+      input: {},
+      context: undefined,
+      signal: controller.signal,
+    });
+    expect(store.execute).toHaveBeenCalledOnce();
+  });
+
+  it("rejects an empty idempotency key before reaching storage", async () => {
+    const store = { execute: vi.fn() };
+    const guarded = guard(async () => "done", {
+      idempotency: { key: () => "", store },
+    });
+
+    await expect(guarded({}, active())).rejects.toThrow(
+      "idempotency key must not be empty",
+    );
+    expect(store.execute).not.toHaveBeenCalled();
+  });
+
+  it("stops before storage when cancellation arrives during keying", async () => {
+    const controller = new AbortController();
+    const cancelled = new Error("cancelled during keying");
+    const store = { execute: vi.fn() };
+    const guarded = guard(async () => "done", {
+      idempotency: {
+        key: async () => {
+          controller.abort(cancelled);
+          return "operation-1";
+        },
+        store,
+      },
+    });
+
+    await expect(
+      guarded({}, { signal: controller.signal }),
+    ).rejects.toBe(cancelled);
+    expect(store.execute).not.toHaveBeenCalled();
+  });
+
   it("rejects an unverifiable result without disguising it as success", async () => {
     const guarded = guard(async () => ({ state: "pending" }), {
       verify: ({ output }) => ({
@@ -87,6 +222,51 @@ describe("guard", () => {
     );
   });
 
+  it("uses a stable default message for boolean verification failure", async () => {
+    const guarded = guard(async () => ({ state: "pending" }), {
+      verify: () => false,
+    });
+
+    await expect(guarded({}, active())).rejects.toEqual(
+      expect.objectContaining({
+        name: "VerificationError",
+        message: "The operation's result could not be verified.",
+      }),
+    );
+  });
+
+  it("accepts a structured verification decision", async () => {
+    const guarded = guard(async () => "done", {
+      verify: () => ({ verified: true }),
+    });
+
+    await expect(guarded({}, active())).resolves.toBe("done");
+  });
+
+  it("does not report success when cancellation arrives during verification", async () => {
+    const controller = new AbortController();
+    const cancelled = new Error("cancelled during verification");
+    const events: GuardEvent[] = [];
+    const guarded = guard(async () => ({ state: "complete" }), {
+      verify: async () => {
+        controller.abort(cancelled);
+        return true;
+      },
+      observe: (event) => {
+        events.push(event);
+      },
+    });
+
+    await expect(
+      guarded({}, { signal: controller.signal }),
+    ).rejects.toBe(cancelled);
+    expect(events.map((event) => event.stage)).toEqual([
+      "started",
+      "executed",
+      "failed",
+    ]);
+  });
+
   it("preserves application errors and emits metadata without inputs or outputs", async () => {
     const events: GuardEvent[] = [];
     const failure = new Error("upstream failed");
@@ -98,7 +278,9 @@ describe("guard", () => {
         name: "place-order",
         invocationId: () => "invocation-1",
         now: () => 10,
-        observe: (event) => events.push(event),
+        observe: (event) => {
+          events.push(event);
+        },
       },
     );
 
@@ -126,6 +308,17 @@ describe("guard", () => {
     await expect(guarded({}, active())).resolves.toBe("done");
   });
 
+  it("contains asynchronous observer rejection", async () => {
+    const guarded = guard(async () => "done", {
+      observe: async () => {
+        throw new Error("async collector unavailable");
+      },
+    });
+
+    await expect(guarded({}, active())).resolves.toBe("done");
+    await Promise.resolve();
+  });
+
   it("honors an already-aborted invocation before doing any work", async () => {
     const controller = new AbortController();
     controller.abort(new Error("cancelled"));
@@ -145,6 +338,71 @@ describe("guard", () => {
 });
 
 describe("MemoryIdempotencyStore", () => {
+  it("coalesces concurrent operations and replays the shared result", async () => {
+    const store = new MemoryIdempotencyStore();
+    let finish: ((value: string) => void) | undefined;
+    const operation = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+        }),
+    );
+
+    const first = store.execute("same-operation", operation, active());
+    await Promise.resolve();
+    const second = store.execute("same-operation", operation, active());
+    finish?.("complete");
+
+    await expect(first).resolves.toEqual({
+      value: "complete",
+      replayed: false,
+    });
+    await expect(second).resolves.toEqual({
+      value: "complete",
+      replayed: true,
+    });
+    expect(operation).toHaveBeenCalledOnce();
+  });
+
+  it("removes failed work so a later call can retry", async () => {
+    const store = new MemoryIdempotencyStore();
+    const operation = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce("complete");
+
+    await expect(
+      store.execute("retryable", operation, active()),
+    ).rejects.toThrow("temporary failure");
+    await expect(store.execute("retryable", operation, active())).resolves.toEqual(
+      { value: "complete", replayed: false },
+    );
+    expect(operation).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not start work for an already-aborted caller", async () => {
+    const store = new MemoryIdempotencyStore();
+    const controller = new AbortController();
+    controller.abort(new Error("already cancelled"));
+    const operation = vi.fn(async () => "complete");
+
+    await expect(
+      store.execute("cancelled", operation, { signal: controller.signal }),
+    ).rejects.toThrow("already cancelled");
+    expect(operation).not.toHaveBeenCalled();
+  });
+
+  it("can clear completed demo state", async () => {
+    const store = new MemoryIdempotencyStore();
+    const operation = vi.fn(async () => "complete");
+
+    await store.execute("operation", operation, active());
+    store.clear();
+    await store.execute("operation", operation, active());
+
+    expect(operation).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps in-flight work keyed when one caller stops waiting", async () => {
     const store = new MemoryIdempotencyStore();
     const controller = new AbortController();

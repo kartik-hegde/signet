@@ -58,8 +58,9 @@ export function guard<
   return async (input, executeOptions) => {
     executeOptions.signal.throwIfAborted();
 
-    const invocationId = createInvocationId();
-    const startedAt = now();
+    const observing = options.observe !== undefined;
+    const invocationId = observing ? createInvocationId() : "";
+    const startedAt = observing ? now() : 0;
 
     const emit = (stage: GuardStage, error?: unknown): void => {
       if (!options.observe) return;
@@ -74,7 +75,7 @@ export function guard<
       };
 
       try {
-        options.observe(event);
+        void Promise.resolve(options.observe(event)).catch(() => undefined);
       } catch {
         // Observability is deliberately outside the operation's trust path.
       }
@@ -96,6 +97,8 @@ export function guard<
           signal: executeOptions.signal,
         });
 
+        executeOptions.signal.throwIfAborted();
+
         if (!isAuthorized(decision)) {
           throw new AuthorizationError(denialReason(decision));
         }
@@ -107,8 +110,14 @@ export function guard<
       let replayed = false;
 
       if (options.idempotency) {
-        const key = await options.idempotency.key({ input, context });
-        if (key.length === 0) {
+        const key = await options.idempotency.key({
+          input,
+          context,
+          signal: executeOptions.signal,
+        });
+        executeOptions.signal.throwIfAborted();
+
+        if (typeof key !== "string" || key.length === 0) {
           throw new TypeError("The idempotency key must not be empty.");
         }
 
@@ -135,6 +144,8 @@ export function guard<
           replayed,
           signal: executeOptions.signal,
         });
+
+        executeOptions.signal.throwIfAborted();
 
         if (!isVerified(decision)) {
           throw new VerificationError(verificationFailureReason(decision));

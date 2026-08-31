@@ -25,9 +25,13 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "check": "tsc --noEmit && vitest run",
+    "check": "npm run typecheck && npm test",
+    "coverage": "vitest run --coverage",
+    "smoke": "node test/package-smoke.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && npm run coverage && npm run build && npm run smoke"
   },
   "engines": {
     "node": ">=20"
@@ -43,8 +47,9 @@
   "devDependencies": {
     "@opentelemetry/api": "^1.9.0",
     "@types/node": "^24.3.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.11",
     "webmcp-types": "^0.1.5"
   },
   "license": "MIT",

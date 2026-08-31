@@ -6,8 +6,8 @@ Run the full local verification before opening a change:
 
 ```sh
 npm install
-npm run check
-npm run build
+npm run validate
+npm pack --dry-run
 ```
 
 Changes to public types require tests and a short explanation of why application code or an adapter package is insufficient.
