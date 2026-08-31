@@ -56,6 +56,8 @@ export type GuardStage =
   | "replayed"
   | "recovered"
   | "output_validated"
+  | "output_oversized"
+  | "output_unmeasurable"
   | "completed_after_abort"
   | "verified"
   | "succeeded"
@@ -132,8 +134,8 @@ export interface GuardOptions<
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | VerificationDecision>;
 
-  /** Rejects serialized results larger than this byte count. */
-  readonly maxOutputBytes?: number;
+  /** Warns when serialized results exceed this byte budget. */
+  readonly outputBudgetBytes?: number;
 
   /** Receives metadata only. Observer failures never change operation behavior. */
   readonly observe?: GuardObserver;

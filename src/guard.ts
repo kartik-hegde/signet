@@ -1,7 +1,6 @@
 import {
   AuthorizationError,
   ConfirmationError,
-  OutputLimitError,
   VerificationError,
 } from "./errors.js";
 import type {
@@ -225,13 +224,32 @@ export async function runGuarded<
 
     observeLateAbort();
 
-    if (options.maxOutputBytes !== undefined) {
-      const serialized = JSON.stringify(output);
-      const actualBytes = new TextEncoder().encode(serialized).byteLength;
-      if (actualBytes > options.maxOutputBytes) {
-        throw new OutputLimitError(actualBytes, options.maxOutputBytes);
+    if (options.outputBudgetBytes !== undefined) {
+      let actualBytes: number | undefined;
+      try {
+        const serialized = JSON.stringify(output);
+        actualBytes =
+          serialized === undefined
+            ? 0
+            : new TextEncoder().encode(serialized).byteLength;
+      } catch {
+        emit("output_unmeasurable");
+        warnOutput(
+          options.name,
+          "could not be measured because it is not JSON-serializable",
+        );
       }
-      emit("output_validated");
+      if (actualBytes !== undefined) {
+        if (actualBytes > options.outputBudgetBytes) {
+          emit("output_oversized");
+          warnOutput(
+            options.name,
+            `is ${actualBytes} bytes; the configured budget is ${options.outputBudgetBytes}. Return a smaller, task-focused result`,
+          );
+        } else {
+          emit("output_validated");
+        }
+      }
     }
 
     if (options.verify) {
@@ -262,6 +280,14 @@ export async function runGuarded<
   } catch (error) {
     emit("failed", error);
     throw error;
+  }
+}
+
+function warnOutput(name: string | undefined, message: string): void {
+  try {
+    console.warn(`Signet${name ? ` (${name})` : ""}: tool output ${message}.`);
+  } catch {
+    // Diagnostics cannot change an already completed operation.
   }
 }
 

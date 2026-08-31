@@ -14,11 +14,9 @@ export default defineConfig({
       exclude: [
         "src/index.ts",
         "src/types.ts",
-        // Framework adapters are one-line lifecycle bindings; the shared lifecycle
-        // is covered directly and adapters are typechecked against their peers.
+        // The React hook is a thin wrapper; the shared lifecycle is covered directly
+        // and the adapter is typechecked against its peer.
         "src/react.ts",
-        "src/vue.ts",
-        "src/svelte.ts",
         "src/inspector.ts",
       ],
       thresholds: {

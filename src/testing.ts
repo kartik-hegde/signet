@@ -269,9 +269,9 @@ export interface AgentTaskResult {
 }
 
 export interface AgentEvaluationReport {
-  readonly selectionAccuracy: number;
-  readonly argumentAccuracy: number;
-  readonly completionRate: number;
+  readonly selectionAccuracy: number | null;
+  readonly argumentAccuracy: number | null;
+  readonly completionRate: number | null;
   readonly results: readonly AgentTaskResult[];
 }
 
@@ -319,7 +319,7 @@ export async function evaluateAgentTasks(options: {
   }
   const total = results.length;
   const rate = (predicate: (result: AgentTaskResult) => boolean) =>
-    total === 0 ? 1 : results.filter(predicate).length / total;
+    total === 0 ? null : results.filter(predicate).length / total;
   return {
     selectionAccuracy: rate(({ selectedCorrectly }) => selectedCorrectly),
     argumentAccuracy: rate(({ argumentsAccepted }) => argumentsAccepted),

@@ -240,8 +240,24 @@ describe("createSignet", () => {
       signet.expose({ ...tool, name: "not valid!" }),
     ).rejects.toThrow("name must be");
     await expect(
-      signet.expose({ ...tool, name: "bad_limit", maxOutputBytes: 0 }),
-    ).rejects.toThrow("maxOutputBytes must be a positive integer");
+      signet.expose({ ...tool, name: "bad_limit", outputBudgetBytes: 0 }),
+    ).rejects.toThrow("outputBudgetBytes must be a positive integer");
+  });
+
+  it("rejects duplicate unsupported definitions until disposal", async () => {
+    const signet = createSignet({ unsupported: "ignore" });
+    const tool = {
+      name: "unsupported_duplicate",
+      description: "A tool unavailable in this browser.",
+      inputSchema: schema,
+      execute: () => undefined,
+    };
+    const registration = await signet.expose(tool);
+    await expect(signet.expose(tool)).rejects.toThrow("already exposed");
+    registration.dispose();
+    await expect(signet.expose(tool)).resolves.toMatchObject({
+      status: "unsupported",
+    });
   });
 
   it("rejects duplicate names across interfaces in one WebMCP context", async () => {

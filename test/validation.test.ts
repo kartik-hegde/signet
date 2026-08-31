@@ -134,6 +134,15 @@ describe("Signet validation and expected errors", () => {
     expect(error.issues).toHaveLength(1);
   });
 
+  it("normalizes punctuation from schema-validator messages", () => {
+    const error = new ValidationError([
+      { path: "/query", message: "String is too long.", keyword: "maxLength" },
+    ]);
+    expect(error.message).toBe(
+      "Invalid tool input — /query: String is too long.",
+    );
+  });
+
   it("caps agent-facing validation details", () => {
     const error = new ValidationError(
       Array.from({ length: 5 }, (_, index) => ({

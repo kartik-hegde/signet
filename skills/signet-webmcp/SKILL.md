@@ -104,9 +104,11 @@ registration.dispose();
   `{ recovered: true, output }` only after authoritative proof. It does not conceal store
   failures.
 - `verify({ input, output, context, replayed, recovered, signal })` runs after execute,
-  replay, or recovery. A false result throws `VerificationError`.
-- `maxOutputBytes` bounds the serialized result and throws `OutputLimitError` when
-  exceeded.
+  replay, or recovery. A false result throws `VerificationError`. Its post-execution
+  finalization signal is independent of caller cancellation, so network verification
+  should apply an application-owned timeout.
+- `outputBudgetBytes` warns and emits `output_oversized` when a serialized result
+  exceeds its budget without discarding a completed operation.
 - `observe(event)` receives metadata, not inputs or outputs. Observer failures do not
   alter registration or execution.
 - Unsupported browsers retain the human website. Use `unsupported: "throw"` only for

@@ -11,7 +11,7 @@ interface ToolDefinition {
   readonly description: string;
   readonly inputSchema: object;
   readonly annotations?: ToolAnnotations;
-  readonly maxOutputBytes?: number;
+  readonly outputBudgetBytes?: number;
 }
 type Schema = Record<string, unknown>;
 
@@ -59,14 +59,15 @@ export function checkToolReadiness(
     );
   }
   if (
-    tool.maxOutputBytes !== undefined &&
-    (!Number.isSafeInteger(tool.maxOutputBytes) || tool.maxOutputBytes <= 0)
+    tool.outputBudgetBytes !== undefined &&
+    (!Number.isSafeInteger(tool.outputBudgetBytes) ||
+      tool.outputBudgetBytes <= 0)
   ) {
     add(
       diagnostics,
       "output_limit",
-      "maxOutputBytes",
-      "Use a positive integer byte ceiling.",
+      "outputBudgetBytes",
+      "Use a positive integer byte budget.",
     );
   }
   return diagnostics;

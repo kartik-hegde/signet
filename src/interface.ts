@@ -87,7 +87,7 @@ export interface SignetTool<
     readonly error: unknown;
     readonly signal: AbortSignal;
   }) => MaybePromise<RecoveryDecision<Output>>;
-  readonly maxOutputBytes?: number;
+  readonly outputBudgetBytes?: number;
   readonly verify?: (args: {
     readonly input: Input;
     readonly output: Output;
@@ -150,7 +150,7 @@ function validateDefinition(tool: {
   name: string;
   description: string;
   inputSchema: object;
-  maxOutputBytes?: number;
+  outputBudgetBytes?: number;
 }): void {
   if (!/^[A-Za-z0-9_.-]{1,128}$/.test(tool.name)) {
     throw definitionError(
@@ -168,10 +168,11 @@ function validateDefinition(tool: {
     throw definitionError("inputSchema must be an object.");
   }
   if (
-    tool.maxOutputBytes !== undefined &&
-    (!Number.isSafeInteger(tool.maxOutputBytes) || tool.maxOutputBytes <= 0)
+    tool.outputBudgetBytes !== undefined &&
+    (!Number.isSafeInteger(tool.outputBudgetBytes) ||
+      tool.outputBudgetBytes <= 0)
   ) {
-    throw definitionError("maxOutputBytes must be a positive integer.");
+    throw definitionError("outputBudgetBytes must be a positive integer.");
   }
 }
 
@@ -209,6 +210,7 @@ export function createSignet<Context = undefined>(
   const observers = new Set<GuardObserver>();
   if (options.observe) observers.add(options.observe);
   const tools = new Map<string, SignetToolSnapshot>();
+  const localNames = new Set<string>();
 
   const dispatch = (event: GuardEvent): void => {
     for (const observer of observers) {
@@ -251,7 +253,13 @@ export function createSignet<Context = undefined>(
     },
     async expose(tool) {
       validateDefinition(tool);
+      if (localNames.has(tool.name)) {
+        throw definitionError(
+          'a tool named "' + tool.name + '" is already exposed.',
+        );
+      }
       const validateInput = compileInputValidator(tool.inputSchema);
+      localNames.add(tool.name);
       const registrationId = crypto.randomUUID();
       const startedAt = performance.now();
       const snapshot = (
@@ -273,6 +281,8 @@ export function createSignet<Context = undefined>(
         tools.set(tool.name, snapshot("unsupported"));
         emitRegistration(tool.name, registrationId, "unsupported", startedAt);
         if (options.unsupported === "throw") {
+          localNames.delete(tool.name);
+          tools.delete(tool.name);
           throw new Error("WebMCP is not available in this environment.");
         }
         if (options.unsupported === "warn") {
@@ -281,12 +291,14 @@ export function createSignet<Context = undefined>(
           );
         }
         return new Registration(tool.name, "unsupported", () => {
+          localNames.delete(tool.name);
           tools.delete(tool.name);
         });
       }
 
       const activeNames = activeNamesFor(modelContext);
       if (activeNames.has(tool.name)) {
+        localNames.delete(tool.name);
         throw definitionError(
           'a tool named "' + tool.name + '" is already exposed.',
         );
@@ -321,9 +333,9 @@ export function createSignet<Context = undefined>(
             ...(tool.confirm ? { confirm: tool.confirm } : {}),
             ...(tool.idempotency ? { idempotency: tool.idempotency } : {}),
             ...(tool.recover ? { recover: tool.recover } : {}),
-            ...(tool.maxOutputBytes === undefined
+            ...(tool.outputBudgetBytes === undefined
               ? {}
-              : { maxOutputBytes: tool.maxOutputBytes }),
+              : { outputBudgetBytes: tool.outputBudgetBytes }),
             ...(tool.verify ? { verify: tool.verify } : {}),
             ...(observers.size > 0 ? { observe: dispatch } : {}),
           },
@@ -350,6 +362,7 @@ export function createSignet<Context = undefined>(
           },
         );
       } catch (error) {
+        localNames.delete(tool.name);
         activeNames.delete(tool.name);
         tools.delete(tool.name);
         controller.abort();
@@ -368,6 +381,7 @@ export function createSignet<Context = undefined>(
 
       return new Registration(tool.name, "registered", () => {
         controller.abort();
+        localNames.delete(tool.name);
         activeNames.delete(tool.name);
         tools.delete(tool.name);
         emitRegistration(tool.name, registrationId, "unregistered", startedAt);

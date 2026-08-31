@@ -8,9 +8,7 @@ assert.deepEqual(distFiles.filter((name) => name.endsWith(".d.ts")).sort(), [
   "inspector.d.ts",
   "opentelemetry.d.ts",
   "react.d.ts",
-  "svelte.d.ts",
   "testing.d.ts",
-  "vue.d.ts",
 ]);
 assert.equal(
   distFiles.some((name) => name.endsWith(".map")),
@@ -31,8 +29,6 @@ const testing = await import("@signet/webmcp/testing");
 const telemetry = await import("@signet/webmcp/opentelemetry");
 const inspector = await import("@signet/webmcp/inspector");
 const react = await import("@signet/webmcp/react");
-const svelte = await import("@signet/webmcp/svelte");
-const vue = await import("@signet/webmcp/vue");
 
 assert.equal(typeof core.guard, "function");
 assert.equal(typeof core.createSignet, "function");
@@ -44,8 +40,6 @@ assert.equal(typeof testing.MemoryIdempotencyStore, "function");
 assert.equal(typeof telemetry.openTelemetryObserver, "function");
 assert.equal(typeof inspector.mountSignetInspector, "function");
 assert.equal(typeof react.useSignetTool, "function");
-assert.equal(typeof svelte.useSignetTool, "function");
-assert.equal(typeof vue.useSignetTool, "function");
 
 const execute = core.guard(async ({ value }) => value * 2);
 const result = await execute(

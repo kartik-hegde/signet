@@ -1,11 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import {
-  OutputLimitError,
-  assertToolReady,
-  checkToolReadiness,
-  guard,
-} from "../src/index.js";
+import { assertToolReady, checkToolReadiness, guard } from "../src/index.js";
+import { MemoryIdempotencyStore } from "../src/testing.js";
 
 const active = () => ({ signal: new AbortController().signal });
 
@@ -13,7 +9,7 @@ describe("output limits", () => {
   it("accepts a focused result and observes validation", async () => {
     const stages: string[] = [];
     const execute = guard(async () => ({ id: "one" }), {
-      maxOutputBytes: 64,
+      outputBudgetBytes: 64,
       observe: ({ stage }) => {
         stages.push(stage);
       },
@@ -22,16 +18,72 @@ describe("output limits", () => {
     expect(stages).toContain("output_validated");
   });
 
-  it("rejects an oversized result with an agent-legible error", async () => {
-    const execute = guard(async () => ({ rows: ["one", "two"] }), {
-      maxOutputBytes: 5,
+  it("warns without discarding a completed mutation", async () => {
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    let effects = 0;
+    const stages: string[] = [];
+    const execute = guard(
+      async () => {
+        effects += 1;
+        return { rows: ["one", "two"] };
+      },
+      {
+        name: "write_rows",
+        outputBudgetBytes: 5,
+        idempotency: {
+          key: () => "write-1",
+          store: new MemoryIdempotencyStore(),
+        },
+        observe: ({ stage }) => {
+          stages.push(stage);
+        },
+      },
+    );
+    await expect(execute({}, active())).resolves.toEqual({
+      rows: ["one", "two"],
     });
-    await expect(execute({}, active())).rejects.toBeInstanceOf(
-      OutputLimitError,
+    await expect(execute({}, active())).resolves.toEqual({
+      rows: ["one", "two"],
+    });
+    expect(effects).toBe(1);
+    expect(stages.filter((stage) => stage === "output_oversized")).toHaveLength(
+      2,
     );
-    await expect(execute({}, active())).rejects.toThrow(
-      /\[output_too_large\].*5.*smaller/,
+    expect(stages).not.toContain("failed");
+    expect(warning).toHaveBeenCalledWith(
+      expect.stringMatching(/write_rows.*budget is 5/),
     );
+    warning.mockRestore();
+  });
+
+  it("does not throw while measuring circular or undefined output", async () => {
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const stages: string[] = [];
+    const circularExecute = guard(async () => circular, {
+      outputBudgetBytes: 5,
+      observe: ({ stage }) => {
+        stages.push(stage);
+      },
+    });
+    const undefinedExecute = guard(async () => undefined, {
+      outputBudgetBytes: 5,
+      observe: ({ stage }) => {
+        stages.push(stage);
+      },
+    });
+
+    await expect(circularExecute({}, active())).resolves.toBe(circular);
+    await expect(undefinedExecute({}, active())).resolves.toBeUndefined();
+    expect(stages).toContain("output_unmeasurable");
+    expect(stages).toContain("output_validated");
+    expect(warning).toHaveBeenCalledOnce();
+    warning.mockRestore();
   });
 });
 
@@ -52,7 +104,7 @@ describe("tool readiness", () => {
         additionalProperties: false,
       },
       annotations: { readOnlyHint: true },
-      maxOutputBytes: 10_000,
+      outputBudgetBytes: 10_000,
       execute: () => [],
     };
     expect(checkToolReadiness(tool)).toEqual([]);
@@ -67,7 +119,7 @@ describe("tool readiness", () => {
         type: "object",
         properties: { query: { type: "string" }, ids: { type: "array" } },
       },
-      maxOutputBytes: 0,
+      outputBudgetBytes: 0,
       execute: () => undefined,
     };
     const diagnostics = checkToolReadiness(tool);

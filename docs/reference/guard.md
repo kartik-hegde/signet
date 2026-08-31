@@ -84,6 +84,10 @@ verify?: ({ input, output, context, replayed, recovered, signal }) =>
 ```
 
 A false decision throws `VerificationError` after execution, replay, or recovery.
+Once execution completes, verification receives a fresh, non-aborted finalization
+signal so late caller cancellation cannot misreport a real effect as cancelled. The
+verifier must settle and should apply an application-owned timeout to network reads;
+the original invocation signal will not cancel this finalization step.
 
 ### `recover`
 
@@ -109,9 +113,11 @@ observe?: (event: GuardEvent) => void | Promise<void>;
 Receives lifecycle metadata, never inputs or outputs. Synchronous throws and asynchronous
 rejections are contained and do not change application behavior.
 
-### `maxOutputBytes`
+### `outputBudgetBytes`
 
-Rejects results whose JSON serialization exceeds a positive integer byte ceiling.
+Measures JSON-serialized results against a positive integer byte budget. An oversized
+or unmeasurable result emits a lifecycle diagnostic and warns, but the completed result
+is preserved.
 
 ### `invocationId` and `now`
 
@@ -125,7 +131,7 @@ started
 authorized       when authorization is configured
 confirmation_requested|confirmed|declined when confirmation is configured
 executed|replayed|recovered
-output_validated when a byte ceiling is configured
+output_validated|output_oversized|output_unmeasurable when a budget is configured
 verified         when verification is configured
 succeeded|failed
 ```

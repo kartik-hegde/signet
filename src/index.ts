@@ -3,7 +3,6 @@ export { createSignet } from "./interface.js";
 export {
   AuthorizationError,
   ConfirmationError,
-  OutputLimitError,
   SignetError,
   ToolError,
   ValidationError,

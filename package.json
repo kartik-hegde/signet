@@ -32,14 +32,6 @@
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js"
-    },
-    "./vue": {
-      "types": "./dist/vue.d.ts",
-      "import": "./dist/vue.js"
-    },
-    "./svelte": {
-      "types": "./dist/svelte.d.ts",
-      "import": "./dist/svelte.js"
     }
   },
   "scripts": {
@@ -69,21 +61,13 @@
   },
   "peerDependencies": {
     "@opentelemetry/api": ">=1.9.0 <2",
-    "react": ">=18 <20",
-    "svelte": ">=4 <6",
-    "vue": ">=3.3 <4"
+    "react": ">=18 <20"
   },
   "peerDependenciesMeta": {
     "@opentelemetry/api": {
       "optional": true
     },
     "react": {
-      "optional": true
-    },
-    "svelte": {
-      "optional": true
-    },
-    "vue": {
       "optional": true
     }
   },
@@ -99,12 +83,10 @@
     "react": "^19.2.8",
     "rollup": "^4.63.1",
     "rollup-plugin-dts": "^6.5.1",
-    "svelte": "^5.57.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.68.0",
     "vitepress": "2.0.0-alpha.19",
     "vitest": "^4.1.11",
-    "vue": "^3.5.42",
     "webmcp-types": "^0.1.5"
   },
   "license": "MIT",

@@ -136,8 +136,8 @@ await signet.expose({
       : { recovered: false };
   },
 
-  // Prevent an accidental bulk response from consuming the agent's context.
-  maxOutputBytes: 20_000,
+  // Warn when a response is too broad for the intended agent task.
+  outputBudgetBytes: 20_000,
 
   verify: async ({ input, context }) => {
     const order = await getOrder(input.orderId);
@@ -210,8 +210,8 @@ import { useSignetTool } from "@signet/webmcp/react";
 const state = useSignetTool(signet, searchProductsTool, [shopId]);
 ```
 
-React, Vue, and Svelte entry points all handle teardown while asynchronous registration
-is still in flight. During development, `mountSignetInspector(signet)` from
+The React entry point handles teardown while asynchronous registration is still in
+flight. During development, `mountSignetInspector(signet)` from
 `@signet/webmcp/inspector` shows exact schemas, annotations, registration state, and
 privacy-safe lifecycle timings.
 
@@ -220,7 +220,7 @@ privacy-safe lifecycle timings.
 - **Code-first exposure:** readable TypeScript that maps directly to native WebMCP.
 - **Runtime validation:** JSON Schema validation before application code runs.
 - **State-aware lifecycle:** per-call application context and disposable registrations.
-- **Framework lifecycle:** race-safe React, Vue, and Svelte bindings.
+- **Framework lifecycle:** a StrictMode-safe React binding.
 - **Expected failures:** `ToolError`, validation, authorization, and verification
   errors remain distinguishable.
 - **Reliable mutations:** app-provided idempotency plus authoritative postcondition
@@ -228,7 +228,7 @@ privacy-safe lifecycle timings.
 - **Cancellation:** the native execution signal reaches every stage and your handler.
 - **Observability:** privacy-safe lifecycle events and optional OpenTelemetry spans.
 - **Readiness tooling:** static agent-usability diagnostics and a local Inspector.
-- **Output discipline:** optional byte ceilings for task-focused results.
+- **Output discipline:** optional byte budgets for task-focused results.
 - **Deterministic testing:** inspect and invoke tools without a model or browser.
 - **Agent evaluation:** saved-task scoring for selection, arguments, and outcomes.
 - **Reference proof:** a signed-in payment application with real mutations, denials,
@@ -257,7 +257,7 @@ Signet is pre-release and WebMCP is experimental. The current package includes:
 - agent-legible errors, confirmation, authorization, idempotency, recovery,
   verification, output limits, cancellation, and lifecycle observation;
 - deterministic testing, store conformance, readiness, and agent-task evaluation;
-- React, Vue, and Svelte lifecycle bindings plus a local Inspector;
+- a React lifecycle binding plus a local Inspector;
 - optional OpenTelemetry mapping;
 - standalone and full-stack reference applications.
 

@@ -42,12 +42,6 @@ error.code === "authorization_denied";
 Thrown when the application-owned `confirm` hook declines an operation. Its code is
 `confirmation_declined`.
 
-## `OutputLimitError`
-
-Thrown when a configured `maxOutputBytes` ceiling is exceeded. Its message includes
-the actual and allowed serialized byte counts; `actualBytes` and `maxBytes` remain
-available to application diagnostics.
-
 ## `VerificationError`
 
 Thrown when `verify` reports that the intended result is not verified.

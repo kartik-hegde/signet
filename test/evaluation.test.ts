@@ -37,7 +37,7 @@ describe("evaluateAgentTasks", () => {
     expect(invoke).toHaveBeenCalledOnce();
   });
 
-  it("treats an empty task suite as a clean baseline", async () => {
+  it("reports no rate for an empty task suite", async () => {
     await expect(
       evaluateAgentTasks({
         tasks: [],
@@ -47,9 +47,9 @@ describe("evaluateAgentTasks", () => {
         invoke: () => undefined,
       }),
     ).resolves.toMatchObject({
-      selectionAccuracy: 1,
-      argumentAccuracy: 1,
-      completionRate: 1,
+      selectionAccuracy: null,
+      argumentAccuracy: null,
+      completionRate: null,
     });
   });
 

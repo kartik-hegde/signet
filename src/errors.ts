@@ -2,7 +2,6 @@ export type SignetErrorCode =
   | "authorization_denied"
   | "confirmation_declined"
   | "invalid_input"
-  | "output_too_large"
   | "verification_failed"
   | (string & {});
 
@@ -63,7 +62,8 @@ function validationMessage(issues: readonly ValidationIssue[]): string {
   const detail = visible
     .map(({ path, message, keyword }) => {
       const location = path.replace(/^#/, "") || "/";
-      return `${location}: ${keyword === "false" ? "is not allowed" : message}`;
+      const reason = keyword === "false" ? "is not allowed" : message;
+      return `${location}: ${reason.replace(/\.+$/, "")}`;
     })
     .join("; ");
   const remaining = actionable.length - visible.length;
@@ -123,20 +123,5 @@ export class VerificationError extends SignetError {
   ) {
     super("verification_failed", reason, options);
     this.name = "VerificationError";
-  }
-}
-
-export class OutputLimitError extends SignetError {
-  readonly actualBytes: number;
-  readonly maxBytes: number;
-
-  constructor(actualBytes: number, maxBytes: number) {
-    super(
-      "output_too_large",
-      `[output_too_large] Tool output is ${actualBytes} bytes; the limit is ${maxBytes}. Return a smaller, task-focused result.`,
-    );
-    this.name = "OutputLimitError";
-    this.actualBytes = actualBytes;
-    this.maxBytes = maxBytes;
   }
 }

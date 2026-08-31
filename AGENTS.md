@@ -89,16 +89,20 @@ hooks only when the workflow needs them.
   may return `{ recovered: true, output }` only after authoritative proof; otherwise
   return `{ recovered: false }`. It never conceals idempotency-store failures.
 - `verify({ input, output, context, replayed, recovered, signal })` runs after execute,
-  replay, or recovery. False throws `VerificationError`.
-- `maxOutputBytes` rejects an oversized serialized result with `OutputLimitError`.
+  replay, or recovery. False throws `VerificationError`. After execution, its fresh
+  finalization signal is not cancelled by the caller; network verifiers should impose
+  their own timeout and must settle.
+- `outputBudgetBytes` warns and emits `output_oversized` when a serialized result
+  exceeds its budget. It never converts a completed operation into failure.
 - `observe(event)` receives metadata only. Stages include `registering`, `registered`,
   `registration_failed`, `unregistered`, `started`, `validated`, `authorized`,
   `confirmation_requested`, `confirmed`, `declined`, `executed`, `replayed`,
-  `recovered`, `output_validated`, `completed_after_abort`, `verified`, `succeeded`,
-  and `failed`. Observer failure never changes application behavior.
+  `recovered`, `output_validated`, `output_oversized`, `output_unmeasurable`,
+  `completed_after_abort`, `verified`, `succeeded`, and `failed`. Observer failure never
+  changes application behavior.
 - `tools()` returns current metadata-only inventory; `observe(listener)` adds a
-  removable development observer. Framework bindings live at `/react`, `/vue`, and
-  `/svelte`; the optional overlay lives at `/inspector`.
+  removable development observer. The React binding lives at `/react`; the optional
+  overlay lives at `/inspector`.
 - Unsupported browsers keep the human site working. Set `unsupported: "throw"` only
   when strict behavior is useful in development or tests.
 

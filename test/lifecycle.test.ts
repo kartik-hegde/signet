@@ -28,7 +28,7 @@ describe("bindSignetTool", () => {
       tool,
       (state) => states.push(state),
     );
-    await Promise.resolve();
+    await vi.waitFor(() => expect(states).toHaveLength(2));
 
     expect(states).toEqual([
       { status: "registering" },
@@ -59,9 +59,10 @@ describe("bindSignetTool", () => {
     const teardown = bindSignetTool(signet, tool, (state) => {
       states.push(state);
     });
+    await vi.waitFor(() => expect(resolve).toBeTypeOf("function"));
     teardown();
     resolve?.(registration);
-    await Promise.resolve();
+    await vi.waitFor(() => expect(registration.dispose).toHaveBeenCalledOnce());
 
     expect(registration.dispose).toHaveBeenCalledOnce();
     expect(states).toEqual([{ status: "registering" }]);
@@ -79,10 +80,64 @@ describe("bindSignetTool", () => {
       tool,
       (state) => states.push(state),
     );
-    await Promise.resolve();
+    await vi.waitFor(() => expect(states).toHaveLength(2));
     expect(states).toEqual([
       { status: "registering" },
       { status: "error", error: failure },
     ]);
+  });
+
+  it("survives cleanup and remount while registration is in flight", async () => {
+    let resolveFirst: ((value: SignetRegistration) => void) | undefined;
+    const first = {
+      name: tool.name,
+      status: "registered" as const,
+      dispose: vi.fn(),
+      [Symbol.dispose]: vi.fn(),
+    };
+    const second = {
+      name: tool.name,
+      status: "registered" as const,
+      dispose: vi.fn(),
+      [Symbol.dispose]: vi.fn(),
+    };
+    const expose = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<SignetRegistration>((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(second);
+    const signet = {
+      expose,
+      tools: () => [],
+      observe: () => () => undefined,
+    };
+    const firstStates: ToolBindingState[] = [];
+    const secondStates: ToolBindingState[] = [];
+
+    const cleanupFirst = bindSignetTool(signet, tool, (state) => {
+      firstStates.push(state);
+    });
+    await vi.waitFor(() => expect(expose).toHaveBeenCalledOnce());
+    cleanupFirst();
+    bindSignetTool(signet, tool, (state) => {
+      secondStates.push(state);
+    });
+    expect(expose).toHaveBeenCalledOnce();
+
+    resolveFirst?.(first);
+    await vi.waitFor(() => expect(expose).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() =>
+      expect(secondStates).toEqual([
+        { status: "registering" },
+        { status: "registered" },
+      ]),
+    );
+
+    expect(first.dispose).toHaveBeenCalledOnce();
+    expect(firstStates).toEqual([{ status: "registering" }]);
   });
 });

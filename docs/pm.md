@@ -16,10 +16,10 @@ frozen.
 |   7 | Done     | Completed mutation after abort | A completed handler wins the cancellation race, verification finishes, and `completed_after_abort` is observable.                                                     |
 |   8 | Done     | Inspector                      | Optional dependency-free overlay for exact inventory and privacy-safe lifecycle timing.                                                                               |
 |   9 | Done     | Tool readiness lint            | Portable diagnostics and assertion for common agent-usability defects.                                                                                                |
-|  10 | Done     | Output contract                | Optional serialized byte ceiling with agent-legible failure.                                                                                                          |
+|  10 | Done     | Output contract                | Optional serialized byte budget warns without discarding completed effects.                                                                                           |
 |  11 | Done     | Cross-instance duplicates      | Active names are scoped to the shared WebMCP context.                                                                                                                 |
 |  12 | Done     | Agent-selection evaluations    | Saved-task harness separately scores selection, arguments, and authoritative completion.                                                                              |
-|  13 | Done     | Vue and Svelte bindings        | Thin bindings reuse the same tested lifecycle primitive as React.                                                                                                     |
+|  13 | Deferred | Adapters beyond React          | Add only after real Vue or Svelte integrations prove the binding shape.                                                                                               |
 |  14 | Backlog  | Scaffold command               | Revisit after real integrations show what can be generated without hiding application intent.                                                                         |
 
 ## Next proof points

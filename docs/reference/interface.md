@@ -11,6 +11,10 @@ Options:
 - `unsupported`: `ignore`, `warn`, or `throw` when WebMCP is unavailable;
 - `modelContext`: injectable native boundary for deterministic tests.
 
+Unsupported behavior defaults to `ignore` so production visitors without experimental
+WebMCP retain a quiet human experience. Use `warn` during integration and `throw` in
+strict tests.
+
 ## `interface.expose(tool)`
 
 Validates and registers one tool. It returns a promise for a disposable registration.
@@ -35,7 +39,7 @@ Optional Signet controls:
 - `idempotency`;
 - `recover`;
 - `verify`;
-- `maxOutputBytes`.
+- `outputBudgetBytes`.
 
 The execution callback receives the validated input plus application `context` and
 the native WebMCP `AbortSignal`.
@@ -48,9 +52,10 @@ not retry the operation or conceal idempotency-store failures.
 `confirm` runs after authorization and before idempotency. The application owns and
 renders the consent experience; Signet only sequences and observes it.
 
-`maxOutputBytes` checks the JSON-serialized result after execution or replay and before
-verification. Oversized output throws `OutputLimitError`. Mutating tools should pair
-this with durable idempotency because the application effect may already exist.
+`outputBudgetBytes` measures the JSON-serialized result after execution or replay and
+before verification. Oversized or unmeasurable output emits a lifecycle diagnostic and
+logs a warning, but never converts a completed operation into failure. Treat the budget
+as a testable design constraint and return a smaller projection.
 
 ## Inventory and observation
 

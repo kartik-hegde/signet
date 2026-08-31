@@ -2,16 +2,15 @@
 
 ## Framework lifecycle
 
-Import `useSignetTool` from `@signet/webmcp/react`, `/vue`, or `/svelte`. Each binding
-exposes a tool for its component or effect lifetime and disposes registrations that
-finish after teardown. React accepts a dependency list; Vue returns a `ShallowRef`;
-Svelte returns a readable store.
+Import `useSignetTool` from `@signet/webmcp/react`. It exposes a tool for its component
+lifetime and serializes same-name teardown and remount, including React StrictMode when
+registration is still in flight. It accepts an explicit dependency list.
 
 ## Readiness checks
 
 `checkToolReadiness(tool)` returns deterministic diagnostics for ambiguous names and
 descriptions, open object schemas, undocumented arguments, unbounded strings or arrays,
-missing read-only hints, and invalid output limits. `assertToolReady(tool)` turns those
+missing read-only hints, and invalid output budgets. `assertToolReady(tool)` turns those
 diagnostics into one portable test failure. These checks improve definitions; only
 real-agent task evaluations measure selection quality.
 

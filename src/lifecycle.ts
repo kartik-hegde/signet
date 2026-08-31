@@ -9,6 +9,22 @@ export type ToolBindingState =
   | { readonly status: "registered" | "unsupported" }
   | { readonly status: "error"; readonly error: unknown };
 
+const bindingQueues = new WeakMap<
+  SignetInterface<unknown>,
+  Map<string, Promise<void>>
+>();
+
+function queueFor(
+  signet: SignetInterface<unknown>,
+): Map<string, Promise<void>> {
+  let queue = bindingQueues.get(signet);
+  if (!queue) {
+    queue = new Map<string, Promise<void>>();
+    bindingQueues.set(signet, queue);
+  }
+  return queue;
+}
+
 /** Internal lifecycle shared by framework bindings. */
 export function bindSignetTool<
   Context,
@@ -22,20 +38,30 @@ export function bindSignetTool<
   let active = true;
   let registration: SignetRegistration | undefined;
   update({ status: "registering" });
-  void signet.expose(tool).then(
-    (created) => {
-      if (!active) {
-        created.dispose();
-        return;
+  const queue = queueFor(signet);
+  const previous = queue.get(tool.name) ?? Promise.resolve();
+  const pending = previous
+    .catch(() => undefined)
+    .then(async () => {
+      if (!active) return;
+      try {
+        const created = await signet.expose(tool);
+        if (!active) {
+          created.dispose();
+          return;
+        }
+        registration = created;
+        const status = created.status;
+        if (status !== "disposed") update({ status });
+      } catch (error) {
+        if (active) update({ status: "error", error });
       }
-      registration = created;
-      const status = created.status;
-      if (status !== "disposed") update({ status });
-    },
-    (error: unknown) => {
-      if (active) update({ status: "error", error });
-    },
-  );
+    });
+  queue.set(tool.name, pending);
+  const releaseQueue = (): void => {
+    if (queue.get(tool.name) === pending) queue.delete(tool.name);
+  };
+  void pending.then(releaseQueue, releaseQueue);
 
   return () => {
     active = false;
