@@ -2,39 +2,51 @@
 layout: home
 
 hero:
-  name: Signet
-  text: Give agents a direct interface to your product.
-  tagline: Define, expose, inspect, and test application tools through native WebMCP. Add production controls where actions warrant them.
+  name: Signet WebMCP
+  text: Let agents use your product. Know the action really happened.
+  tagline: Turn application functions into native WebMCP tools, then add the validation, application context, reliable execution, testing, and traces needed to ship with confidence.
   actions:
     - theme: brand
-      text: Get started
+      text: Get started →
       link: /guide/getting-started
     - theme: alt
-      text: Why Signet
+      text: Read the approach
       link: /guide/why-signet
 
 features:
-  - title: Start from capabilities you own
-    details: Bind tools to existing functions and backend endpoints. Your product logic stays in your application.
-  - title: WebMCP first
-    details: Keep native tool names, schemas, annotations, origins, and lifecycle visible instead of hiding the browser standard.
-  - title: See what agents see
-    details: The reference Inspector and deterministic test harness make discovery, lifecycle, and tool behavior locally verifiable.
-  - title: Harden progressively
-    details: Public reads stay simple. Consequential actions can add authorization, replay control, verification, and observation.
+  - title: 01 / Expose
+    details: Bind a clear tool to a function your application already owns. Native WebMCP stays visible.
+  - title: 02 / Prove
+    details: Test contracts, authorization, replay behavior, and authoritative outcomes without a model.
+  - title: 03 / Observe
+    details: Follow one action from agent intent through application effect and verified result.
 ---
 
-## The complete idea
+## Existing logic in. Verifiable actions out.
 
 ```text
-existing function or endpoint
-  -> clear, validated tool
-  -> native WebMCP exposure
-  -> local inspection and tests
-  -> real agent use
-  -> optional production controls
+application function → Signet tool boundary → native WebMCP → browser agent → verified outcome
 ```
 
-The current package implements code-first tool exposure, runtime validation,
-lifecycle-aware registration, optional production controls, deterministic testing,
-and a native reference integration. Developer inspection is the next milestone.
+Signet does not replace your application, the browser standard, or the agent. It gives
+product teams a precise boundary around what agents can do—and evidence that consequential
+actions reached the intended state.
+
+## Start with four fields. Add rigor when the action earns it.
+
+```ts
+await signet.expose({
+  name: "cancel_order",
+  description: "Cancel one unshipped order.",
+  inputSchema,
+  execute: ({ orderId }) => cancelOrder(orderId),
+});
+```
+
+Public reads can stay this small. Authenticated or state-changing actions can add
+application context, authorization, idempotency, recovery, verification, and observation
+without changing the underlying handler.
+
+> [!TIP]
+> **The visual system follows the same rule.** Quiet foundations, explicit boundaries,
+> and color only when it carries information. [See the Signet Signal design kit →](/brand)

@@ -4,23 +4,19 @@ const base = process.env.DOCS_BASE ?? "/";
 
 export default defineConfig({
   base,
-  title: "Signet",
-  description: "WebMCP-first tooling for exposing product capabilities to AI agents.",
+  title: "Signet WebMCP",
+  description:
+    "Agent-interface tooling for exposing and verifying product capabilities through native WebMCP.",
   cleanUrls: true,
   lastUpdated: true,
-  head: [
-    ["meta", { name: "theme-color", content: "#a84a12" }],
-    ["link", { rel: "icon", href: `${base}mark.svg`, type: "image/svg+xml" }],
-  ],
+  appearance: false,
+  head: [["meta", { name: "theme-color", content: "#ffffff" }]],
   themeConfig: {
-    // VitePress applies `base` to theme assets automatically.
-    logo: "/mark.svg",
     siteTitle: "Signet",
-    search: { provider: "local" },
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
       { text: "API", link: "/reference/interface" },
-      { text: "Checklist", link: "/production-checklist" },
+      { text: "Design", link: "/brand" },
       { text: "GitHub", link: "https://github.com/kartik-hegde/signet" },
     ],
     sidebar: [
@@ -59,6 +55,7 @@ export default defineConfig({
         items: [
           { text: "Production checklist", link: "/production-checklist" },
           { text: "Design contract", link: "/design" },
+          { text: "Brand system", link: "/brand" },
           { text: "Ecosystem research", link: "/ecosystem" },
         ],
       },
@@ -68,9 +65,6 @@ export default defineConfig({
       pattern: "https://github.com/kartik-hegde/signet/edit/main/docs/:path",
       text: "Edit this page on GitHub",
     },
-    socialLinks: [
-      { icon: "github", link: "https://github.com/kartik-hegde/signet" },
-    ],
     footer: {
       message: "Your product capabilities, directly usable by agents.",
       copyright: "Released under the MIT License.",
