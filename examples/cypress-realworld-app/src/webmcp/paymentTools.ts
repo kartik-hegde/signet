@@ -38,6 +38,8 @@ type PaymentResponse = {
   replayed: boolean;
 };
 
+type AuthoritativePayment = Omit<PaymentResponse, "replayed">;
+
 type GuardEventSummary = {
   name?: string;
   stage: string;
@@ -73,6 +75,23 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
     throw error;
   }
   return body as T;
+}
+
+function matchesPayment(
+  authoritative: AuthoritativePayment,
+  input: SendPaymentInput,
+  context: PaymentContext,
+): boolean {
+  const transaction = authoritative.transaction;
+  return (
+    authoritative.operation.userId === context.userId &&
+    transaction.senderId === context.userId &&
+    transaction.receiverId === input.receiverId &&
+    transaction.source === input.sourceAccountId &&
+    transaction.amount === Math.round(input.amount * 100) &&
+    transaction.description === input.description.trim() &&
+    transaction.status === "complete"
+  );
 }
 
 const recordGuardEvent = (event: GuardEvent) => {
@@ -214,20 +233,33 @@ export function registerPaymentTools(
         onPaymentCreated(result.transaction.id);
         return result;
       },
+      recover: async ({ input, context, signal }) => {
+        try {
+          const authoritative = await requestJson<AuthoritativePayment>(
+            "/payments/" + encodeURIComponent(input.operationId),
+            { signal },
+          );
+          if (!matchesPayment(authoritative, input, context)) {
+            return { recovered: false };
+          }
+
+          onPaymentCreated(authoritative.transaction.id);
+          return {
+            recovered: true,
+            output: { ...authoritative, replayed: true },
+          };
+        } catch {
+          return { recovered: false };
+        }
+      },
       verify: async ({ input, output, context, signal }) => {
-        const authoritative = await requestJson<
-          Omit<PaymentResponse, "replayed">
-        >("/payments/" + encodeURIComponent(input.operationId), { signal });
-        const transaction = authoritative.transaction;
+        const authoritative = await requestJson<AuthoritativePayment>(
+          "/payments/" + encodeURIComponent(input.operationId),
+          { signal },
+        );
         const verified =
           authoritative.operation.transactionId === output.transaction.id &&
-          authoritative.operation.userId === context.userId &&
-          transaction.senderId === context.userId &&
-          transaction.receiverId === input.receiverId &&
-          transaction.source === input.sourceAccountId &&
-          transaction.amount === Math.round(input.amount * 100) &&
-          transaction.description === input.description.trim() &&
-          transaction.status === "complete";
+          matchesPayment(authoritative, input, context);
 
         return verified
           ? true

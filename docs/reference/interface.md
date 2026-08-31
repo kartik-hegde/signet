@@ -32,10 +32,16 @@ Optional Signet controls:
 
 - `authorize`;
 - `idempotency`;
+- `recover`;
 - `verify`.
 
 The execution callback receives the validated input plus application `context` and
 the native WebMCP `AbortSignal`.
+
+`recover` runs only after the application handler throws. It receives the original
+error and may return `{ recovered: true, output }` after proving the outcome from
+authoritative state. `{ recovered: false }` preserves the original error. Signet does
+not retry the operation or conceal idempotency-store failures.
 
 ## Registration
 

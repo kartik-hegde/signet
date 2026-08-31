@@ -64,13 +64,28 @@ reports whether it was replayed.
 ### `verify`
 
 ```ts
-verify?: ({ input, output, context, replayed, signal }) =>
+verify?: ({ input, output, context, replayed, recovered, signal }) =>
   | boolean
   | { verified: boolean; reason?: string }
   | Promise<boolean | VerificationDecision>;
 ```
 
-A false decision throws `VerificationError` after execution or replay.
+A false decision throws `VerificationError` after execution, replay, or recovery.
+
+### `recover`
+
+```ts
+recover?: ({ input, context, error, signal }) =>
+  | { recovered: true; output: Output }
+  | { recovered: false }
+  | Promise<RecoveryDecision<Output>>;
+```
+
+Runs after the application handler throws. Use it to read authoritative state when the
+effect may have committed but its response was lost. A recovered output is cached by
+the configured idempotency store and proceeds through `verify`; returning
+`recovered: false` preserves the original error. Signet never retries automatically or
+conceals an idempotency-store failure.
 
 ### `observe`
 
@@ -91,7 +106,7 @@ configured.
 ```text
 started
 authorized       when authorization is configured
-executed|replayed
+executed|replayed|recovered
 verified         when verification is configured
 succeeded|failed
 ```

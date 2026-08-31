@@ -7,6 +7,7 @@ import type {
   GuardOptions,
   GuardStage,
   MaybePromise,
+  RecoveryDecision,
   VerificationDecision,
 } from "./types.js";
 
@@ -121,6 +122,38 @@ export async function runGuarded<
 
     let output: Output;
     let replayed = false;
+    let recovered = false;
+
+    const recoverFrom = async (
+      error: unknown,
+    ): Promise<RecoveryDecision<Output>> => {
+      executeOptions.signal.throwIfAborted();
+      if (!options.recover) return { recovered: false };
+
+      const decision = await options.recover({
+        input,
+        context,
+        error,
+        signal: executeOptions.signal,
+      });
+      executeOptions.signal.throwIfAborted();
+
+      if (decision.recovered && !recovered) {
+        recovered = true;
+        emit("recovered");
+      }
+      return decision;
+    };
+
+    const executeOrRecover = async (): Promise<Output> => {
+      try {
+        return await execute(input, { ...executeOptions, context });
+      } catch (error) {
+        const decision = await recoverFrom(error);
+        if (decision.recovered) return decision.output;
+        throw error;
+      }
+    };
 
     if (options.idempotency) {
       const key = await options.idempotency.key({
@@ -136,15 +169,15 @@ export async function runGuarded<
 
       const result = await options.idempotency.store.execute(
         key,
-        async () => execute(input, { ...executeOptions, context }),
+        executeOrRecover,
         executeOptions,
       );
       output = result.value;
       replayed = result.replayed;
-      emit(replayed ? "replayed" : "executed");
+      if (!recovered) emit(replayed ? "replayed" : "executed");
     } else {
-      output = await execute(input, { ...executeOptions, context });
-      emit("executed");
+      output = await executeOrRecover();
+      if (!recovered) emit("executed");
     }
 
     executeOptions.signal.throwIfAborted();
@@ -155,6 +188,7 @@ export async function runGuarded<
         output,
         context,
         replayed,
+        recovered,
         signal: executeOptions.signal,
       });
 

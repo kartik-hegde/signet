@@ -21,6 +21,7 @@ export type {
   IdempotencyResult,
   IdempotencyStore,
   MaybePromise,
+  RecoveryDecision,
   VerificationDecision,
 } from "./types.js";
 export type {

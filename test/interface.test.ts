@@ -124,6 +124,30 @@ describe("createSignet", () => {
     expect(execute).toHaveBeenCalledOnce();
   });
 
+  it("composes authoritative recovery into an exposed tool", async () => {
+    const native = modelContext();
+    const signet = createSignet({ modelContext: native.context });
+    await signet.expose<{ value: number }, number>({
+      name: "recoverable",
+      description: "Recover a committed operation whose response was lost.",
+      inputSchema: schema,
+      execute: () => {
+        throw new Error("response lost");
+      },
+      recover: ({ input }) => ({
+        recovered: true,
+        output: input.value * 2,
+      }),
+      verify: ({ output, recovered }) => recovered && output === 4,
+    });
+
+    await expect(
+      native.registrations
+        .get("recoverable")
+        ?.tool.execute({ value: 2 }, { signal: new AbortController().signal }),
+    ).resolves.toBe(4);
+  });
+
   it("disposes the native registration idempotently", async () => {
     const native = modelContext();
     const signet = createSignet({ modelContext: native.context });

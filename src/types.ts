@@ -19,6 +19,10 @@ export interface VerificationDecision {
   readonly reason?: string;
 }
 
+export type RecoveryDecision<Output> =
+  | { readonly recovered: true; readonly output: Output }
+  | { readonly recovered: false };
+
 export interface IdempotencyResult<Output> {
   readonly value: Output;
   readonly replayed: boolean;
@@ -42,6 +46,7 @@ export type GuardStage =
   | "authorized"
   | "executed"
   | "replayed"
+  | "recovered"
   | "verified"
   | "succeeded"
   | "failed"
@@ -92,12 +97,21 @@ export interface GuardOptions<
     readonly store: IdempotencyStore;
   };
 
-  /** Checks the observed result after execution or replay. */
+  /** Reconciles an execution error against authoritative application state. */
+  readonly recover?: (args: {
+    readonly input: Input;
+    readonly context: Context;
+    readonly error: unknown;
+    readonly signal: AbortSignal;
+  }) => MaybePromise<RecoveryDecision<Output>>;
+
+  /** Checks the observed result after execution, replay, or recovery. */
   readonly verify?: (args: {
     readonly input: Input;
     readonly output: Output;
     readonly context: Context;
     readonly replayed: boolean;
+    readonly recovered: boolean;
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | VerificationDecision>;
 
