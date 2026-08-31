@@ -6,6 +6,9 @@
   "sideEffects": false,
   "files": [
     "dist",
+    "recipes",
+    "skills",
+    "AGENTS.md",
     "README.md",
     "LICENSE"
   ],
@@ -24,14 +27,15 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && node scripts/bundle-declarations.mjs",
     "check": "npm run typecheck && npm test",
     "coverage": "vitest run --coverage",
     "docs:build": "vitepress build docs",
     "docs:dev": "vitepress dev docs",
     "docs:preview": "vitepress preview docs",
     "format:check": "prettier --check . --ignore-unknown",
-    "lint": "eslint 'src/**/*.ts' 'test/**/*.ts' examples/native-webmcp.ts",
+    "lint": "npm run build && npm run lint:source",
+    "lint:source": "eslint 'src/**/*.ts' 'test/**/*.ts' 'recipes/**/*.ts' examples/native-webmcp.ts",
     "package:check": "publint --strict",
     "smoke": "node test/package-smoke.mjs",
     "test": "vitest run",
@@ -41,8 +45,8 @@
     "test:reference:native:probe": "npm run build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd examples/cypress-realworld-app build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd examples/cypress-realworld-app start-server-and-test start:webmcp:ci 'http://localhost:3000|http://localhost:3001' test:webmcp:native:probe",
     "test:reference:native": "npm run build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd examples/cypress-realworld-app build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd examples/cypress-realworld-app start-server-and-test start:webmcp:ci 'http://localhost:3000|http://localhost:3001' test:webmcp:native",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "validate": "npm run lint && npm run format:check && npm run typecheck && npm run coverage && npm run build && npm run package:check && npm run smoke"
+    "typecheck": "npm run build && tsc --noEmit",
+    "validate": "npm run build && npm run lint:source && npm run format:check && tsc --noEmit && npm run coverage && npm run package:check && npm run smoke"
   },
   "engines": {
     "node": ">=20"
@@ -63,6 +67,8 @@
     "eslint": "^10.9.1",
     "prettier": "^3.9.6",
     "publint": "^0.3.24",
+    "rollup": "^4.63.1",
+    "rollup-plugin-dts": "^6.5.1",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.68.0",
     "vitepress": "2.0.0-alpha.19",

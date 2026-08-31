@@ -13,5 +13,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": false
   },
-  "include": ["src", "test", "examples/native-webmcp.ts"]
+  "include": ["src", "test", "recipes", "examples/native-webmcp.ts"]
 }
