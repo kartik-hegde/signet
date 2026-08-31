@@ -79,7 +79,7 @@ and deliberately never folded into it.
 |---|---|
 | `A0_dom` | An agent driving the DOM or screenshots. **Not measured yet.** Needs a model and a browser, and produces efficiency numbers that belong to the tool-calling interface rather than to any guard. |
 | `A1_raw` | The tool handler with no controls at all. The floor. |
-| `A2_handrolled` | Controls written from scratch, independently, several times over. **Not measured yet.** This is the measured answer to "why would I not write this myself", and it is the most valuable arm still missing. |
+| `A2_handrolled` | One benchmark-authored control adapter using the same durable store and verifier as A3b. It is a directional baseline, not an independent implementer cohort. |
 | `A3a_signet_memory` | The Signet guard with the `MemoryIdempotencyStore` that Signet actually ships. |
 | `A3b_signet_durable` | The Signet guard with a conservative durable store that lives in `harness/stores.js`, **not in Signet**. |
 
@@ -229,7 +229,7 @@ preventing it.
 
 ## Not measured yet
 
-Arm A0 and arm A2. Authorization, where the interesting case is a tool forwarding
+Arm A0 and independently implemented A2 cohorts. Authorization, where the interesting case is a tool forwarding
 agent-supplied identity instead of session-derived identity, since the backend
 already enforces ownership correctly. Prompt injection reaching a tool call through
 page content. Asynchronous and long-running operations, and work orphaned when the

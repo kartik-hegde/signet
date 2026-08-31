@@ -23,12 +23,13 @@ await cdp.connect();
 await cdp.send("Runtime.enable");
 
 const trace = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   condition,
   startedAt: new Date().toISOString(),
   events: [],
 };
 let references = new Map();
+let inventoryRecorded = false;
 
 function persist() {
   mkdirSync(dirname(tracePath), { recursive: true });
@@ -49,7 +50,10 @@ function respondWithError(id, error) {
     `${JSON.stringify({
       jsonrpc: "2.0",
       id,
-      error: { code: -32603, message: error instanceof Error ? error.message : String(error) },
+      error: {
+        code: -32603,
+        message: error instanceof Error ? error.message : String(error),
+      },
     })}\n`,
   );
 }
@@ -59,7 +63,11 @@ const pageTools = [
     name: "inspect_page",
     description:
       "Inspect the current application page. Returns visible text and numbered interactive elements.",
-    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   {
@@ -74,7 +82,8 @@ const pageTools = [
   },
   {
     name: "fill_element",
-    description: "Replace the value of an input or textarea identified by a page ref.",
+    description:
+      "Replace the value of an input or textarea identified by a page ref.",
     inputSchema: {
       type: "object",
       properties: { ref: { type: "string" }, value: { type: "string" } },
@@ -85,7 +94,8 @@ const pageTools = [
 ];
 
 async function liveWebMcpTools() {
-  const serialized = await cdp.evaluate(`document.modelContext.getTools().then(tools => JSON.stringify(tools.map(tool => ({
+  const serialized =
+    await cdp.evaluate(`document.modelContext.getTools().then(tools => JSON.stringify(tools.map(tool => ({
     name: tool.name,
     title: tool.title,
     description: tool.description,
@@ -97,13 +107,33 @@ async function liveWebMcpTools() {
     inputSchema:
       typeof tool.inputSchema === "string"
         ? JSON.parse(tool.inputSchema)
-        : tool.inputSchema ?? { type: "object", properties: {} },
+        : (tool.inputSchema ?? { type: "object", properties: {} }),
   }));
 }
 
 async function availableTools() {
-  if (condition === "ui_dom") return pageTools;
-  return [...pageTools, ...(await liveWebMcpTools())];
+  const tools =
+    condition === "ui_dom"
+      ? pageTools
+      : condition.startsWith("webmcp_")
+        ? await liveWebMcpTools()
+        : [...pageTools, ...(await liveWebMcpTools())];
+  if (!inventoryRecorded) {
+    inventoryRecorded = true;
+    record({
+      type: "tool_inventory",
+      tools: tools.map(
+        ({ name, title, description, inputSchema, annotations }) => ({
+          name,
+          title,
+          description,
+          inputSchema,
+          annotations,
+        }),
+      ),
+    });
+  }
+  return tools;
 }
 
 async function inspectPage() {
@@ -154,12 +184,18 @@ async function inspectPage() {
     const { selector: _selector, ...publicCandidate } = candidate;
     return { ref, ...publicCandidate };
   });
-  return { url: state.url, title: state.title, visibleText: state.text, elements };
+  return {
+    url: state.url,
+    title: state.title,
+    visibleText: state.text,
+    elements,
+  };
 }
 
 async function clickElement(ref) {
   const selector = references.get(ref);
-  if (!selector) throw new Error(`Unknown or stale ref ${ref}; inspect the page again.`);
+  if (!selector)
+    throw new Error(`Unknown or stale ref ${ref}; inspect the page again.`);
   await cdp.evaluate(`(() => {
     const element = document.querySelector(${JSON.stringify(selector)});
     if (!element) throw new Error('Element is no longer present.');
@@ -174,7 +210,8 @@ async function clickElement(ref) {
 
 async function fillElement(ref, value) {
   const selector = references.get(ref);
-  if (!selector) throw new Error(`Unknown or stale ref ${ref}; inspect the page again.`);
+  if (!selector)
+    throw new Error(`Unknown or stale ref ${ref}; inspect the page again.`);
   await cdp.evaluate(`(() => {
     const element = document.querySelector(${JSON.stringify(selector)});
     if (!element) throw new Error('Element is no longer present.');
@@ -186,14 +223,24 @@ async function fillElement(ref, value) {
     element.dispatchEvent(new Event('change', { bubbles: true }));
     return true;
   })()`);
-  record({ type: "ui_action", action: "fill", ref, selector, valueLength: value.length });
+  record({
+    type: "ui_action",
+    action: "fill",
+    ref,
+    selector,
+    valueLength: value.length,
+  });
   await delay(350);
   return inspectPage();
 }
 
 async function executeWebMcpTool(name, input) {
   const started = performance.now();
-  const execution = await cdp.evaluate(`(async () => {
+  const lifecycleOffset = await cdp.evaluate(
+    "(window.__signetGuardEvents || []).length",
+  );
+  const execution = await withTimeout(
+    cdp.evaluate(`(async () => {
     const tools = await document.modelContext.getTools();
     const tool = tools.find(candidate => candidate.name === ${JSON.stringify(name)});
     if (!tool) throw new Error('Native WebMCP tool is not registered: ' + ${JSON.stringify(name)});
@@ -206,17 +253,45 @@ async function executeWebMcpTool(name, input) {
         return { ok: false, error: String(objectError), firstError: String(stringError) };
       }
     }
-  })()`);
+  })()`),
+    20_000,
+    `WebMCP tool ${name}`,
+  );
   const durationMs = Math.round((performance.now() - started) * 100) / 100;
+  const lifecycle = await cdp.evaluate(
+    `(window.__signetGuardEvents || []).slice(${lifecycleOffset})`,
+  );
   record({
     type: "webmcp_call",
     tool: name,
+    input: traceValue(input),
     durationMs,
     ok: execution.ok,
+    result: execution.ok ? traceValue(execution.result) : undefined,
     error: execution.ok ? undefined : execution.error,
+    lifecycle: lifecycle.filter((event) => event.name === name),
   });
   if (!execution.ok) throw new Error(execution.error);
   return execution.result;
+}
+
+function withTimeout(promise, timeoutMs, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`${label} timed out after ${timeoutMs} ms.`)),
+        timeoutMs,
+      ).unref(),
+    ),
+  ]);
+}
+
+function traceValue(value) {
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) return null;
+  if (serialized.length <= 16_384) return JSON.parse(serialized);
+  return { truncated: true, serializedBytes: Buffer.byteLength(serialized) };
 }
 
 async function callTool(name, input = {}) {
@@ -226,13 +301,17 @@ async function callTool(name, input = {}) {
   }
   if (name === "click_element") return clickElement(input.ref);
   if (name === "fill_element") return fillElement(input.ref, input.value);
-  if (condition === "ui_dom") throw new Error(`Tool ${name} is unavailable in the UI condition.`);
+  if (condition === "ui_dom")
+    throw new Error(`Tool ${name} is unavailable in the UI condition.`);
   return executeWebMcpTool(name, input);
 }
 
 record({ type: "server_ready" });
 
-const lines = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+const lines = readline.createInterface({
+  input: process.stdin,
+  crlfDelay: Infinity,
+});
 lines.on("line", async (line) => {
   if (!line.trim()) return;
   let message;
@@ -256,25 +335,47 @@ lines.on("line", async (line) => {
     }
     if (message.method === "tools/call") {
       try {
-        const result = await callTool(message.params.name, message.params.arguments ?? {});
+        const result = await callTool(
+          message.params.name,
+          message.params.arguments ?? {},
+        );
         respond(message.id, {
           content: [{ type: "text", text: JSON.stringify(result) }],
           isError: false,
         });
       } catch (error) {
-        record({ type: "tool_error", tool: message.params.name, error: String(error) });
+        record({
+          type: "tool_error",
+          tool: message.params.name,
+          error: String(error),
+        });
         respond(message.id, {
-          content: [{ type: "text", text: error instanceof Error ? error.message : String(error) }],
+          content: [
+            {
+              type: "text",
+              text: error instanceof Error ? error.message : String(error),
+            },
+          ],
           isError: true,
         });
       }
       return;
     }
-    if (message.id !== undefined && !message.method?.startsWith("notifications/")) {
-      respondWithError(message.id, new Error(`Unsupported method ${message.method}`));
+    if (
+      message.id !== undefined &&
+      !message.method?.startsWith("notifications/")
+    ) {
+      respondWithError(
+        message.id,
+        new Error(`Unsupported method ${message.method}`),
+      );
     }
   } catch (error) {
-    record({ type: "protocol_error", method: message?.method, error: String(error) });
+    record({
+      type: "protocol_error",
+      method: message?.method,
+      error: String(error),
+    });
     if (message?.id !== undefined) respondWithError(message.id, error);
     else process.stderr.write(`[p1 mcp] ${String(error)}\n`);
   }

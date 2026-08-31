@@ -1,16 +1,17 @@
 # P1 real-agent effectiveness benchmark
 
-P1 runs one natural-language payment goal through a real, subscription-authenticated
-Codex agent against the Cypress Real World App. The same browser, seeded state, model,
-prompt budget, and database oracle are used for every condition.
+P1 runs a payment mutation and a recipient-lookup goal through a real,
+subscription-authenticated Codex agent against the Cypress Real World App. The same
+browser, seeded state, model, prompt budget, and independent oracle are used for every
+condition.
 
 ## Conditions
 
-| Condition | Agent surface | Consequential handler |
-|---|---|---|
-| `ui_dom` | Semantic DOM snapshot, click, and fill | Existing application UI |
-| `hybrid_raw` | DOM actions plus native WebMCP tools | Raw application handler |
-| `hybrid_signet` | DOM actions plus native WebMCP tools | Signet-guarded handler |
+| Condition       | Agent surface                          | Consequential handler   |
+| --------------- | -------------------------------------- | ----------------------- |
+| `ui_dom`        | Semantic DOM snapshot, click, and fill | Existing application UI |
+| `hybrid_raw`    | DOM actions plus native WebMCP tools   | Raw application handler |
+| `hybrid_signet` | DOM actions plus native WebMCP tools   | Signet-guarded handler  |
 
 The WebMCP tools are registered by the page through `document.modelContext`. A small
 MCP adapter makes those exact live registrations available to the benchmark agent; it
@@ -49,6 +50,9 @@ P1_TRIALS=3 P1_MODEL=gpt-5.4-mini P1_REASONING=low npm run bench:p1
 
 Raw traces are written below `results/raw/p1/` and ignored by Git. The public aggregate
 scorecard is written to `results/p1/latest.json` and `results/p1/latest.md`.
+
+To run one saved task through WebMCP only and retain its complete local diagnostic
+trace, use the [Signet Test Agent](./TEST_AGENT.md).
 
 ## Interpretation
 

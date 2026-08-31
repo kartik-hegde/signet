@@ -102,11 +102,26 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
   const listAccounts = async (_input: Record<string, never>, { signal }: { signal: AbortSignal }) =>
     requestJson<PaymentContext>("/context", { signal });
 
+  const guardedSearchUsers = guard(searchUsers, {
+    name: "search_payment_users",
+    observe: recordGuardEvent,
+  });
+  const guardedListAccounts = guard(listAccounts, {
+    name: "list_payment_accounts",
+    observe: recordGuardEvent,
+  });
+
   const executeSearchUsers: WebMCP.ToolExecuteCallback = (input, options) =>
-    searchUsers(input as ToolInput<{ query: string }>, { signal: executionSignal(options) });
+    ((window as InstrumentedWindow).__webMcpBenchmarkMode === "raw"
+      ? searchUsers
+      : guardedSearchUsers)(input as ToolInput<{ query: string }>, {
+      signal: executionSignal(options),
+    });
 
   const executeListAccounts: WebMCP.ToolExecuteCallback = (input, options) =>
-    listAccounts(input as Record<string, never>, { signal: executionSignal(options) });
+    ((window as InstrumentedWindow).__webMcpBenchmarkMode === "raw"
+      ? listAccounts
+      : guardedListAccounts)(input as Record<string, never>, { signal: executionSignal(options) });
 
   const paymentHandler = async (input: SendPaymentInput, { signal }: { signal: AbortSignal }) => {
     const result = await requestJson<PaymentResponse>("/payments", {

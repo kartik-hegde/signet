@@ -17,15 +17,15 @@ success response.
 
 ## Repository layout
 
-| Path | Purpose | Status |
-|---|---|---|
-| [`demo/`](./demo/) | Customer-ready speed race and fault-injection story | Runnable |
-| [`execution-safety/`](./execution-safety/) | Deterministic post-commit failure and concurrency suite | Runnable v0 |
-| [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies | Runnable P1 |
-| [`build-vs-buy/`](./build-vs-buy/) | Independent raw-controls versus Signet implementation study | Design stage |
-| [`apps/`](./apps/) | App manifests, patches, task definitions, reset hooks, and oracles | Design stage |
-| [`methodology/`](./methodology/) | Benchmark contract, KPIs, experimental design, and publication rules | Initial design |
-| [`results/`](./results/) | Reviewed summaries and benchmark cards; raw/private traces stay ignored | Initial design |
+| Path                                             | Purpose                                                                 | Status         |
+| ------------------------------------------------ | ----------------------------------------------------------------------- | -------------- |
+| [`demo/`](./demo/)                               | Customer-ready speed race and fault-injection story                     | Runnable       |
+| [`execution-safety/`](./execution-safety/)       | Deterministic post-commit failure and concurrency suite                 | Runnable v0    |
+| [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies                                   | Runnable P1    |
+| [`build-vs-buy/`](./build-vs-buy/)               | Raw, hand-rolled, and Signet implementation baseline                    | Runnable       |
+| [`apps/`](./apps/)                               | App manifests, patches, task definitions, reset hooks, and oracles      | One reference  |
+| [`methodology/`](./methodology/)                 | Benchmark contract, KPIs, experimental design, and publication rules    | Initial design |
+| [`results/`](./results/)                         | Reviewed summaries and benchmark cards; raw/private traces stay ignored | Initial design |
 
 ## Run the current safety lane
 
@@ -72,8 +72,8 @@ browser regression with `npm run test:demo`.
 
 ## Run the real-agent P1 pilot
 
-P1 gives the same natural-language payment intent to a real Codex agent ten times per
-condition and grades every run from application state:
+P1 gives a payment mutation and recipient-lookup intent to a real Codex agent ten times
+per condition and grades every run from application state:
 
 ```sh
 npm run bench:p1
@@ -82,6 +82,19 @@ npm run bench:p1
 Use `npm run bench:p1:smoke` for one trial per condition. The aggregate scorecard is
 written to `results/p1/latest.json` and `results/p1/latest.md`; raw agent and browser
 traces remain under the ignored `results/raw/p1/` directory.
+
+## Test a live agent interface
+
+The same mechanism also provides the first Signet Test Agent vertical slice. It removes
+DOM fallback, runs one saved task against only the live WebMCP registrations, and joins
+agent behavior to Signet lifecycle and authoritative outcome evidence:
+
+```sh
+npm run test:agent -- --task=find-payment-recipient
+```
+
+See [`agent-effectiveness/TEST_AGENT.md`](./agent-effectiveness/TEST_AGENT.md) for the
+trace contract and provider adapter seam.
 
 ## Benchmark contract
 

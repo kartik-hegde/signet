@@ -3,6 +3,22 @@
 This lane answers the technical question: why not expose WebMCP tools and implement the
 surrounding controls directly?
 
+## Current directional baseline
+
+```sh
+npm run bench:build-vs-buy
+```
+
+The runnable baseline compares raw execution, one benchmark-authored hand-rolled
+adapter, and Signet against the same application operations, durable store, faults, and
+authoritative verifiers. It reports safety beside bespoke adapter SLOC and runtime
+overhead. Results are written to `results/build-vs-buy/`.
+
+This is useful internal evidence, but it is not yet the independent study described
+below.
+
+## Publication design
+
 Several independent implementers receive the same application, WebMCP handlers,
 production requirements, and time budget. One cohort may use Signet; the other builds
 equivalent controls without importing Signet or copying its implementation. The hidden
@@ -18,6 +34,6 @@ Measure:
 - time required for a later requirement change;
 - dependencies and operational components the application must still own.
 
-One hand-written comparison is anecdotal. A publishable result needs multiple
+One hand-written comparison is directional. A publishable result needs multiple
 independent implementations, a preregistered rubric, retained failed attempts, and a
 clear distinction between library behavior and application-owned persistence.

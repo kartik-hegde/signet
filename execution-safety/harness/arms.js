@@ -2,14 +2,15 @@
  * The arms under comparison. Every arm calls the same application operation
  * through the same fault injector, so the only variable is the execution layer.
  *
- * A0 (DOM or computer-use driving) and A2 (independently hand-rolled controls)
- * are declared here as pending, so the table shows what is not yet measured
- * rather than quietly omitting it.
+ * A0 remains pending. A2 is one benchmark-authored hand-rolled adapter; independent
+ * implementer cohorts remain future work in the build-versus-buy lane.
  */
 import { resolve, dirname, join } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { faultedHandler } from "./faults.js";
 import { OptimisticMemoryStore, SqliteConservativeStore } from "./stores.js";
+import { buildHandrolled } from "./adapters/handrolled.js";
+import { buildWithSignet } from "./adapters/signet.js";
 
 /**
  * `run.js` sets SIGNET_DIST to the absolute entry point of the build its preflight
@@ -39,15 +40,21 @@ const stableKey = (actorId, toolName, input) =>
 /** Reads authoritative state, not the handler's return value. */
 const verifiers = {
   "book-tickets": ({ output, ctx }) => {
-    const row = ctx.db.prepare("SELECT status FROM bookings WHERE id = ?").get(output.bookingId);
+    const row = ctx.db
+      .prepare("SELECT status FROM bookings WHERE id = ?")
+      .get(output.bookingId);
     return row?.status === "confirmed";
   },
   "cancel-booking": ({ output, ctx }) => {
-    const row = ctx.db.prepare("SELECT status FROM bookings WHERE id = ?").get(output.bookingId);
+    const row = ctx.db
+      .prepare("SELECT status FROM bookings WHERE id = ?")
+      .get(output.bookingId);
     return row?.status === "cancelled";
   },
   "update-booking-notes": ({ input, ctx }) => {
-    const row = ctx.db.prepare("SELECT notes FROM bookings WHERE id = ?").get(input.bookingId);
+    const row = ctx.db
+      .prepare("SELECT notes FROM bookings WHERE id = ?")
+      .get(input.bookingId);
     return row?.notes === input.notes;
   },
 };
@@ -55,9 +62,18 @@ const verifiers = {
 export const ARMS = {
   A0_dom: { label: "A0 DOM driving", pending: true },
   A1_raw: { label: "A1 raw tools", build: buildRaw },
-  A2_handrolled: { label: "A2 hand-rolled controls", pending: true },
-  A3a_signet_memory: { label: "A3a Signet, shipped store", build: (a) => buildGuarded(a, "memory") },
-  A3b_signet_durable: { label: "A3b Signet, harness store", build: (a) => buildGuarded(a, "durable") },
+  A2_handrolled: {
+    label: "A2 hand-rolled controls",
+    build: buildHandrolledArm,
+  },
+  A3a_signet_memory: {
+    label: "A3a Signet, shipped store",
+    build: (a) => buildGuarded(a, "memory"),
+  },
+  A3b_signet_durable: {
+    label: "A3b Signet, harness store",
+    build: (a) => buildGuarded(a, "durable"),
+  },
 };
 
 function buildRaw({ execute, faults, ctx }) {
@@ -65,19 +81,35 @@ function buildRaw({ execute, faults, ctx }) {
   return (input, options) => handler(input, options);
 }
 
+function buildHandrolledArm({ execute, faults, ctx, toolName }) {
+  const handler = faultedHandler((input) => execute(input, ctx), faults);
+  const store = new SqliteConservativeStore(ctx.db);
+  const verify = verifiers[toolName];
+  return buildHandrolled({
+    handler,
+    store,
+    key: (input) => stableKey(ctx.actorId, toolName, input),
+    verify: verify
+      ? ({ input, output }) => verify({ input, output, ctx })
+      : undefined,
+  });
+}
+
 function buildGuarded({ execute, faults, ctx, toolName }, storeKind) {
   const handler = faultedHandler((input) => execute(input, ctx), faults);
   const store =
-    storeKind === "durable" ? new SqliteConservativeStore(ctx.db) : new OptimisticMemoryStore();
+    storeKind === "durable"
+      ? new SqliteConservativeStore(ctx.db)
+      : new OptimisticMemoryStore();
   const verify = verifiers[toolName];
 
-  return guard(handler, {
-    name: toolName,
-    context: () => ({ actorId: ctx.actorId }),
-    idempotency: {
-      key: ({ input, context }) => stableKey(context.actorId, toolName, input),
-      store,
-    },
-    ...(verify ? { verify: ({ input, output }) => verify({ input, output, ctx }) } : {}),
+  return buildWithSignet({
+    handler,
+    store,
+    key: (input) => stableKey(ctx.actorId, toolName, input),
+    verify: verify
+      ? ({ input, output }) => verify({ input, output, ctx })
+      : undefined,
+    guard,
   });
 }

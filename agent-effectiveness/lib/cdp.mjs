@@ -15,7 +15,9 @@ export async function waitFor(action, description, timeoutMs = 20_000) {
     }
     await delay(100);
   }
-  throw new Error(`Timed out waiting for ${description}.`, { cause: lastError });
+  throw new Error(`Timed out waiting for ${description}.`, {
+    cause: lastError,
+  });
 }
 
 export function unusedPort() {
@@ -51,6 +53,13 @@ export class CdpClient {
       if (message.error) pending.reject(new Error(message.error.message));
       else pending.resolve(message.result);
     });
+    const rejectPending = () => {
+      const error = new Error("Chrome DevTools connection closed.");
+      for (const pending of this.pending.values()) pending.reject(error);
+      this.pending.clear();
+    };
+    this.socket.addEventListener("close", rejectPending);
+    this.socket.addEventListener("error", rejectPending);
   }
 
   send(method, params = {}) {

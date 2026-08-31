@@ -3,12 +3,30 @@
   "tasks": [
     {
       "id": "pay-lia-reference",
+      "kind": "payment",
       "intent": "Send Lia Rosenbaum $12.00 for \"Reference parity payment\". Complete the payment exactly once.",
       "sender": { "id": "uBmeaz5pX", "username": "Heath93" },
       "receiver": { "id": "WHjJ4qR2R2", "displayName": "Lia Rosenbaum" },
       "amountCents": 1200,
       "description": "Reference parity payment",
-      "expectedTools": ["search_payment_users", "list_payment_accounts", "send_payment"]
+      "expectedTools": [
+        "search_payment_users",
+        "list_payment_accounts",
+        "send_payment"
+      ],
+      "completionTool": "send_payment"
+    },
+    {
+      "id": "find-payment-recipient",
+      "kind": "recipient_read",
+      "intent": "Find the payment username for the recipient named Lia Rosenbaum. Return her display name and username without sending a payment.",
+      "sender": { "id": "uBmeaz5pX", "username": "Heath93" },
+      "expectedTools": ["search_payment_users"],
+      "completionTool": "search_payment_users",
+      "expectedAnswer": {
+        "displayName": "Lia Rosenbaum",
+        "username": "Judah_Dietrich50"
+      }
     }
   ]
 }

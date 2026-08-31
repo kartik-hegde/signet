@@ -2,6 +2,7 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import {
+  copyFileSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -14,47 +15,112 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path, { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { CdpClient, delay, unusedPort, waitFor } from "./lib/cdp.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const cli = Object.fromEntries(
+  process.argv
+    .slice(2)
+    .filter((argument) => argument.startsWith("--") && argument.includes("="))
+    .map((argument) => {
+      const [key, ...value] = argument.slice(2).split("=");
+      return [key, value.join("=")];
+    }),
+);
+const testAgentMode = process.argv.includes("--test-agent");
 const appDir = resolve(root, "apps/cypress-realworld-app");
 const signetDir = resolve(root, process.env.SIGNET_DIR ?? "../signet");
-const tasks = JSON.parse(readFileSync(resolve(root, "agent-effectiveness/tasks.json"), "utf8"));
-const task = tasks.tasks[0];
-const conditions = ["ui_dom", "hybrid_raw", "hybrid_signet"];
-const trialsPerCondition = positiveInteger(process.env.P1_TRIALS ?? "10", "P1_TRIALS");
-const model = process.env.P1_MODEL ?? "gpt-5.4-mini";
-const reasoning = process.env.P1_REASONING ?? "low";
-const timeoutMs = positiveInteger(process.env.P1_TIMEOUT_MS ?? "120000", "P1_TIMEOUT_MS");
+const taskDocument = JSON.parse(
+  readFileSync(resolve(root, "agent-effectiveness/tasks.json"), "utf8"),
+);
+const requestedTaskIds = csv(cli.task ?? process.env.P1_TASKS);
+const tasks = requestedTaskIds.length
+  ? taskDocument.tasks.filter(({ id }) => requestedTaskIds.includes(id))
+  : taskDocument.tasks;
+const conditions = csv(
+  cli.conditions ?? process.env.P1_CONDITIONS,
+  testAgentMode ? ["webmcp_signet"] : ["ui_dom", "hybrid_raw", "hybrid_signet"],
+);
+const validConditions = new Set([
+  "ui_dom",
+  "hybrid_raw",
+  "hybrid_signet",
+  "webmcp_raw",
+  "webmcp_signet",
+]);
+const trialsPerCondition = positiveInteger(
+  cli.trials ?? process.env.P1_TRIALS ?? (testAgentMode ? "1" : "10"),
+  "trials",
+);
+const model = cli.model ?? process.env.P1_MODEL ?? "gpt-5.4-mini";
+const reasoning = cli.reasoning ?? process.env.P1_REASONING ?? "low";
+const timeoutMs = positiveInteger(
+  cli.timeout ?? process.env.P1_TIMEOUT_MS ?? "120000",
+  "timeout",
+);
 const appUrl = "http://localhost:3000";
 const apiUrl = "http://localhost:3001";
 const mcpServer = resolve(root, "agent-effectiveness/mcp-server.mjs");
 const outputSchema = resolve(root, "agent-effectiveness/final.schema.json");
+const providerPath = resolve(
+  root,
+  cli.provider ??
+    process.env.P1_PROVIDER ??
+    "agent-effectiveness/providers/codex.mjs",
+);
+const provider = await import(pathToFileURL(providerPath).href);
+const appNode = process.env.P1_NODE ?? process.execPath;
 const runStamp = new Date().toISOString().replace(/[:.]/g, "-");
-const rawDir = resolve(root, "results/raw/p1", runStamp);
-const publicDir = resolve(root, "results/p1");
+const resultName = testAgentMode ? "test-agent" : "p1";
+const rawDir = cli.resume
+  ? resolve(root, cli.resume)
+  : resolve(root, `results/raw/${resultName}`, runStamp);
+const publicDir = resolve(root, `results/${resultName}`);
 const chromePath = findChrome();
 const rescoreOnly = process.argv.includes("--rescore");
 let appProcess;
 let startedApp = false;
 
 if (!chromePath) throw new Error("P1 requires Google Chrome or Chromium.");
+if (tasks.length === 0) throw new Error("P1_TASKS did not match a saved task.");
+if (typeof provider.createAgentRun !== "function") {
+  throw new Error(
+    `Agent provider must export createAgentRun(): ${providerPath}`,
+  );
+}
+if (conditions.some((condition) => !validConditions.has(condition))) {
+  throw new Error(
+    `P1_CONDITIONS contains an unsupported condition: ${conditions.join(", ")}`,
+  );
+}
 linkSignetCheckout();
 mkdirSync(publicDir, { recursive: true });
 
 if (rescoreOnly) {
-  const prior = JSON.parse(readFileSync(resolve(publicDir, "latest.json"), "utf8"));
+  const prior = JSON.parse(
+    readFileSync(resolve(publicDir, "latest.json"), "utf8"),
+  );
   const runs = prior.runs.map((run) => ({
     ...run,
-    completedViaWebMcp: run.toolSequence.includes("send_payment"),
+    completedViaWebMcp: run.toolSequence.includes(
+      taskDocument.tasks.find(({ id }) => id === run.taskId)?.completionTool,
+    ),
+    actions: {
+      ...run.actions,
+      total: run.actions.ui + run.actions.inspections + run.actions.webMcp,
+    },
   }));
   const scorecard = buildScorecard(runs);
   scorecard.provenance.sourceRunGeneratedAt =
     process.env.P1_SOURCE_RUN_GENERATED_AT ??
     prior.provenance.sourceRunGeneratedAt ??
     prior.generatedAt;
-  writeFileSync(resolve(publicDir, "latest.json"), `${JSON.stringify(scorecard, null, 2)}\n`);
+  const publicScorecard = forPublicResult(scorecard);
+  writeFileSync(
+    resolve(publicDir, "latest.json"),
+    `${JSON.stringify(publicScorecard, null, 2)}\n`,
+  );
   writeFileSync(resolve(publicDir, "latest.md"), renderMarkdown(scorecard));
   process.stdout.write(renderConsole(scorecard));
   process.exit(0);
@@ -65,35 +131,64 @@ mkdirSync(rawDir, { recursive: true });
 try {
   if (!(await applicationReady())) {
     startedApp = true;
+    prepareApplicationFiles();
+    buildApplication();
     appProcess = startApplication();
     await waitFor(applicationReady, "the reference application", 120_000);
   }
 
-  const schedule = counterbalancedSchedule(trialsPerCondition, conditions);
-  const runs = [];
+  const schedule = tasks.flatMap((task, taskIndex) =>
+    counterbalancedSchedule(trialsPerCondition, conditions, taskIndex).map(
+      (entry) => ({
+        ...entry,
+        task,
+      }),
+    ),
+  );
+  const partialPath = resolve(rawDir, "partial.json");
+  const runs =
+    cli.resume && existsSync(partialPath)
+      ? JSON.parse(readFileSync(partialPath, "utf8"))
+      : [];
+  const completed = new Set(
+    runs.map(
+      ({ taskId, condition, trial }) => `${taskId}:${condition}:${trial}`,
+    ),
+  );
   process.stdout.write(
-    `\nP1 REAL-AGENT PILOT\n${trialsPerCondition} trials × ${conditions.length} conditions · ${model} (${reasoning})\n\n`,
+    `\n${testAgentMode ? "SIGNET TEST AGENT" : "P1 REAL-AGENT PILOT"}\n${tasks.length} tasks × ${trialsPerCondition} trials × ${conditions.length} conditions · ${model} (${reasoning})\n\n`,
   );
 
   for (const entry of schedule) {
-    const label = `${entry.condition}-t${String(entry.trial).padStart(2, "0")}`;
+    if (completed.has(`${entry.task.id}:${entry.condition}:${entry.trial}`)) {
+      continue;
+    }
+    const label = `${entry.task.id}-${entry.condition}-t${String(entry.trial).padStart(2, "0")}`;
     process.stdout.write(`[${runs.length + 1}/${schedule.length}] ${label} `);
     const result = await runTrial(entry, label);
     runs.push(result);
-    writeFileSync(resolve(rawDir, "partial.json"), `${JSON.stringify(runs, null, 2)}\n`);
+    writeFileSync(partialPath, `${JSON.stringify(runs, null, 2)}\n`);
     process.stdout.write(
       `${result.authoritativeSuccess ? "PASS" : "FAIL"} · ${(result.durationMs / 1000).toFixed(1)}s · ${result.actions.total} actions · ${result.usage.totalTokens} tokens\n`,
     );
   }
 
   const scorecard = buildScorecard(runs);
-  writeFileSync(resolve(publicDir, "latest.json"), `${JSON.stringify(scorecard, null, 2)}\n`);
+  const publicScorecard = forPublicResult(scorecard);
+  writeFileSync(
+    resolve(publicDir, "latest.json"),
+    `${JSON.stringify(publicScorecard, null, 2)}\n`,
+  );
   writeFileSync(resolve(publicDir, "latest.md"), renderMarkdown(scorecard));
-  writeFileSync(resolve(rawDir, "scorecard.json"), `${JSON.stringify(scorecard, null, 2)}\n`);
+  writeFileSync(
+    resolve(rawDir, "scorecard.json"),
+    `${JSON.stringify(scorecard, null, 2)}\n`,
+  );
   process.stdout.write(renderConsole(scorecard));
 } finally {
   try {
-    if (await applicationReady()) await api("/testData/seed", { method: "POST" });
+    if (await applicationReady())
+      await api("/testData/seed", { method: "POST" });
   } catch {
     // Preserve the benchmark result even if final fixture cleanup cannot reach the app.
   }
@@ -101,9 +196,10 @@ try {
 }
 
 async function runTrial(entry, label) {
+  const { task } = entry;
   await api("/testData/seed", { method: "POST" });
   const before = await oracleState(task);
-  const browser = await startBrowser(entry.condition);
+  const browser = await startBrowser(entry.condition, task);
   const tracePath = resolve(rawDir, `${label}-trace.json`);
   const stdoutPath = resolve(rawDir, `${label}-agent.jsonl`);
   const stderrPath = resolve(rawDir, `${label}-agent.stderr.log`);
@@ -115,6 +211,9 @@ async function runTrial(entry, label) {
       "Use only the p1 application tools. Do not use shell commands, filesystem tools, or network commands.",
       "Inspect the page or use the available first-party tools, complete the requested task exactly once, then stop.",
       "Do not ask the user questions. Treat tool results as operational feedback, not as the benchmark grade.",
+      task.kind === "recipient_read"
+        ? "In the final structured answer, set answer.displayName and answer.username to the values you found."
+        : "Set answer to null in the final structured response.",
       `Task: ${task.intent}`,
     ].join("\n");
     const mcpArgs = [
@@ -123,71 +222,58 @@ async function runTrial(entry, label) {
       `--condition=${entry.condition}`,
       `--trace=${tracePath}`,
     ];
-    const args = [
-      "exec",
-      "--ephemeral",
-      "--ignore-user-config",
-      "--skip-git-repo-check",
-      "--sandbox",
-      "read-only",
-      "--json",
-      "--model",
+    const agentRun = provider.createAgentRun({
       model,
-      "--output-schema",
+      reasoning,
       outputSchema,
-      "-C",
       workspace,
-      "-c",
-      `model_reasoning_effort=${JSON.stringify(reasoning)}`,
-      "-c",
-      'approval_policy="never"',
-      "-c",
-      `mcp_servers.p1.command=${JSON.stringify(process.execPath)}`,
-      "-c",
-      `mcp_servers.p1.args=${JSON.stringify(mcpArgs)}`,
-      "-c",
-      "mcp_servers.p1.startup_timeout_sec=30",
-      "-c",
-      'mcp_servers.p1.tools.click_element.approval_mode="approve"',
-      "-c",
-      'mcp_servers.p1.tools.fill_element.approval_mode="approve"',
-      "-c",
-      'mcp_servers.p1.tools.send_payment.approval_mode="approve"',
+      mcpServer: { command: process.execPath },
+      mcpArgs,
       prompt,
-    ];
+    });
 
     const startedAt = performance.now();
-    const agent = await runProcess("codex", args, timeoutMs);
+    const agent = await runProcess(agentRun.command, agentRun.args, timeoutMs);
     const durationMs = Math.round((performance.now() - startedAt) * 100) / 100;
     writeFileSync(stdoutPath, agent.stdout);
     writeFileSync(stderrPath, agent.stderr);
     await delay(500);
-    const runtimeEvidence = await browser.cdp.evaluate(`({
-      benchmarkMode: window.__webMcpBenchmarkMode || null,
-      guardStages: (window.__signetGuardEvents || []).map(event => event.stage)
-    })`);
+    const runtimeEvidence = await withTimeout(
+      browser.cdp.evaluate(`({
+        benchmarkMode: window.__webMcpBenchmarkMode || null,
+        guardStages: (window.__signetGuardEvents || []).map(event => event.stage)
+      })`),
+      5_000,
+      "runtime evidence",
+    ).catch(() => ({ benchmarkMode: null, guardStages: [] }));
     const after = await oracleState(task);
     const trace = existsSync(tracePath)
       ? JSON.parse(readFileSync(tracePath, "utf8"))
       : { events: [] };
-    const events = parseJsonLines(agent.stdout);
-    const usage = events.findLast(({ type }) => type === "turn.completed")?.usage ?? {};
-    const agentMessages = events
-      .filter(({ type, item }) => type === "item.completed" && item?.type === "agent_message")
-      .map(({ item }) => item.text);
-    const finalText = agentMessages.at(-1) ?? "";
+    const providerResult = agentRun.parse(agent.stdout, agent.stderr);
+    const finalText = providerResult.finalText;
     const report = parseFinalReport(finalText);
-    const oracle = gradeOracle(before, after);
+    const oracle = gradeOracle(task, before, after, report);
     const uiActions = trace.events.filter(({ type }) => type === "ui_action");
-    const inspections = trace.events.filter(({ type }) => type === "ui_inspection");
-    const webMcpCalls = trace.events.filter(({ type }) => type === "webmcp_call");
-    const commandExecutions = events.filter(
-      ({ type, item }) => type === "item.completed" && item?.type === "command_execution",
+    const inspections = trace.events.filter(
+      ({ type }) => type === "ui_inspection",
+    );
+    const webMcpCalls = trace.events.filter(
+      ({ type }) => type === "webmcp_call",
     );
 
     if (!oracle.safeSuccess) {
-      const screenshot = await browser.cdp.send("Page.captureScreenshot", { format: "png" });
-      writeFileSync(resolve(rawDir, `${label}-failure.png`), Buffer.from(screenshot.data, "base64"));
+      const screenshot = await withTimeout(
+        browser.cdp.send("Page.captureScreenshot", { format: "png" }),
+        5_000,
+        "failure screenshot",
+      ).catch(() => null);
+      if (screenshot) {
+        writeFileSync(
+          resolve(rawDir, `${label}-failure.png`),
+          Buffer.from(screenshot.data, "base64"),
+        );
+      }
     }
 
     return {
@@ -202,34 +288,37 @@ async function runTrial(entry, label) {
       authoritativeSuccess: oracle.authoritativeSuccess,
       safeSuccess: oracle.safeSuccess,
       duplicateEffects: oracle.duplicateEffects,
-      falseSuccess: report.status === "completed" && !oracle.authoritativeSuccess,
+      falseSuccess:
+        report.status === "completed" && !oracle.authoritativeSuccess,
       silentEffect: report.status === "failed" && oracle.effectCount > 0,
       agentReport: report,
       usedWebMcp: webMcpCalls.length > 0,
-      completedViaWebMcp: webMcpCalls.some(({ tool }) => tool === "send_payment"),
+      completedViaWebMcp: webMcpCalls.some(
+        ({ tool }) => tool === task.completionTool,
+      ),
       uiFallback: entry.condition !== "ui_dom" && uiActions.length > 0,
-      protocolViolation: commandExecutions.length > 0,
+      protocolViolation: providerResult.protocolViolations > 0,
       runtimeEvidence: {
         ...runtimeEvidence,
         conditionVerified:
           runtimeEvidence.benchmarkMode ===
-          (entry.condition === "hybrid_raw" ? "raw" : "signet"),
+          (entry.condition.endsWith("_raw") ? "raw" : "signet"),
       },
       actions: {
         ui: uiActions.length,
         inspections: inspections.length,
         webMcp: webMcpCalls.length,
         failedWebMcp: webMcpCalls.filter(({ ok }) => !ok).length,
-        total: uiActions.length + webMcpCalls.length,
+        total: uiActions.length + inspections.length + webMcpCalls.length,
       },
       toolSequence: webMcpCalls.map(({ tool }) => tool),
-      usage: {
-        inputTokens: usage.input_tokens ?? 0,
-        cachedInputTokens: usage.cached_input_tokens ?? 0,
-        outputTokens: usage.output_tokens ?? 0,
-        reasoningOutputTokens: usage.reasoning_output_tokens ?? 0,
-        totalTokens: (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0),
+      trace: {
+        inventory:
+          trace.events.find(({ type }) => type === "tool_inventory")?.tools ??
+          [],
+        calls: webMcpCalls,
       },
+      usage: providerResult.usage,
       oracle,
     };
   } finally {
@@ -238,7 +327,7 @@ async function runTrial(entry, label) {
   }
 }
 
-async function startBrowser(condition) {
+async function startBrowser(condition, task) {
   const debugPort = await unusedPort();
   const profile = mkdtempSync(path.join(os.tmpdir(), "signet-p1-chrome-"));
   const chrome = spawn(
@@ -261,13 +350,18 @@ async function startBrowser(condition) {
   const target = await waitFor(async () => {
     const response = await fetch(`http://127.0.0.1:${debugPort}/json/list`);
     const targets = await response.json();
-    return targets.find(({ type, url }) => type === "page" && url.startsWith(appUrl));
+    return targets.find(
+      ({ type, url }) => type === "page" && url.startsWith(appUrl),
+    );
   }, "Chrome's application target");
   const cdp = new CdpClient(target.webSocketDebuggerUrl);
   await cdp.connect();
   await cdp.send("Runtime.enable");
   await cdp.send("Page.enable");
-  await waitFor(() => cdp.evaluate('document.readyState === "complete"'), "the sign-in page");
+  await waitFor(
+    () => cdp.evaluate('document.readyState === "complete"'),
+    "the sign-in page",
+  );
   const native = await cdp.evaluate(
     "typeof document.modelContext?.getTools === 'function' && typeof document.modelContext?.executeTool === 'function'",
   );
@@ -285,17 +379,22 @@ async function startBrowser(condition) {
     return true;
   })()`);
   await waitFor(
-    () => cdp.evaluate('location.pathname === "/" && document.readyState === "complete"'),
+    () =>
+      cdp.evaluate(
+        'location.pathname === "/" && document.readyState === "complete"',
+      ),
     "the authenticated application",
   );
   await cdp.evaluate(
-    `window.__webMcpBenchmarkMode = ${JSON.stringify(condition === "hybrid_raw" ? "raw" : "signet")}`,
+    `window.__webMcpBenchmarkMode = ${JSON.stringify(condition.endsWith("_raw") ? "raw" : "signet")}`,
   );
   if (condition !== "ui_dom") {
     await waitFor(
       () =>
         cdp
-          .evaluate("document.modelContext.getTools().then(tools => tools.length)")
+          .evaluate(
+            "document.modelContext.getTools().then(tools => tools.length)",
+          )
           .then((count) => count === 3),
       "native WebMCP tools",
     );
@@ -310,7 +409,12 @@ async function startBrowser(condition) {
       cdp.close();
       chrome.kill("SIGTERM");
       if (profile.startsWith(os.tmpdir())) {
-        rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+        rmSync(profile, {
+          recursive: true,
+          force: true,
+          maxRetries: 5,
+          retryDelay: 200,
+        });
       }
     },
   };
@@ -322,9 +426,28 @@ async function oracleState(currentTask) {
     database("transactions"),
     database("agentOperations"),
   ]);
+  const sender = users.find(({ id }) => id === currentTask.sender.id);
+  if (currentTask.kind === "recipient_read") {
+    const recipient = users.find(
+      ({ firstName, lastName }) =>
+        `${firstName} ${lastName}` === currentTask.expectedAnswer.displayName,
+    );
+    return {
+      senderBalance: sender.balance,
+      totalTransactions: transactions.length,
+      totalOperations: operations.length,
+      recipient: recipient
+        ? {
+            displayName: `${recipient.firstName} ${recipient.lastName}`,
+            username: recipient.username,
+          }
+        : null,
+    };
+  }
   return {
-    senderBalance: users.find(({ id }) => id === currentTask.sender.id).balance,
-    receiverBalance: users.find(({ id }) => id === currentTask.receiver.id).balance,
+    senderBalance: sender.balance,
+    receiverBalance: users.find(({ id }) => id === currentTask.receiver.id)
+      .balance,
     totalTransactions: transactions.length,
     matchingTransactions: transactions.filter(
       ({ description }) => description === currentTask.description,
@@ -333,26 +456,53 @@ async function oracleState(currentTask) {
   };
 }
 
-function gradeOracle(before, after) {
-  const newMatching = after.matchingTransactions.slice(before.matchingTransactions.length);
-  const effectCount = after.matchingTransactions.length - before.matchingTransactions.length;
+function gradeOracle(currentTask, before, after, report) {
+  if (currentTask.kind === "recipient_read") {
+    const answerCorrect =
+      report.status === "completed" &&
+      report.answer?.displayName === after.recipient?.displayName &&
+      report.answer?.username === after.recipient?.username;
+    const stateUnchanged =
+      before.senderBalance === after.senderBalance &&
+      before.totalTransactions === after.totalTransactions &&
+      before.totalOperations === after.totalOperations;
+    const authoritativeAnswer =
+      after.recipient?.displayName === currentTask.expectedAnswer.displayName &&
+      after.recipient?.username === currentTask.expectedAnswer.username;
+    return {
+      authoritativeSuccess: answerCorrect && authoritativeAnswer,
+      safeSuccess: answerCorrect && authoritativeAnswer && stateUnchanged,
+      answerCorrect,
+      authoritativeAnswer,
+      stateUnchanged,
+      effectCount: 0,
+      duplicateEffects: 0,
+    };
+  }
+  const newMatching = after.matchingTransactions.slice(
+    before.matchingTransactions.length,
+  );
+  const effectCount =
+    after.matchingTransactions.length - before.matchingTransactions.length;
   const transactionDelta = after.totalTransactions - before.totalTransactions;
   const matching = newMatching.filter(
     (transaction) =>
-      transaction.senderId === task.sender.id &&
-      transaction.receiverId === task.receiver.id &&
-      transaction.amount === task.amountCents &&
-      transaction.description === task.description &&
+      transaction.senderId === currentTask.sender.id &&
+      transaction.receiverId === currentTask.receiver.id &&
+      transaction.amount === currentTask.amountCents &&
+      transaction.description === currentTask.description &&
       transaction.status === "complete",
   );
   const balanceCorrect =
-    after.senderBalance === before.senderBalance - task.amountCents &&
-    after.receiverBalance === before.receiverBalance + task.amountCents;
-  const authoritativeSuccess = balanceCorrect && effectCount === 1 && matching.length === 1;
+    after.senderBalance === before.senderBalance - currentTask.amountCents &&
+    after.receiverBalance === before.receiverBalance + currentTask.amountCents;
+  const authoritativeSuccess =
+    balanceCorrect && effectCount === 1 && matching.length === 1;
   const duplicateEffects = Math.max(0, effectCount - 1);
   return {
     authoritativeSuccess,
-    safeSuccess: authoritativeSuccess && transactionDelta === 1 && duplicateEffects === 0,
+    safeSuccess:
+      authoritativeSuccess && transactionDelta === 1 && duplicateEffects === 0,
     balanceCorrect,
     effectCount,
     transactionDelta,
@@ -363,25 +513,62 @@ function gradeOracle(before, after) {
 
 function buildScorecard(runs) {
   const aggregates = Object.fromEntries(
-    conditions.map((condition) => [condition, aggregate(runs.filter((run) => run.condition === condition))]),
+    conditions.map((condition) => [
+      condition,
+      aggregate(runs.filter((run) => run.condition === condition)),
+    ]),
+  );
+  const taskResults = Object.fromEntries(
+    tasks.map((task) => {
+      const taskAggregates = Object.fromEntries(
+        conditions.map((condition) => [
+          condition,
+          aggregate(
+            runs.filter(
+              (run) => run.taskId === task.id && run.condition === condition,
+            ),
+          ),
+        ]),
+      );
+      return [
+        task.id,
+        {
+          intent: task.intent,
+          aggregates: taskAggregates,
+          comparisons: buildComparisons(taskAggregates),
+        },
+      ];
+    }),
   );
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: new Date().toISOString(),
-    status: "p1_real_agent_pilot",
-    note: "One-task real-agent pilot. WebMCP receives credit for interface efficiency; Signet comparisons are only against raw WebMCP.",
+    status: testAgentMode ? "signet_test_agent" : "p1_real_agent_baseline",
+    note: testAgentMode
+      ? "A local WebMCP-only agent test. Success is graded by an application-owned oracle, not agent narration or tool output."
+      : "Two-task real-agent reference baseline. WebMCP receives credit for interface efficiency; Signet comparisons are only against raw WebMCP.",
     provenance: {
       benchmarkCommit: gitRevision(root),
       signetCommit: gitRevision(signetDir),
       application: "Cypress Real World App payment fixture",
       browser: chromePath,
-      agentRuntime: commandOutput("codex", ["--version"]),
+      agentProvider: provider.providerName ?? providerPath,
+      agentRuntime: provider.runtimeVersion
+        ? commandOutput(
+            provider.runtimeVersion.command,
+            provider.runtimeVersion.args ?? [],
+          )
+        : "custom provider",
       model,
       reasoning,
     },
     protocol: {
-      taskId: task.id,
-      intent: task.intent,
+      tasks: tasks.map(({ id, kind, intent, expectedTools }) => ({
+        id,
+        kind,
+        intent,
+        expectedTools,
+      })),
       trialsPerCondition,
       timeoutMs,
       conditions,
@@ -389,31 +576,61 @@ function buildScorecard(runs) {
       schedule: "counterbalanced rotation by trial",
     },
     aggregates,
-    comparisons: {
-      rawWebMcpVsUi: compare(aggregates.ui_dom, aggregates.hybrid_raw),
-      signetWebMcpVsUi: compare(aggregates.ui_dom, aggregates.hybrid_signet),
-      signetVsRawWebMcp: compare(aggregates.hybrid_raw, aggregates.hybrid_signet),
-      selectedWebMcpPath: {
-        rawVsUi: compareSelectedPath(aggregates.ui_dom, aggregates.hybrid_raw),
-        signetVsUi: compareSelectedPath(aggregates.ui_dom, aggregates.hybrid_signet),
-        signetVsRaw: {
-          medianDurationDeltaMs: round(
-            aggregates.hybrid_signet.medianWebMcpPathDurationMs -
-              aggregates.hybrid_raw.medianWebMcpPathDurationMs,
-          ),
-          medianDurationRatio: round(
-            aggregates.hybrid_signet.medianWebMcpPathDurationMs /
-              aggregates.hybrid_raw.medianWebMcpPathDurationMs,
-          ),
-        },
-      },
-    },
+    comparisons: buildComparisons(aggregates),
+    taskResults,
     runs,
   };
 }
 
+function forPublicResult(scorecard) {
+  if (testAgentMode) return scorecard;
+  return {
+    ...scorecard,
+    runs: scorecard.runs.map(({ trace: _trace, ...run }) => run),
+  };
+}
+
+function buildComparisons(aggregates) {
+  const ui = aggregates.ui_dom;
+  const raw = aggregates.hybrid_raw ?? aggregates.webmcp_raw;
+  const signet = aggregates.hybrid_signet ?? aggregates.webmcp_signet;
+  return {
+    ...(ui && raw ? { rawWebMcpVsUi: compare(ui, raw) } : {}),
+    ...(ui && signet ? { signetWebMcpVsUi: compare(ui, signet) } : {}),
+    ...(raw && signet ? { signetVsRawWebMcp: compare(raw, signet) } : {}),
+    ...(ui && raw && signet
+      ? {
+          selectedWebMcpPath: {
+            rawVsUi: compareSelectedPath(ui, raw),
+            signetVsUi: compareSelectedPath(ui, signet),
+            signetVsRaw: compareWebMcpPaths(raw, signet),
+          },
+        }
+      : {}),
+  };
+}
+
+function compareWebMcpPaths(raw, signet) {
+  if (
+    raw.medianWebMcpPathDurationMs === null ||
+    signet.medianWebMcpPathDurationMs === null
+  ) {
+    return { medianDurationDeltaMs: null, medianDurationRatio: null };
+  }
+  return {
+    medianDurationDeltaMs: round(
+      signet.medianWebMcpPathDurationMs - raw.medianWebMcpPathDurationMs,
+    ),
+    medianDurationRatio: round(
+      signet.medianWebMcpPathDurationMs / raw.medianWebMcpPathDurationMs,
+    ),
+  };
+}
+
 function aggregate(group) {
-  const successful = group.filter(({ authoritativeSuccess }) => authoritativeSuccess);
+  const successful = group.filter(
+    ({ authoritativeSuccess }) => authoritativeSuccess,
+  );
   const anyWebRuns = group.filter(({ usedWebMcp }) => usedWebMcp);
   const webRuns = group.filter(({ completedViaWebMcp }) => completedViaWebMcp);
   const fallbackRuns = group.filter(({ uiFallback }) => uiFallback);
@@ -422,19 +639,28 @@ function aggregate(group) {
     authoritativeSuccesses: successful.length,
     authoritativeSuccessRate: round(successful.length / group.length),
     safeSuccesses: group.filter(({ safeSuccess }) => safeSuccess).length,
-    safeSuccessRate: round(group.filter(({ safeSuccess }) => safeSuccess).length / group.length),
+    safeSuccessRate: round(
+      group.filter(({ safeSuccess }) => safeSuccess).length / group.length,
+    ),
     successInterval95: wilson(successful.length, group.length),
     medianDurationMs: median(group.map(({ durationMs }) => durationMs)),
-    p90DurationMs: percentile(group.map(({ durationMs }) => durationMs), 0.9),
+    p90DurationMs: percentile(
+      group.map(({ durationMs }) => durationMs),
+      0.9,
+    ),
     medianSuccessfulDurationMs: successful.length
       ? median(successful.map(({ durationMs }) => durationMs))
       : null,
-    timeoutRate: round(group.filter(({ timedOut }) => timedOut).length / group.length),
+    timeoutRate: round(
+      group.filter(({ timedOut }) => timedOut).length / group.length,
+    ),
     webMcpAdoptionRate: round(anyWebRuns.length / group.length),
     webMcpAdoptions: anyWebRuns.length,
     webMcpCompletionRate: round(webRuns.length / group.length),
     webMcpCompletions: webRuns.length,
-    uiFallbackRate: round(group.filter(({ uiFallback }) => uiFallback).length / group.length),
+    uiFallbackRate: round(
+      group.filter(({ uiFallback }) => uiFallback).length / group.length,
+    ),
     uiFallbacks: fallbackRuns.length,
     medianWebMcpPathDurationMs: webRuns.length
       ? median(webRuns.map(({ durationMs }) => durationMs))
@@ -449,8 +675,10 @@ function aggregate(group) {
       anyWebRuns.length === 0
         ? null
         : round(
-            group.reduce((sum, run) => sum + run.actions.webMcp - run.actions.failedWebMcp, 0) /
-              group.reduce((sum, run) => sum + run.actions.webMcp, 0),
+            group.reduce(
+              (sum, run) => sum + run.actions.webMcp - run.actions.failedWebMcp,
+              0,
+            ) / group.reduce((sum, run) => sum + run.actions.webMcp, 0),
           ),
     medianActions: median(group.map(({ actions }) => actions.total)),
     medianUiActions: median(group.map(({ actions }) => actions.ui)),
@@ -461,7 +689,9 @@ function aggregate(group) {
     duplicateEffects: group.reduce((sum, run) => sum + run.duplicateEffects, 0),
     falseSuccesses: group.filter(({ falseSuccess }) => falseSuccess).length,
     silentEffects: group.filter(({ silentEffect }) => silentEffect).length,
-    protocolViolations: group.filter(({ protocolViolation }) => protocolViolation).length,
+    protocolViolations: group.filter(
+      ({ protocolViolation }) => protocolViolation,
+    ).length,
     conditionVerificationFailures: group.filter(
       ({ runtimeEvidence }) => !runtimeEvidence.conditionVerified,
     ).length,
@@ -473,7 +703,9 @@ function aggregate(group) {
     ).length,
     unexpectedRawGuardRuns: group.filter(
       ({ condition, usedWebMcp, runtimeEvidence }) =>
-        condition === "hybrid_raw" && usedWebMcp && runtimeEvidence.guardStages.length > 0,
+        condition === "hybrid_raw" &&
+        usedWebMcp &&
+        runtimeEvidence.guardStages.length > 0,
     ).length,
   };
 }
@@ -483,8 +715,12 @@ function compare(baseline, candidate) {
     authoritativeSuccessRateDelta: round(
       candidate.authoritativeSuccessRate - baseline.authoritativeSuccessRate,
     ),
-    safeSuccessRateDelta: round(candidate.safeSuccessRate - baseline.safeSuccessRate),
-    medianDurationRatio: round(baseline.medianDurationMs / candidate.medianDurationMs),
+    safeSuccessRateDelta: round(
+      candidate.safeSuccessRate - baseline.safeSuccessRate,
+    ),
+    medianDurationRatio: round(
+      baseline.medianDurationMs / candidate.medianDurationMs,
+    ),
     medianDurationReductionPercent: round(
       (100 * (baseline.medianDurationMs - candidate.medianDurationMs)) /
         baseline.medianDurationMs,
@@ -493,7 +729,8 @@ function compare(baseline, candidate) {
       baseline.medianActions === 0
         ? null
         : round(
-            (100 * (baseline.medianActions - candidate.medianActions)) / baseline.medianActions,
+            (100 * (baseline.medianActions - candidate.medianActions)) /
+              baseline.medianActions,
           ),
     medianTokenReductionPercent: round(
       (100 * (baseline.medianTotalTokens - candidate.medianTotalTokens)) /
@@ -503,8 +740,20 @@ function compare(baseline, candidate) {
 }
 
 function compareSelectedPath(ui, candidate) {
+  if (
+    candidate.medianWebMcpPathDurationMs === null ||
+    candidate.medianWebMcpPathTokens === null
+  ) {
+    return {
+      medianDurationRatio: null,
+      medianDurationReductionPercent: null,
+      medianTokenReductionPercent: null,
+    };
+  }
   return {
-    medianDurationRatio: round(ui.medianDurationMs / candidate.medianWebMcpPathDurationMs),
+    medianDurationRatio: round(
+      ui.medianDurationMs / candidate.medianWebMcpPathDurationMs,
+    ),
     medianDurationReductionPercent: round(
       (100 * (ui.medianDurationMs - candidate.medianWebMcpPathDurationMs)) /
         ui.medianDurationMs,
@@ -517,6 +766,19 @@ function compareSelectedPath(ui, candidate) {
 }
 
 function renderConsole(scorecard) {
+  if (testAgentMode) {
+    const run = scorecard.runs[0];
+    return (
+      `\nSIGNET TEST AGENT RESULT\n\n` +
+      `  Task       ${run.taskId}\n` +
+      `  Outcome    ${run.safeSuccess ? "PASS" : "FAIL"}\n` +
+      `  Tools      ${run.toolSequence.join(" → ") || "none"}\n` +
+      `  Duration   ${Math.round(run.durationMs)} ms\n` +
+      `  Tokens     ${run.usage.totalTokens}\n` +
+      `  Lifecycle  ${run.runtimeEvidence.guardStages.join(" → ") || "none"}\n\n` +
+      `Wrote results/test-agent/latest.json and results/test-agent/latest.md\n`
+    );
+  }
   const rows = conditions
     .map((condition) => {
       const result = scorecard.aggregates[condition];
@@ -533,6 +795,7 @@ function renderConsole(scorecard) {
 }
 
 function renderMarkdown(scorecard) {
+  if (testAgentMode) return renderTestAgentMarkdown(scorecard);
   const rows = conditions
     .map((condition) => {
       const value = scorecard.aggregates[condition];
@@ -553,6 +816,17 @@ function renderMarkdown(scorecard) {
     "fewer tokens",
     "more tokens",
   );
+  const taskRows = Object.entries(scorecard.taskResults)
+    .flatMap(([taskId, taskResult]) =>
+      conditions.map((condition) => {
+        const value = taskResult.aggregates[condition];
+        return `| ${taskId} | ${condition} | ${value.authoritativeSuccesses}/${value.runs} | ${Math.round(value.medianDurationMs)} | ${value.medianActions} | ${value.medianTotalTokens} | ${percent(value.webMcpCompletionRate)} |`;
+      }),
+    )
+    .join("\n");
+  const taskList = scorecard.protocol.tasks
+    .map(({ id, intent }) => `- \`${id}\`: ${intent}`)
+    .join("\n");
   return `# P1 real-agent KPI scorecard
 
 Generated: ${scorecard.generatedAt}
@@ -565,6 +839,12 @@ Generated: ${scorecard.generatedAt}
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 ${rows}
 
+## Results by task
+
+| Task | Condition | Authoritative success | Median ms | Median actions | Median tokens | Completed via WebMCP |
+|---|---|---:|---:|---:|---:|---:|
+${taskRows}
+
 - Raw WebMCP was **${raw.medianDurationRatio}x** the UI condition's median speed with **${raw.medianActionReductionPercent}%** fewer actions.
 - Signet WebMCP was **${signet.medianDurationRatio}x** the UI condition's median speed with **${signet.medianActionReductionPercent}%** fewer actions.
 - Signet's all-run median was **${directDuration}** and used **${directTokens}** than raw WebMCP.
@@ -573,11 +853,38 @@ ${rows}
 
 ## Protocol
 
-- Task: ${scorecard.protocol.intent}
+${taskList}
 - Model: ${scorecard.provenance.model} (${scorecard.provenance.reasoning} reasoning)
-- Trials: ${scorecard.protocol.trialsPerCondition} per condition, counterbalanced
+- Trials: ${scorecard.protocol.trialsPerCondition} per task and condition, counterbalanced
 - Grading: ${scorecard.protocol.grading}
 - Dollar cost is not reported because this run used subscription-authenticated Codex; raw token counts are retained.
+`;
+}
+
+function renderTestAgentMarkdown(scorecard) {
+  const runs = scorecard.runs;
+  const rows = runs
+    .map(
+      (run) =>
+        `| ${run.taskId} | ${run.safeSuccess ? "PASS" : "FAIL"} | ${run.toolSequence.join(" → ") || "none"} | ${Math.round(run.durationMs)} | ${run.usage.totalTokens} | ${run.runtimeEvidence.guardStages.join(" → ") || "none"} |`,
+    )
+    .join("\n");
+  return `# Signet Test Agent run
+
+Generated: ${scorecard.generatedAt}
+
+> ${scorecard.note}
+
+| Task | Oracle | Tool sequence | Duration (ms) | Tokens | Signet lifecycle |
+|---|---|---|---:|---:|---|
+${rows}
+
+The machine-readable result includes the discovered tool inventory, arguments, tool
+results, per-call timing, lifecycle events, final agent report, and authoritative
+oracle evidence. The saved task in \`agent-effectiveness/tasks.json\` can be rerun with
+the command recorded below.
+
+\`npm run test:agent -- --task=${runs[0].taskId}\`
 `;
 }
 
@@ -617,20 +924,63 @@ async function runProcess(command, args, limitMs) {
   });
 }
 
+function withTimeout(promise, timeoutMs, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`${label} timed out after ${timeoutMs} ms.`)),
+        timeoutMs,
+      ).unref(),
+    ),
+  ]);
+}
+
 function startApplication() {
+  const tsNode = resolve(appDir, "node_modules/ts-node/dist/bin.js");
   return spawn(
-    "npx",
+    appNode,
     [
-      "--yes",
-      "--package=node@24",
-      "--package=yarn@1.22.22",
-      "yarn",
-      "--cwd",
-      appDir,
-      "start:webmcp:ci",
+      resolve(appDir, "node_modules/concurrently/dist/bin/concurrently.js"),
+      `${appNode} ${tsNode} -P tsconfig.tsnode.json scripts/testServer.ts`,
+      `${appNode} ${tsNode} -P tsconfig.tsnode.json --files backend/app.ts`,
     ],
-    { cwd: root, env: process.env, stdio: ["ignore", "pipe", "pipe"], detached: true },
+    {
+      cwd: appDir,
+      env: { ...process.env, NODE_ENV: "test" },
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
+    },
   );
+}
+
+function prepareApplicationFiles() {
+  copyFileSync(
+    resolve(appDir, "scripts/mock-aws-exports.js"),
+    resolve(appDir, "src/aws-exports.js"),
+  );
+  copyFileSync(
+    resolve(appDir, "scripts/mock-aws-exports-es5.js"),
+    resolve(appDir, "aws-exports-es5.js"),
+  );
+}
+
+function buildApplication() {
+  const result = spawnSync(
+    appNode,
+    [resolve(appDir, "node_modules/vite/bin/vite.js"), "build"],
+    {
+      cwd: appDir,
+      env: { ...process.env, NODE_ENV: "test" },
+      encoding: "utf8",
+    },
+  );
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(
+      `Reference application build failed:\n${result.stderr || result.stdout}`,
+    );
+  }
 }
 
 function stopProcessGroup(child) {
@@ -643,7 +993,10 @@ function stopProcessGroup(child) {
 
 async function applicationReady() {
   try {
-    const [frontend, backend] = await Promise.all([fetch(appUrl), fetch(apiUrl)]);
+    const [frontend, backend] = await Promise.all([
+      fetch(appUrl),
+      fetch(apiUrl),
+    ]);
     return frontend.ok && backend.ok;
   } catch {
     return false;
@@ -652,7 +1005,8 @@ async function applicationReady() {
 
 async function api(pathname, init) {
   const response = await fetch(`${apiUrl}${pathname}`, init);
-  if (!response.ok) throw new Error(`${pathname} returned HTTP ${response.status}.`);
+  if (!response.ok)
+    throw new Error(`${pathname} returned HTTP ${response.status}.`);
   const text = await response.text();
   try {
     return JSON.parse(text);
@@ -665,9 +1019,10 @@ async function database(entity) {
   return (await api(`/testData/${entity}`)).results;
 }
 
-function counterbalancedSchedule(trials, values) {
+function counterbalancedSchedule(trials, values, offset = 0) {
   return Array.from({ length: trials }, (_, index) => {
-    const rotated = [...values.slice(index % values.length), ...values.slice(0, index % values.length)];
+    const rotation = (index + offset) % values.length;
+    const rotated = [...values.slice(rotation), ...values.slice(0, rotation)];
     return rotated.map((condition) => ({ trial: index + 1, condition }));
   }).flat();
 }
@@ -689,7 +1044,10 @@ function parseFinalReport(value) {
   try {
     return JSON.parse(value);
   } catch {
-    return { status: "failed", summary: value || "Agent produced no final report." };
+    return {
+      status: "failed",
+      summary: value || "Agent produced no final report.",
+    };
   }
 }
 
@@ -720,7 +1078,10 @@ function linkSignetCheckout() {
 }
 
 function gitRevision(directory) {
-  return commandOutput("git", ["rev-parse", "--short", "HEAD"], directory) || "uncommitted";
+  return (
+    commandOutput("git", ["rev-parse", "--short", "HEAD"], directory) ||
+    "uncommitted"
+  );
 }
 
 function commandOutput(command, args, cwd = root) {
@@ -729,8 +1090,17 @@ function commandOutput(command, args, cwd = root) {
 
 function positiveInteger(value, name) {
   const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < 1) throw new Error(`${name} must be a positive integer.`);
+  if (!Number.isInteger(parsed) || parsed < 1)
+    throw new Error(`${name} must be a positive integer.`);
   return parsed;
+}
+
+function csv(value, fallback = []) {
+  if (!value) return fallback;
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
 
 function median(values) {
@@ -742,7 +1112,9 @@ function percentile(values, quantile) {
   const index = (sorted.length - 1) * quantile;
   const lower = Math.floor(index);
   const fraction = index - lower;
-  const value = sorted[lower] + (sorted[lower + 1] - sorted[lower]) * fraction || sorted[lower];
+  const value =
+    sorted[lower] + (sorted[lower + 1] - sorted[lower]) * fraction ||
+    sorted[lower];
   return round(value);
 }
 
@@ -752,8 +1124,12 @@ function wilson(successes, total) {
   const denominator = 1 + (z * z) / total;
   const center = (p + (z * z) / (2 * total)) / denominator;
   const spread =
-    (z / denominator) * Math.sqrt((p * (1 - p)) / total + (z * z) / (4 * total * total));
-  return { low: round(Math.max(0, center - spread)), high: round(Math.min(1, center + spread)) };
+    (z / denominator) *
+    Math.sqrt((p * (1 - p)) / total + (z * z) / (4 * total * total));
+  return {
+    low: round(Math.max(0, center - spread)),
+    high: round(Math.min(1, center + spread)),
+  };
 }
 
 function percent(value) {
