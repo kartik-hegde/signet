@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-31T04:13:24.380Z",
+  "status": "p0_directional",
+  "note": "Deterministic application drivers establish parity and directional overhead. They are not an LLM-agent speed claim.",
+  "provenance": {
+    "benchmarkCommit": "fb66283",
+    "signetCommit": "9ab2c4d",
+    "application": "Cypress Real World App payment fixture"
+  },
+  "effectiveness": {
+    "task": "send-payment",
+    "authoritativeSuccess": {
+      "ui": true,
+      "webmcpRaw": true,
+      "webmcpSignet": true
+    },
+    "runs": {
+      "ui": {
+        "task": "send-payment",
+        "mode": "ui",
+        "durationMs": 1063.5,
+        "interactionCount": 6,
+        "toolCalls": 0,
+        "httpRequests": 3,
+        "mutationRequests": 1
+      },
+      "webmcp_raw": {
+        "task": "send-payment",
+        "mode": "webmcp_raw",
+        "durationMs": 34.9,
+        "interactionCount": 3,
+        "toolCalls": 3,
+        "httpRequests": 3,
+        "mutationRequests": 1
+      },
+      "webmcp_signet": {
+        "task": "send-payment",
+        "mode": "webmcp_signet",
+        "durationMs": 55.2,
+        "interactionCount": 3,
+        "toolCalls": 3,
+        "httpRequests": 5,
+        "mutationRequests": 1
+      }
+    },
+    "comparisons": {
+      "rawWebMcpVsUi": {
+        "durationSpeedup": 30.47,
+        "durationReductionPercent": 96.72,
+        "interactionReductionPercent": 50
+      },
+      "signetWebMcpVsUi": {
+        "durationSpeedup": 19.27,
+        "durationReductionPercent": 94.81,
+        "interactionReductionPercent": 50
+      },
+      "signetVsRawWebMcp": {
+        "durationRatio": 1.58,
+        "addedDurationMs": 20.3,
+        "additionalHttpRequests": 2
+      }
+    }
+  },
+  "safety": {
+    "scenarios": [
+      "retry-after-lost-response",
+      "retry-after-upstream-error-on-idempotent-operation",
+      "concurrent-notes-overwrite"
+    ],
+    "scores": [
+      {
+        "arm": "A1_raw",
+        "overall": 51,
+        "correctness": 68,
+        "honesty": 0,
+        "scenariosPassed": 1,
+        "scenariosRun": 3,
+        "medianInvocationMs": 0.4,
+        "counters": {
+          "duplicate_effects": 1,
+          "false_success": 0,
+          "silent_effect": 0,
+          "lost_updates": 1,
+          "needless_indeterminate": 0,
+          "indeterminate_disclosed": 0,
+          "lost_update_disclosed": 0
+        }
+      },
+      {
+        "arm": "A3a_signet_memory",
+        "overall": 63.5,
+        "correctness": 68,
+        "honesty": 50,
+        "scenariosPassed": 1,
+        "scenariosRun": 3,
+        "medianInvocationMs": 0.4,
+        "counters": {
+          "duplicate_effects": 1,
+          "false_success": 0,
+          "silent_effect": 0,
+          "lost_updates": 1,
+          "needless_indeterminate": 0,
+          "indeterminate_disclosed": 0,
+          "lost_update_disclosed": 1
+        }
+      },
+      {
+        "arm": "A3b_signet_durable",
+        "overall": 85,
+        "correctness": 80,
+        "honesty": 100,
+        "scenariosPassed": 1,
+        "scenariosRun": 3,
+        "medianInvocationMs": 0.5,
+        "counters": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0,
+          "lost_updates": 1,
+          "needless_indeterminate": 1,
+          "indeterminate_disclosed": 1,
+          "lost_update_disclosed": 1
+        }
+      }
+    ],
+    "subject": "A3b_signet_durable",
+    "scoringVersion": "2c662d24"
+  }
+}
