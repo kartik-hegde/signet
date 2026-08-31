@@ -4,7 +4,9 @@
 
 Import `useSignetTool` from `@signet/webmcp/react`. It exposes a tool for its component
 lifetime and serializes same-name teardown and remount, including React StrictMode when
-registration is still in flight. It accepts an explicit dependency list.
+registration is still in flight. Its dependency list is required so a first-render
+handler closure cannot be frozen accidentally; include every reactive value used by
+the tool callbacks.
 
 ## Readiness checks
 

@@ -39,6 +39,7 @@ Optional Signet controls:
 - `idempotency`;
 - `recover`;
 - `verify`;
+- `verifyTimeoutMs`;
 - `outputBudgetBytes`.
 
 The execution callback receives the validated input plus application `context` and

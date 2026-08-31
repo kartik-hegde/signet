@@ -47,6 +47,23 @@ describe("Signet validation and expected errors", () => {
     expect(native.tool).toBeUndefined();
   });
 
+  it("rejects an invalid verification timeout before registration", async () => {
+    const native = capture();
+    const signet = createSignet({ modelContext: native.modelContext });
+
+    await expect(
+      signet.expose({
+        name: "broken_timeout",
+        description: "A tool with an invalid timeout.",
+        inputSchema: schema,
+        execute: () => undefined,
+        verify: () => true,
+        verifyTimeoutMs: 0,
+      }),
+    ).rejects.toThrow("verifyTimeoutMs must be a positive integer");
+    expect(native.tool).toBeUndefined();
+  });
+
   it("rejects invalid input before context and execution", async () => {
     const native = capture();
     const context = vi.fn(() => ({ userId: "user-1" }));

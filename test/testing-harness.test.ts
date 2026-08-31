@@ -71,6 +71,7 @@ describe("checkIdempotencyStore", () => {
         "runs distinct keys concurrently",
         "evicts failures",
         "honors pre-aborted calls",
+        "returns completed owner work after late abort",
       ],
     });
   });
@@ -83,5 +84,94 @@ describe("checkIdempotencyStore", () => {
         },
       })),
     ).rejects.toThrow("coalesce concurrent equal keys");
+  });
+
+  it("rejects a store that serializes distinct keys", async () => {
+    await expect(
+      checkIdempotencyStore(
+        () => {
+          let tail = Promise.resolve();
+          const operations = new Map<string, Promise<unknown>>();
+          return {
+            async execute<Output>(
+              key: string,
+              operation: () => Promise<Output>,
+            ) {
+              const existing = operations.get(key) as
+                Promise<Output> | undefined;
+              if (existing) {
+                return { value: await existing, replayed: true };
+              }
+              const pending = tail.then(operation);
+              operations.set(key, pending);
+              tail = pending.then(
+                () => undefined,
+                () => undefined,
+              );
+              return { value: await pending, replayed: false };
+            },
+          };
+        },
+        { concurrencyTimeoutMs: 10 },
+      ),
+    ).rejects.toThrow("must not serialize distinct keys");
+  });
+
+  it("uses fresh keys on every conformance run", async () => {
+    const operations = new Map<string, Promise<unknown>>();
+    const createStore = () => ({
+      async execute<Output>(
+        key: string,
+        operation: () => Promise<Output>,
+        options: { signal: AbortSignal },
+      ) {
+        options.signal.throwIfAborted();
+        const existing = operations.get(key) as Promise<Output> | undefined;
+        if (existing) return { value: await existing, replayed: true };
+        const pending = operation();
+        operations.set(key, pending);
+        void pending.catch(() => operations.delete(key));
+        return { value: await pending, replayed: false };
+      },
+    });
+
+    await checkIdempotencyStore(createStore);
+    await expect(checkIdempotencyStore(createStore)).resolves.toBeDefined();
+  });
+
+  it("rejects a store that abandons completed owner work after abort", async () => {
+    await expect(
+      checkIdempotencyStore(() => {
+        const operations = new Map<string, Promise<unknown>>();
+        return {
+          async execute<Output>(
+            key: string,
+            operation: () => Promise<Output>,
+            options: { signal: AbortSignal },
+          ) {
+            options.signal.throwIfAborted();
+            const existing = operations.get(key) as Promise<Output> | undefined;
+            if (existing) {
+              return { value: await existing, replayed: true };
+            }
+            const pending = operation();
+            operations.set(key, pending);
+            void pending.catch(() => operations.delete(key));
+            const abort = new Promise<void>((resolve) => {
+              options.signal.addEventListener("abort", () => resolve(), {
+                once: true,
+              });
+            }).then((): Output => {
+              options.signal.throwIfAborted();
+              throw new Error("abort event fired without an aborted signal");
+            });
+            return {
+              value: await Promise.race([pending, abort]),
+              replayed: false,
+            };
+          },
+        };
+      }),
+    ).rejects.toThrow("completed owner work after a late abort");
   });
 });

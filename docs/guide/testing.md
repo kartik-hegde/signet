@@ -55,9 +55,12 @@ import { checkIdempotencyStore } from "@signet/webmcp/testing";
 await checkIdempotencyStore(() => new PostgresIdempotencyStore(pool));
 ```
 
-The kit checks equal-key coalescing, distinct-key parallelism, failure eviction, and
-pre-aborted calls. See `recipes/postgres-idempotency.ts` for a copyable PostgreSQL
-adapter and its transaction-duration tradeoff.
+The kit uses fresh keys on every run and checks equal-key coalescing, distinct-key
+parallelism, failure eviction, pre-aborted calls, and completed owner work after a late
+abort. For a remote database, pass `{ concurrencyTimeoutMs: 5_000 }` if two independent
+operations need more than the default second to start. See
+`recipes/postgres-idempotency.ts` for a copyable PostgreSQL adapter and its
+transaction-duration tradeoff.
 
 ## Test these invariants
 

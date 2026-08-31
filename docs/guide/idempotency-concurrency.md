@@ -75,6 +75,13 @@ A durable adapter must define:
 - multi-process correctness;
 - transaction boundaries with the business effect.
 
+Once a store starts the supplied operation, a successful result owns the outcome: it
+must be persisted and returned even if that caller is aborted before the result arrives.
+A duplicate caller waiting on existing work may cancel its own wait without cancelling
+or evicting the shared operation. `checkIdempotencyStore()` enforces both this late-abort
+rule and per-key concurrency with fresh keys on every run, so it can safely exercise a
+persistent store repeatedly.
+
 Signet intentionally does not claim “exactly once.” A database and every downstream
 system would need compatible transaction semantics for that claim to be meaningful.
 
