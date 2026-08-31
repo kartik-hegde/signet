@@ -27,6 +27,9 @@
     "build": "tsc -p tsconfig.build.json",
     "check": "npm run typecheck && npm test",
     "coverage": "vitest run --coverage",
+    "docs:build": "vitepress build docs",
+    "docs:dev": "vitepress dev docs",
+    "docs:preview": "vitepress preview docs",
     "smoke": "node test/package-smoke.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -50,6 +53,7 @@
     "@vitest/coverage-v8": "^4.1.11",
     "typescript": "^5.9.2",
     "vitest": "^4.1.11",
+    "vitepress": "2.0.0-alpha.19",
     "webmcp-types": "^0.1.5"
   },
   "license": "MIT",

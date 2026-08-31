@@ -1,0 +1,99 @@
+# `guard()`
+
+Wraps a normal WebMCP-compatible execute function with selected application controls.
+
+```ts
+function guard<Input, Output, Context = undefined>(
+  execute: Execute<Input, Output>,
+  options?: GuardOptions<Input, Output, Context>,
+): Execute<Input, Output>;
+```
+
+The returned function preserves the application's output and propagates the browser's
+execution `AbortSignal`.
+
+## `execute`
+
+```ts
+type Execute<Input extends Record<string, unknown>, Output> = (
+  input: Input,
+  options: { signal: AbortSignal },
+) => Output | Promise<Output>;
+```
+
+Application errors are rethrown unchanged.
+
+## Options
+
+### `name`
+
+Optional stable operation name used only in lifecycle events.
+
+### `context`
+
+```ts
+context?: (input, options) => Context | Promise<Context>;
+```
+
+Resolves application session, principal, tenant, resource, or service context. Signet
+does not resolve identity implicitly.
+
+### `authorize`
+
+```ts
+authorize?: ({ input, context, signal }) =>
+  | boolean
+  | { allowed: boolean; reason?: string }
+  | Promise<boolean | AuthorizationDecision>;
+```
+
+A false decision throws `AuthorizationError` before execution.
+
+### `idempotency`
+
+```ts
+idempotency?: {
+  key: ({ input, context, signal }) => string | Promise<string>;
+  store: IdempotencyStore;
+};
+```
+
+The key must not be empty. The store atomically executes or returns a prior result and
+reports whether it was replayed.
+
+### `verify`
+
+```ts
+verify?: ({ input, output, context, replayed, signal }) =>
+  | boolean
+  | { verified: boolean; reason?: string }
+  | Promise<boolean | VerificationDecision>;
+```
+
+A false decision throws `VerificationError` after execution or replay.
+
+### `observe`
+
+```ts
+observe?: (event: GuardEvent) => void | Promise<void>;
+```
+
+Receives lifecycle metadata, never inputs or outputs. Synchronous throws and asynchronous
+rejections are contained and do not change application behavior.
+
+### `invocationId` and `now`
+
+Injectable factories for deterministic tests. They are not called when no observer is
+configured.
+
+## Lifecycle stages
+
+```text
+started
+authorized       when authorization is configured
+executed|replayed
+verified         when verification is configured
+succeeded|failed
+```
+
+See the exported TypeScript declarations for the complete structural types.

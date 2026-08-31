@@ -62,6 +62,9 @@ An optional `@signet/webmcp/opentelemetry` entry point converts lifecycle events
 
 See [the native example](./examples/native-webmcp.ts), [ecosystem research](./docs/ecosystem.md), and [design contract](./docs/design.md).
 
+The complete guide lives in [`docs/`](./docs/index.md). Run it locally with
+`npm run docs:dev` or produce the static site with `npm run docs:build`.
+
 ## Development
 
 ```sh
