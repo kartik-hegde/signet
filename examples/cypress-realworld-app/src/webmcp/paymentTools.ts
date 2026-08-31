@@ -50,6 +50,9 @@ type InstrumentedWindow = Window & {
 
 const apiUrl = `http://localhost:${backendPort}/webmcp`;
 
+const executionSignal = (options?: WebMCP.ToolExecuteCallbackOptions) =>
+  options?.signal ?? new AbortController().signal;
+
 async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${apiUrl}${path}`, {
     ...init,
@@ -97,6 +100,12 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
 
   const listAccounts = async (_input: Record<string, never>, { signal }: { signal: AbortSignal }) =>
     requestJson<PaymentContext>("/context", { signal });
+
+  const executeSearchUsers: WebMCP.ToolExecuteCallback = (input, options) =>
+    searchUsers(input as ToolInput<{ query: string }>, { signal: executionSignal(options) });
+
+  const executeListAccounts: WebMCP.ToolExecuteCallback = (input, options) =>
+    listAccounts(input as Record<string, never>, { signal: executionSignal(options) });
 
   const sendPayment = guard<SendPaymentInput, PaymentResponse, PaymentContext>(
     async (input, { signal }) => {
@@ -166,7 +175,7 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
   // in builds that omit it.
   const executeSendPayment: WebMCP.ToolExecuteCallback = (input, options) =>
     sendPayment(input as SendPaymentInput, {
-      signal: options?.signal ?? new AbortController().signal,
+      signal: executionSignal(options),
     });
 
   const registrations = [
@@ -181,7 +190,7 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
           required: ["query"],
           additionalProperties: false,
         },
-        execute: searchUsers as WebMCP.ToolExecuteCallback,
+        execute: executeSearchUsers,
         annotations: { readOnlyHint: true, untrustedContentHint: true },
       },
       { signal: registration.signal }
@@ -192,7 +201,7 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
         title: "List payment source accounts",
         description: "List payment accounts owned by the signed-in user.",
         inputSchema: { type: "object", properties: {}, additionalProperties: false },
-        execute: listAccounts as WebMCP.ToolExecuteCallback,
+        execute: executeListAccounts,
         annotations: { readOnlyHint: true },
       },
       { signal: registration.signal }

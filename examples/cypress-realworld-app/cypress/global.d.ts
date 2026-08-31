@@ -34,6 +34,8 @@ declare namespace Cypress {
         input: Record<string, unknown>,
         signal?: AbortSignal
       ): Promise<unknown>;
+      /** Simulate Chrome builds that omit the execution-options argument. */
+      executeToolWithoutOptions(name: string, input: Record<string, unknown>): Promise<unknown>;
     };
   }
 
