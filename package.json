@@ -32,6 +32,8 @@
     "docs:preview": "vitepress preview docs",
     "smoke": "node test/package-smoke.mjs",
     "test": "vitest run",
+    "test:reference": "npm run build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd examples/cypress-realworld-app build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd examples/cypress-realworld-app start-server-and-test start:webmcp:ci http://localhost:3000 test:webmcp",
+    "test:reference:install": "npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd examples/cypress-realworld-app install",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "validate": "npm run typecheck && npm run coverage && npm run build && npm run smoke"
