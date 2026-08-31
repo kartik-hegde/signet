@@ -5,7 +5,7 @@ const base = process.env.DOCS_BASE ?? "/";
 export default defineConfig({
   base,
   title: "Signet",
-  description: "Production controls for native WebMCP actions.",
+  description: "WebMCP-first tooling for exposing product capabilities to AI agents.",
   cleanUrls: true,
   lastUpdated: true,
   head: [
@@ -19,7 +19,7 @@ export default defineConfig({
     search: { provider: "local" },
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
-      { text: "Reference", link: "/reference/guard" },
+      { text: "Current API", link: "/reference/guard" },
       { text: "Checklist", link: "/production-checklist" },
       { text: "GitHub", link: "https://github.com/kartik-hegde/signet" },
     ],
@@ -33,7 +33,7 @@ export default defineConfig({
         ],
       },
       {
-        text: "Controls",
+        text: "Production controls",
         items: [
           { text: "Authorization", link: "/guide/authorization" },
           {
@@ -71,7 +71,7 @@ export default defineConfig({
       { icon: "github", link: "https://github.com/kartik-hegde/signet" },
     ],
     footer: {
-      message: "Native WebMCP in. Application output out.",
+      message: "Your product capabilities, directly usable by agents.",
       copyright: "Released under the MIT License.",
     },
   },

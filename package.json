@@ -1,7 +1,7 @@
 {
   "name": "@signet/webmcp",
   "version": "0.0.0",
-  "description": "Small, native-first execution controls for consequential WebMCP tools.",
+  "description": "WebMCP-first tooling for exposing application capabilities to AI agents.",
   "type": "module",
   "sideEffects": false,
   "files": [
@@ -78,6 +78,7 @@
     "webmcp",
     "ai-agents",
     "typescript",
+    "developer-tools",
     "idempotency",
     "authorization"
   ]

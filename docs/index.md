@@ -3,46 +3,38 @@ layout: home
 
 hero:
   name: Signet
-  text: Production controls for WebMCP.
-  tagline: Keep native tools. Add exact authorization, retry safety, outcome verification, and observable execution where actions matter.
+  text: Give agents a direct interface to your product.
+  tagline: Define, expose, inspect, and test application tools through native WebMCP. Add production controls where actions warrant them.
   actions:
     - theme: brand
       text: Get started
       link: /guide/getting-started
     - theme: alt
-      text: Read the design contract
-      link: /design
+      text: Why Signet
+      link: /guide/why-signet
 
 features:
-  - title: Authorize the exact action
-    details: Resolve your application session and fail closed before privileged code runs. Your backend remains authoritative.
-  - title: One effect, many retries
-    details: Delegate atomic duplicate suppression to a durable store while unrelated operation keys continue in parallel.
-  - title: Verify what happened
-    details: Check authoritative state after execution or replay. Do not turn an ambiguous result into a success message.
-  - title: Small enough to remove
-    details: No tool DSL, registry, schema language, browser patch, or hosted dependency. Remove guard() and your handler remains.
+  - title: Start from capabilities you own
+    details: Bind tools to existing functions and backend endpoints. Your product logic stays in your application.
+  - title: WebMCP first
+    details: Keep native tool names, schemas, annotations, origins, and lifecycle visible instead of hiding the browser standard.
+  - title: See what agents see
+    details: The planned inspector, invocation playground, and contract tests make discovery and tool behavior locally verifiable.
+  - title: Harden progressively
+    details: Public reads stay simple. Consequential actions can add authorization, replay control, verification, and observation.
 ---
 
 ## The complete idea
 
-```ts
-await document.modelContext?.registerTool({
-  name: "cancel-order",
-  description: "Cancels one order owned by the signed-in customer.",
-  inputSchema,
-  execute: guard(cancelOrder, {
-    context: currentSession,
-    authorize: ({ input, context }) =>
-      context.userId === ownerOf(input.orderId),
-    idempotency: {
-      key: ({ input, context }) => `${context.userId}:${input.orderId}:cancel`,
-      store: durableStore,
-    },
-    verify: ({ output }) => output.state === "cancelled",
-  }),
-});
+```text
+existing function or endpoint
+  -> clear, validated tool
+  -> native WebMCP exposure
+  -> local inspection and tests
+  -> real agent use
+  -> optional production controls
 ```
 
-The browser owns WebMCP discovery and invocation. Your application owns identity,
-policy, data, and business logic. Signet stays at that boundary.
+Signet is pre-release. The current package implements the optional execution-control
+slice and a native reference integration. Tool authoring, lifecycle-aware exposure,
+and developer inspection are the next milestones.

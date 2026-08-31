@@ -2,21 +2,49 @@
 
 ## Product boundary
 
-Signet is execution control for native WebMCP handlers, not an alternate agent protocol or application framework.
+Signet helps applications expose capabilities to agents through native WebMCP. It is
+developer tooling around the standard, not an alternate agent protocol, application
+framework, or production browser polyfill.
 
-The wrapper must remain:
+The toolkit should remain:
 
-1. **Native-first.** A site registers tools through `document.modelContext.registerTool()` and uses the official WebMCP types.
-2. **Ejectable.** Removing `guard(handler, options)` reveals the original handler without a rewrite.
-3. **App-owned.** Identity, policy, storage, confirmation UI, validation, and business logic remain application concerns.
-4. **Fail-closed.** A failed context or authorization check prevents the side effect. An unverified result is not reported as success.
-5. **Cancellation-safe.** The browser's `AbortSignal` is propagated unchanged. Signet does not pretend aborting proves a side effect did not occur.
-6. **Private by default.** Core has no network behavior, timers, global patches, or automatic telemetry.
-7. **Composable by interfaces.** Durable idempotency and observability are ports, not bundled infrastructure.
+1. **Native-first.** Tools register through `document.modelContext.registerTool()` and
+   retain official WebMCP fields and behavior.
+2. **Capability-oriented.** Start from functions and endpoints the application already
+   owns, then design reusable tools around real user journeys.
+3. **Inspectable.** A developer can see the exact tool inventory, schemas, annotations,
+   lifecycle, calls, and local results available to an agent.
+4. **Agent-tested.** Tests cover discovery, selection, arguments, continuation, and
+   authoritative outcomes in addition to TypeScript behavior.
+5. **Progressively hardened.** Public reads remain simple. Authenticated or mutating
+   tools add only the execution controls they need.
+6. **Application-owned.** Identity, policy, storage, confirmation UI, validation, and
+   business logic remain application concerns.
+7. **Ejectable.** Definitions and generated code stay understandable and usable without
+   a hosted Signet runtime.
+8. **Private by default.** No network behavior, global patches, or production input and
+   output capture occurs implicitly.
 
-## Execution order
+## Exposure path
 
-`guard()` performs a fixed, inspectable sequence:
+The target product path is:
+
+```text
+application function or endpoint
+  -> native-shaped tool definition and runtime validation
+  -> explicit WebMCP registration and lifecycle
+  -> local inspection and deterministic tests
+  -> native browser and agent evaluation
+  -> optional execution controls
+```
+
+Signet may make native registration easier, but it must not conceal origin options,
+registration signals, execution signals, schemas, annotations, or unsupported-browser
+status.
+
+## Optional execution controls
+
+The current `guard()` performs a fixed sequence when a tool warrants it:
 
 ```text
 resolve app context
@@ -26,25 +54,30 @@ resolve app context
   -> return
 ```
 
-Cancellation is checked before context resolution, after context resolution, and before verification. The underlying handler receives the same signal and is responsible for passing it to fetches or other cancellable work.
+The underlying handler receives the original execution signal. Backend validation and
+authorization remain authoritative. Idempotency depends on a correctly scoped key and
+an injected store with appropriate durability; it is not an exactly-once claim.
 
-## Explicit non-goals for the first release
+## Explicit non-goals for the first exposure release
 
-- Defining or registering WebMCP tools
-- Inferring JSON Schema from TypeScript
+- Inferring a production mutation from a website crawl
+- Inventing a Signet discovery protocol or mandatory response envelope
 - Providing a production browser polyfill
-- Retrying state-changing operations
-- Treating client authorization as sufficient
-- Owning confirmation or checkout UX
-- Shipping a hosted control plane
+- Retrying state-changing operations automatically
+- Treating browser-side authorization as sufficient
+- Owning confirmation, checkout, or conversational UX
+- Shipping a hosted control plane or registry
+- Supporting multiple agent protocols before a real integration asks for one
 - Claiming exactly-once execution
-
-Idempotency means the injected store provides atomic duplicate suppression for a correctly scoped key. The key should normally include the principal, operation, resource, and relevant version. Exactly-once behavior across every downstream system is not generally achievable.
 
 ## Conditions for adding an abstraction
 
-A new core feature must satisfy all three:
+A new public abstraction must:
 
-1. It appears in at least three independent production integrations.
-2. It cannot be implemented as clearly in application code or an adapter package.
-3. It can be removed without changing WebMCP tool definitions or business logic.
+1. enable inspection/testing or remove repeated defects in a real integration;
+2. preserve the underlying WebMCP contract and application handler;
+3. have a clear removal story;
+4. remain narrower than the application concern it coordinates.
+
+Framework adapters, generators, lint rules, and new protocol adapters additionally need
+evidence from multiple applications before they become stable surface area.

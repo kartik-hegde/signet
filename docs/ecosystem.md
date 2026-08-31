@@ -10,7 +10,10 @@ The current WebMCP proposal exposes the imperative API at `document.modelContext
 
 Sources: [WebMCP explainer](https://github.com/webmachinelearning/webmcp/blob/main/README.md), [living specification](https://webmachinelearning.github.io/webmcp/), [official TypeScript declarations](https://github.com/webmachinelearning/webmcp-types).
 
-Decision: Signet never owns registration or lifecycle. It uses the browser surface directly and recommends the official `webmcp-types` package.
+Decision: Signet uses the browser surface directly and recommends the official
+`webmcp-types` package. A thin exposure helper may coordinate explicit application
+lifecycle, but native registration options, signals, and support status must remain
+visible.
 
 ### JSON Schema
 
@@ -36,7 +39,11 @@ The SDK offers `defineTool`, registration helpers, intent/source metadata, track
 
 Sources: [SDK](https://www.npmjs.com/package/@nekuda/webmcp-sdk), [webmcp-kit](https://github.com/nekuda-ai/webmcp-kit), [WindTunnel](https://github.com/nekuda-ai/WindTunnel).
 
-Lesson: migration assistance and browser verification are valuable, but a second tool-definition model creates coupling. Signet keeps native WebMCP as the source of truth. Unlike the inspected SDK package, Signet has no import-time analytics or default-on usage reporting.
+Lesson: migration assistance and browser verification are valuable. A definition
+helper earns its place only if it stays native-shaped and enables validation,
+inspection, or testing beyond a plain object literal. Native WebMCP remains the source
+of truth. Unlike the inspected SDK package, Signet has no import-time analytics or
+default-on usage reporting.
 
 ### MCP-B packages
 
@@ -60,10 +67,19 @@ OpenTiny's work spans WebMCP polyfills, bridges, remote browser control, and dev
 
 Source: [OpenTiny NEXT SDK](https://github.com/opentiny/next-sdk).
 
-Lesson: browser control and native in-page tools solve adjacent fallback paths. Signet's core is only the trusted execution boundary; migration and browser testing can become separate projects.
+Lesson: browser control and native in-page tools solve adjacent fallback paths. Signet
+focuses on the application-to-tool workflow and uses browser automation only for
+development and compatibility testing.
 
 ## Competitive thesis
 
-WebMCP standardizes how an agent reaches a page capability. It does not, by itself, prove that a consequential action was authorized for this principal, deduplicated durably, or actually reached its intended postcondition. That is Signet's narrow opening.
+WebMCP standardizes how a page registers a capability. Signet is useful only if it
+makes the full developer loop better: designing the right tools, validating inputs,
+managing application-driven availability, inspecting what agents see, testing real
+discovery and invocation, and progressively hardening consequential actions.
 
-The defensible product is not this wrapper alone. It is the evidence and integrations accumulated from real production actions: durable store adapters, policy integrations, verification patterns, conformance fixtures, and eventually operational tooling. The open-source core should remain small enough that developers trust it and can leave it.
+The defensible product is not a wrapper around `registerTool()` or `execute`. It is the
+workflow and evidence accumulated across real integrations: tool-design findings,
+lifecycle patterns, conformance and agent-use fixtures, compatibility data, and later
+operational controls. The open-source surface should remain small enough that
+developers understand it and can leave it.

@@ -8,60 +8,114 @@ interface DomainResult {
   readonly available: boolean;
 }
 
-const idempotency = new MemoryIdempotencyStore();
+interface ReservationResult {
+  readonly reservationId: string;
+  readonly domain: string;
+  readonly state: "reserved";
+}
 
-// Production code should use the application's durable store and authenticated
-// backend. Record<string, unknown> matches the official WebMCP callback type;
-// the handler validates and narrows untrusted agent input at the boundary.
-const searchDomain: Execute<Record<string, unknown>, DomainResult> = guard(
+// Start with a capability the application already owns. WebMCP callback input is
+// untrusted, so the handler validates it before calling the backend.
+const searchDomain: WebMCP.ToolExecuteCallback = async (input, { signal }) => {
+  if (typeof input.domain !== "string" || input.domain.length === 0) {
+    throw new TypeError("domain must be a non-empty string");
+  }
+
+  const response = await fetch(
+    `/api/domains/${encodeURIComponent(input.domain)}`,
+    { signal },
+  );
+  if (!response.ok) throw new Error(`Domain search failed: ${response.status}`);
+  return response.json() as Promise<DomainResult>;
+};
+
+// Add execution controls only to the consequential action. The in-memory store keeps
+// this example self-contained; production code needs an application-owned durable
+// store and authoritative backend enforcement.
+const reserveDomain: Execute<
+  Record<string, unknown>,
+  ReservationResult
+> = guard(
   async (input, { signal }) => {
     if (typeof input.domain !== "string" || input.domain.length === 0) {
       throw new TypeError("domain must be a non-empty string");
     }
 
-    const response = await fetch(
-      `/api/domains/${encodeURIComponent(input.domain)}`,
-      { signal },
-    );
+    const response = await fetch("/api/domain-reservations", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ domain: input.domain }),
+      signal,
+    });
     if (!response.ok)
-      throw new Error(`Domain search failed: ${response.status}`);
-    return response.json() as Promise<DomainResult>;
+      throw new Error(`Domain reservation failed: ${response.status}`);
+    return response.json() as Promise<ReservationResult>;
   },
   {
-    name: "search-domain",
-    context: () => ({ signedIn: true }),
-    authorize: ({ context }) => context.signedIn,
+    name: "reserve_domain",
+    context: () => currentSession(),
+    authorize: ({ context }) => context.canReserveDomains,
     idempotency: {
-      key: ({ input }) => `search:${String(input.domain).toLowerCase()}`,
-      store: idempotency,
+      key: ({ input, context }) =>
+        `${context.userId}:${String(input.domain).toLowerCase()}:reserve`,
+      store: new MemoryIdempotencyStore(),
     },
-    verify: ({ input, output }) => output.domain === input.domain,
+    verify: ({ input, output }) =>
+      output.domain === input.domain && output.state === "reserved",
   },
 );
 
 const registration = new AbortController();
 
-await document.modelContext?.registerTool(
-  {
-    name: "search-domain",
-    title: "Search domain availability",
-    description:
-      "Checks whether one exact domain name is available to register.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        domain: {
-          type: "string",
-          description: "A fully qualified domain name, such as example.com.",
+await Promise.all([
+  document.modelContext?.registerTool(
+    {
+      name: "search_domains",
+      title: "Search domain availability",
+      description:
+        "Checks whether one exact domain name is currently available to reserve.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          domain: {
+            type: "string",
+            description: "A fully qualified domain name, such as example.com.",
+          },
         },
+        required: ["domain"],
+        additionalProperties: false,
       },
-      required: ["domain"],
-      additionalProperties: false,
+      annotations: { readOnlyHint: true },
+      execute: searchDomain,
     },
-    annotations: { readOnlyHint: true },
-    execute: searchDomain,
-  },
-  { signal: registration.signal },
-);
+    { signal: registration.signal },
+  ),
+  document.modelContext?.registerTool(
+    {
+      name: "reserve_domain",
+      title: "Reserve a domain",
+      description:
+        "Reserves one available domain for the signed-in user without purchasing it.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          domain: {
+            type: "string",
+            description: "A fully qualified, currently available domain name.",
+          },
+        },
+        required: ["domain"],
+        additionalProperties: false,
+      },
+      execute: reserveDomain,
+    },
+    { signal: registration.signal },
+  ),
+]);
 
-// Later: registration.abort() unregisters the tool using native WebMCP lifecycle.
+// Later: registration.abort() unregisters both tools using native WebMCP lifecycle.
+
+declare function currentSession(): {
+  readonly userId: string;
+  readonly canReserveDomains: boolean;
+};
