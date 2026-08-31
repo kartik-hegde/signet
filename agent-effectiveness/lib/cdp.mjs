@@ -36,6 +36,7 @@ export class CdpClient {
   constructor(url) {
     this.nextId = 1;
     this.pending = new Map();
+    this.listeners = new Map();
     this.socket = new WebSocket(url);
   }
 
@@ -46,7 +47,12 @@ export class CdpClient {
     });
     this.socket.addEventListener("message", (event) => {
       const message = JSON.parse(event.data);
-      if (!message.id) return;
+      if (!message.id) {
+        for (const listener of this.listeners.get(message.method) ?? []) {
+          listener(message.params ?? {});
+        }
+        return;
+      }
       const pending = this.pending.get(message.id);
       if (!pending) return;
       this.pending.delete(message.id);
@@ -81,6 +87,16 @@ export class CdpClient {
       throw new Error(detail || response.exceptionDetails.text);
     }
     return response.result.value;
+  }
+
+  on(method, listener) {
+    const listeners = this.listeners.get(method) ?? new Set();
+    listeners.add(listener);
+    this.listeners.set(method, listeners);
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) this.listeners.delete(method);
+    };
   }
 
   close() {

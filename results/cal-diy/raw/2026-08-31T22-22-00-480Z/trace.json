@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 2,
+  "condition": "webmcp_signet",
+  "startedAt": "2026-08-31T22:22:02.913Z",
+  "events": [
+    {
+      "at": "2026-08-31T22:22:02.913Z",
+      "type": "server_ready"
+    },
+    {
+      "at": "2026-08-31T22:22:02.916Z",
+      "type": "tool_inventory",
+      "tools": [
+        {
+          "name": "book_event",
+          "description": "Create one booking for an available start time on the active Cal.diy page. Inspect the event and list slots first. Reuse operationId only when retrying the exact same booking intent.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "operationId": {
+                "type": "string",
+                "minLength": 8
+              },
+              "expectedEventTypeId": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "expectedDurationMinutes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "startTime": {
+                "type": "string",
+                "minLength": 20
+              },
+              "timeZone": {
+                "type": "string",
+                "minLength": 1
+              },
+              "attendeeName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "attendeeEmail": {
+                "type": "string",
+                "minLength": 3
+              },
+              "notes": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "operationId",
+              "expectedEventTypeId",
+              "expectedDurationMinutes",
+              "startTime",
+              "timeZone",
+              "attendeeName",
+              "attendeeEmail"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "inspect_event",
+          "description": "Read the active Cal.diy event type, organizer, duration, and pricing.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "untrustedContentHint": false
+          }
+        },
+        {
+          "name": "list_available_slots",
+          "description": "List authoritative start times currently offered by the active Cal.diy booking page. Times are ISO 8601 instants.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50
+              }
+            },
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "untrustedContentHint": false
+          }
+        }
+      ]
+    }
+  ]
+}

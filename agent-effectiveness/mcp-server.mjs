@@ -18,16 +18,49 @@ if (!options.cdp || !options.condition || !options.trace) {
 
 const condition = options.condition;
 const tracePath = resolve(options.trace);
-const cdp = new CdpClient(options.cdp);
-await cdp.connect();
-await cdp.send("Runtime.enable");
-
 const trace = {
   schemaVersion: 2,
   condition,
   startedAt: new Date().toISOString(),
   events: [],
 };
+const cdp = new CdpClient(options.cdp);
+await cdp.connect();
+await cdp.send("Runtime.enable");
+await cdp.send("Page.enable");
+
+const nativeTools = new Map();
+const nativeResponses = new Map();
+const nativeResponseWaiters = new Map();
+let nativeWebMcp = false;
+cdp.on("WebMCP.toolsAdded", ({ tools }) => {
+  for (const tool of tools) nativeTools.set(tool.name, tool);
+});
+cdp.on("WebMCP.toolsRemoved", ({ tools }) => {
+  for (const tool of tools) nativeTools.delete(tool.name);
+});
+cdp.on("WebMCP.toolResponded", (response) => {
+  const waiter = nativeResponseWaiters.get(response.invocationId);
+  if (waiter) {
+    nativeResponseWaiters.delete(response.invocationId);
+    waiter(response);
+    return;
+  }
+  nativeResponses.set(response.invocationId, response);
+});
+if (options["accept-dialogs"] === "true") {
+  cdp.on("Page.javascriptDialogOpening", ({ message }) => {
+    record({ type: "approval_dialog", message });
+    void cdp.send("Page.handleJavaScriptDialog", { accept: true });
+  });
+}
+try {
+  await cdp.send("WebMCP.enable");
+  nativeWebMcp = true;
+} catch {
+  // Older Chrome versions use the in-page testing surface below.
+}
+
 let references = new Map();
 let inventoryRecorded = false;
 
@@ -94,6 +127,20 @@ const pageTools = [
 ];
 
 async function liveWebMcpTools() {
+  if (nativeWebMcp && nativeTools.size > 0) {
+    return [...nativeTools.values()].map((tool) => ({
+      name: tool.name,
+      title: tool.title,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      annotations: tool.annotations
+        ? {
+            readOnlyHint: tool.annotations.readOnly,
+            untrustedContentHint: tool.annotations.untrustedContent,
+          }
+        : undefined,
+    }));
+  }
   const serialized =
     await cdp.evaluate(`document.modelContext.getTools().then(tools => JSON.stringify(tools.map(tool => ({
     name: tool.name,
@@ -239,8 +286,11 @@ async function executeWebMcpTool(name, input) {
   const lifecycleOffset = await cdp.evaluate(
     "(window.__signetGuardEvents || []).length",
   );
-  const execution = await withTimeout(
-    cdp.evaluate(`(async () => {
+  const nativeTool = nativeTools.get(name);
+  const execution = nativeTool
+    ? await invokeNativeTool(nativeTool, name, input)
+    : await withTimeout(
+        cdp.evaluate(`(async () => {
     const tools = await document.modelContext.getTools();
     const tool = tools.find(candidate => candidate.name === ${JSON.stringify(name)});
     if (!tool) throw new Error('Native WebMCP tool is not registered: ' + ${JSON.stringify(name)});
@@ -254,9 +304,9 @@ async function executeWebMcpTool(name, input) {
       }
     }
   })()`),
-    20_000,
-    `WebMCP tool ${name}`,
-  );
+        20_000,
+        `WebMCP tool ${name}`,
+      );
   const durationMs = Math.round((performance.now() - started) * 100) / 100;
   const lifecycle = await cdp.evaluate(
     `(window.__signetGuardEvents || []).slice(${lifecycleOffset})`,
@@ -273,6 +323,40 @@ async function executeWebMcpTool(name, input) {
   });
   if (!execution.ok) throw new Error(execution.error);
   return execution.result;
+}
+
+async function invokeNativeTool(tool, name, input) {
+  const { invocationId } = await cdp.send("WebMCP.invokeTool", {
+    frameId: tool.frameId,
+    toolName: name,
+    input,
+  });
+  const response = await waitForNativeResponse(invocationId, name);
+  if (response.status === "Completed") {
+    return { ok: true, result: response.output };
+  }
+  return {
+    ok: false,
+    error: response.errorText || `${name} failed with ${response.status}.`,
+  };
+}
+
+function waitForNativeResponse(invocationId, name) {
+  const buffered = nativeResponses.get(invocationId);
+  if (buffered) {
+    nativeResponses.delete(invocationId);
+    return Promise.resolve(buffered);
+  }
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      nativeResponseWaiters.delete(invocationId);
+      reject(new Error(`WebMCP tool ${name} timed out after 30000 ms.`));
+    }, 30_000);
+    nativeResponseWaiters.set(invocationId, (response) => {
+      clearTimeout(timeout);
+      resolve(response);
+    });
+  });
 }
 
 function withTimeout(promise, timeoutMs, label) {
