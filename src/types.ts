@@ -34,6 +34,11 @@ export interface IdempotencyResult<Output> {
 }
 
 export interface IdempotencyStore {
+  /**
+   * Coalesces equal keys. Once this call starts `operation`, a successful
+   * operation must be persisted and returned even if its caller is aborted.
+   * A caller joining existing work may stop waiting without cancelling it.
+   */
   execute<Output>(
     key: string,
     operation: () => Promise<Output>,
@@ -133,6 +138,9 @@ export interface GuardOptions<
     readonly recovered: boolean;
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | VerificationDecision>;
+
+  /** Bounds verification without reusing the caller's cancellation signal. */
+  readonly verifyTimeoutMs?: number;
 
   /** Warns when serialized results exceed this byte budget. */
   readonly outputBudgetBytes?: number;

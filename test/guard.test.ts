@@ -490,6 +490,59 @@ describe("guard", () => {
     ]);
   });
 
+  it("returns an idempotent result when cancellation loses to execution", async () => {
+    const controller = new AbortController();
+    const cancelled = new Error("cancelled after the effect");
+    const events: GuardEvent[] = [];
+    let effects = 0;
+    const guarded = guard(
+      async () => {
+        effects += 1;
+        controller.abort(cancelled);
+        return { state: "complete" as const };
+      },
+      {
+        idempotency: {
+          key: () => "operation-1",
+          store: new MemoryIdempotencyStore(),
+        },
+        observe: (event) => {
+          events.push(event);
+        },
+      },
+    );
+
+    await expect(guarded({}, { signal: controller.signal })).resolves.toEqual({
+      state: "complete",
+    });
+    expect(effects).toBe(1);
+    expect(events.map(({ stage }) => stage)).toEqual([
+      "started",
+      "executed",
+      "completed_after_abort",
+      "succeeded",
+    ]);
+  });
+
+  it("bounds verification with an independent finalization deadline", async () => {
+    let verificationSignal: AbortSignal | undefined;
+    const guarded = guard(async () => ({ state: "complete" }), {
+      verifyTimeoutMs: 5,
+      verify: async ({ signal }) => {
+        verificationSignal = signal;
+        await new Promise(() => undefined);
+        return true;
+      },
+    });
+
+    await expect(guarded({}, active())).rejects.toMatchObject({
+      name: "VerificationError",
+      code: "verification_failed",
+      message: "Verification timed out.",
+    });
+    expect(verificationSignal?.aborted).toBe(true);
+  });
+
   it("preserves application errors and emits metadata without inputs or outputs", async () => {
     const events: GuardEvent[] = [];
     const failure = new Error("upstream failed");
@@ -626,7 +679,7 @@ describe("MemoryIdempotencyStore", () => {
     expect(operation).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps in-flight work keyed when one caller stops waiting", async () => {
+  it("lets a duplicate caller stop waiting without cancelling owner work", async () => {
     const store = new MemoryIdempotencyStore();
     const controller = new AbortController();
     let finish: ((value: string) => void) | undefined;
@@ -637,19 +690,18 @@ describe("MemoryIdempotencyStore", () => {
         }),
     );
 
-    const first = store.execute("same-operation", operation, {
+    const first = store.execute("same-operation", operation, active());
+    await Promise.resolve();
+    const second = store.execute("same-operation", operation, {
       signal: controller.signal,
     });
-    await Promise.resolve();
     controller.abort(new Error("caller stopped waiting"));
-    await expect(first).rejects.toThrow("caller stopped waiting");
-
-    const second = store.execute("same-operation", operation, active());
+    await expect(second).rejects.toThrow("caller stopped waiting");
     finish?.("complete");
 
-    await expect(second).resolves.toEqual({
+    await expect(first).resolves.toEqual({
       value: "complete",
-      replayed: true,
+      replayed: false,
     });
     expect(operation).toHaveBeenCalledOnce();
   });

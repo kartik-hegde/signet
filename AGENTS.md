@@ -78,9 +78,11 @@ hooks only when the workflow needs them.
   (for example, `status === "open"`) inside `execute`; otherwise a valid replay can be
   denied before its stored result is returned.
 - `idempotency.store.execute(key, operation, { signal })` must atomically coalesce
-  equal keys and return `{ value, replayed }`. Include principal, operation ID, and
-  every intent-changing argument in the key. Signet intentionally ships no durable
-  production store. Use `checkIdempotencyStore()` to verify an adapter.
+  equal keys and return `{ value, replayed }`. Once a call starts `operation`, its
+  successful result wins a late abort and must be persisted and returned; callers
+  joining existing work may cancel their own wait. Include principal, operation ID,
+  and every intent-changing argument in the key. Signet intentionally ships no
+  durable production store. Use `checkIdempotencyStore()` to verify an adapter.
 - `confirm({ input, context, signal })` lets the application obtain consent after
   authorization and before any idempotency lookup. Signet does not render the UI.
 - `execute(input, { context, signal })` runs at most once per store operation. Signet
@@ -90,8 +92,8 @@ hooks only when the workflow needs them.
   return `{ recovered: false }`. It never conceals idempotency-store failures.
 - `verify({ input, output, context, replayed, recovered, signal })` runs after execute,
   replay, or recovery. False throws `VerificationError`. After execution, its fresh
-  finalization signal is not cancelled by the caller; network verifiers should impose
-  their own timeout and must settle.
+  finalization signal is not cancelled by the caller. Set `verifyTimeoutMs` to bound
+  verification; the supplied signal then aborts at that deadline.
 - `outputBudgetBytes` warns and emits `output_oversized` when a serialized result
   exceeds its budget. It never converts a completed operation into failure.
 - `observe(event)` receives metadata only. Stages include `registering`, `registered`,

@@ -72,7 +72,9 @@ idempotency?: {
 ```
 
 The key must not be empty. The store atomically executes or returns a prior result and
-reports whether it was replayed.
+reports whether it was replayed. Once a call starts the operation, it must persist and
+return successful owner work despite a late caller abort. A caller joining existing
+work may cancel its own wait.
 
 ### `verify`
 
@@ -84,10 +86,12 @@ verify?: ({ input, output, context, replayed, recovered, signal }) =>
 ```
 
 A false decision throws `VerificationError` after execution, replay, or recovery.
-Once execution completes, verification receives a fresh, non-aborted finalization
-signal so late caller cancellation cannot misreport a real effect as cancelled. The
-verifier must settle and should apply an application-owned timeout to network reads;
-the original invocation signal will not cancel this finalization step.
+Once execution completes, verification receives an independent finalization signal so
+late caller cancellation cannot misreport a real effect as cancelled. Set the optional
+positive integer `verifyTimeoutMs` to bound this stage; Signet rejects at that deadline
+with `VerificationError` and aborts the signal supplied to the verifier. Without it,
+the verifier must settle on its own. The original invocation signal never cancels
+finalization.
 
 ### `recover`
 

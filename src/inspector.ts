@@ -25,6 +25,13 @@ export function mountSignetInspector<Context>(
   const events: GuardEvent[] = [];
   const maxEvents = options.maxEvents ?? 50;
   const render = (): void => {
+    const openTools = new Set(
+      Array.from(
+        shadow.querySelectorAll<HTMLDetailsElement>("details[open]"),
+        (details) => details.dataset.tool,
+      ),
+    );
+    const scrollTop = host.scrollTop;
     shadow.innerHTML = `<style>${styles}</style><main><header>Signet</header>${renderTools(
       signet.tools(),
     )}<h2>Lifecycle</h2><ol>${events
@@ -33,6 +40,12 @@ export function mountSignetInspector<Context>(
           `<li><b>${escape(event.name ?? "registration")}</b> ${escape(event.stage)} <time>${event.durationMs.toFixed(1)}ms</time></li>`,
       )
       .join("")}</ol></main>`;
+    for (const details of Array.from(
+      shadow.querySelectorAll<HTMLDetailsElement>("details[data-tool]"),
+    )) {
+      details.open = openTools.has(details.dataset.tool);
+    }
+    host.scrollTop = scrollTop;
   };
   const stop = signet.observe((event) => {
     events.unshift(event);
@@ -55,7 +68,7 @@ function renderTools(tools: readonly SignetToolSnapshot[]): string {
   return tools
     .map(
       (tool) =>
-        `<details><summary>${escape(tool.name)} <small>${escape(tool.status)}</small></summary><p>${escape(tool.description)}</p><pre>${escape(JSON.stringify({ inputSchema: tool.inputSchema, annotations: tool.annotations, exposedTo: tool.exposedTo }, null, 2))}</pre></details>`,
+        `<details data-tool="${escape(tool.name)}"><summary>${escape(tool.name)} <small>${escape(tool.status)}</small></summary><p>${escape(tool.description)}</p><pre>${escape(JSON.stringify({ inputSchema: tool.inputSchema, annotations: tool.annotations, exposedTo: tool.exposedTo }, null, 2))}</pre></details>`,
     )
     .join("");
 }

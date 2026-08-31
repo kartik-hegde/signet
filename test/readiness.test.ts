@@ -135,4 +135,60 @@ describe("tool readiness", () => {
     ]);
     expect(() => assertToolReady(tool)).toThrow("inputSchema.properties.query");
   });
+
+  it("checks nested objects, array items, alternatives, and definitions", () => {
+    const diagnostics = checkToolReadiness({
+      name: "search_records",
+      description: "Find matching records and return their identifiers.",
+      annotations: { readOnlyHint: true },
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          filters: {
+            type: "array",
+            description: "Filters applied to the search.",
+            maxItems: 5,
+            items: {
+              type: "object",
+              properties: {
+                value: {
+                  type: "string",
+                  description: "Value required by the filter.",
+                },
+              },
+            },
+          },
+          selector: {
+            description: "Selector used to find records.",
+            oneOf: [{ type: "string" }, { $ref: "#/$defs/selector" }],
+          },
+        },
+        $defs: {
+          selector: { type: "string" },
+        },
+      },
+    });
+
+    expect(diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "closed_input",
+          path: "inputSchema.properties.filters.items.additionalProperties",
+        }),
+        expect.objectContaining({
+          code: "unbounded_string",
+          path: "inputSchema.properties.filters.items.properties.value",
+        }),
+        expect.objectContaining({
+          code: "unbounded_string",
+          path: "inputSchema.properties.selector.oneOf.0",
+        }),
+        expect.objectContaining({
+          code: "unbounded_string",
+          path: "inputSchema.$defs.selector",
+        }),
+      ]),
+    );
+  });
 });

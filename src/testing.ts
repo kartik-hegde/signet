@@ -81,7 +81,9 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
       }
     });
 
-    return { value: await waitFor(pending, options.signal), replayed: false };
+    // The owner has started the operation. Its completed result wins a late
+    // cancellation; callers joining the same promise may still stop waiting.
+    return { value: await pending, replayed: false };
   }
 
   clear(): void {
@@ -95,23 +97,39 @@ export interface IdempotencyConformanceResult {
     "runs distinct keys concurrently",
     "evicts failures",
     "honors pre-aborted calls",
+    "returns completed owner work after late abort",
   ];
+}
+
+export interface IdempotencyConformanceOptions {
+  /** Time allowed for distinct operations to start; raise for remote stores. */
+  readonly concurrencyTimeoutMs?: number;
 }
 
 /** Verifies the concurrency and failure semantics required by Signet stores. */
 export async function checkIdempotencyStore(
   createStore: () => IdempotencyStore,
+  options: IdempotencyConformanceOptions = {},
 ): Promise<IdempotencyConformanceResult> {
-  await checkEqualKeys(createStore());
-  await checkDistinctKeys(createStore());
-  await checkFailureEviction(createStore());
-  await checkPreAbort(createStore());
+  const run = crypto.randomUUID();
+  const key = (name: string): string => `signet:${run}:${name}`;
+  await checkEqualKeys(createStore(), key("same"));
+  await checkDistinctKeys(
+    createStore(),
+    key("first"),
+    key("second"),
+    options.concurrencyTimeoutMs ?? 1_000,
+  );
+  await checkFailureEviction(createStore(), key("retry"));
+  await checkPreAbort(createStore(), key("aborted"));
+  await checkLateAbort(createStore(), key("late-abort"));
   return {
     passed: [
       "coalesces equal keys",
       "runs distinct keys concurrently",
       "evicts failures",
       "honors pre-aborted calls",
+      "returns completed owner work after late abort",
     ],
   };
 }
@@ -120,7 +138,10 @@ const active = (): ExecuteOptions => ({
   signal: new AbortController().signal,
 });
 
-async function checkEqualKeys(store: IdempotencyStore): Promise<void> {
+async function checkEqualKeys(
+  store: IdempotencyStore,
+  key: string,
+): Promise<void> {
   let calls = 0;
   let release: (() => void) | undefined;
   const gate = new Promise<void>((resolve) => {
@@ -131,8 +152,8 @@ async function checkEqualKeys(store: IdempotencyStore): Promise<void> {
     await gate;
     return 7;
   };
-  const first = store.execute("same", operation, active());
-  const second = store.execute("same", operation, active());
+  const first = store.execute(key, operation, active());
+  const second = store.execute(key, operation, active());
   await Promise.resolve();
   release?.();
   const results = await Promise.all([first, second]);
@@ -146,8 +167,17 @@ async function checkEqualKeys(store: IdempotencyStore): Promise<void> {
   }
 }
 
-async function checkDistinctKeys(store: IdempotencyStore): Promise<void> {
+async function checkDistinctKeys(
+  store: IdempotencyStore,
+  firstKey: string,
+  secondKey: string,
+  timeoutMs: number,
+): Promise<void> {
   const started = new Set<string>();
+  let bothStarted: (() => void) | undefined;
+  const concurrent = new Promise<void>((resolve) => {
+    bothStarted = resolve;
+  });
   let release: (() => void) | undefined;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -157,26 +187,29 @@ async function checkDistinctKeys(store: IdempotencyStore): Promise<void> {
       key,
       async () => {
         started.add(key);
+        if (started.size === 2) bothStarted?.();
         await gate;
         return key;
       },
       active(),
     );
-  const first = run("first");
-  const second = run("second");
-  await Promise.resolve();
-  await Promise.resolve();
+  const first = run(firstKey);
+  const second = run(secondKey);
+  const startedConcurrently = await resolvesWithin(concurrent, timeoutMs);
   release?.();
   await Promise.all([first, second]);
-  if (started.size !== 2) {
+  if (!startedConcurrently) {
     throw new Error("Idempotency store must not serialize distinct keys.");
   }
 }
 
-async function checkFailureEviction(store: IdempotencyStore): Promise<void> {
+async function checkFailureEviction(
+  store: IdempotencyStore,
+  key: string,
+): Promise<void> {
   const failure = new Error("expected conformance failure");
   await store
-    .execute("retry", async () => Promise.reject(failure), active())
+    .execute(key, async () => Promise.reject(failure), active())
     .then(
       () => {
         throw new Error("Idempotency store concealed an operation failure.");
@@ -185,24 +218,23 @@ async function checkFailureEviction(store: IdempotencyStore): Promise<void> {
         if (error !== failure) throw error;
       },
     );
-  const retry = await store.execute(
-    "retry",
-    () => Promise.resolve("ok"),
-    active(),
-  );
+  const retry = await store.execute(key, () => Promise.resolve("ok"), active());
   if (retry.value !== "ok" || retry.replayed) {
     throw new Error("Idempotency store must evict failed operations.");
   }
 }
 
-async function checkPreAbort(store: IdempotencyStore): Promise<void> {
+async function checkPreAbort(
+  store: IdempotencyStore,
+  key: string,
+): Promise<void> {
   const controller = new AbortController();
   const reason = new Error("expected conformance abort");
   controller.abort(reason);
   let called = false;
   await store
     .execute(
-      "aborted",
+      key,
       () => {
         called = true;
         return Promise.resolve();
@@ -220,6 +252,60 @@ async function checkPreAbort(store: IdempotencyStore): Promise<void> {
   if (called) {
     throw new Error("Idempotency store ran a pre-aborted operation.");
   }
+}
+
+async function checkLateAbort(
+  store: IdempotencyStore,
+  key: string,
+): Promise<void> {
+  const controller = new AbortController();
+  let markStarted: (() => void) | undefined;
+  let finish: (() => void) | undefined;
+  const started = new Promise<void>((resolve) => {
+    markStarted = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const pending = store.execute(
+    key,
+    async () => {
+      markStarted?.();
+      await gate;
+      return "complete";
+    },
+    { signal: controller.signal },
+  );
+  await started;
+  controller.abort(new Error("expected conformance late abort"));
+  finish?.();
+  let result: IdempotencyResult<string>;
+  try {
+    result = await pending;
+  } catch (error) {
+    throw new Error(
+      "Idempotency store must return completed owner work after a late abort.",
+      { cause: error },
+    );
+  }
+  if (result.value !== "complete" || result.replayed) {
+    throw new Error(
+      "Idempotency store must return completed owner work after a late abort.",
+    );
+  }
+}
+
+function resolvesWithin(
+  promise: Promise<void>,
+  timeoutMs: number,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve(false), timeoutMs);
+    void promise.then(() => {
+      clearTimeout(timeout);
+      resolve(true);
+    });
+  });
 }
 
 function waitFor<Output>(

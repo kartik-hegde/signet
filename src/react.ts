@@ -11,14 +11,14 @@ export function useSignetTool<
 >(
   signet: SignetInterface<Context>,
   tool: SignetTool<Input, Output, Context>,
-  dependencies: DependencyList = [],
+  dependencies: DependencyList,
 ): ToolBindingState {
   const [state, setState] = useState<ToolBindingState>({
     status: "registering",
   });
   useEffect(
     () => bindSignetTool(signet, tool, setState),
-    // The caller explicitly controls when a closure-backed tool is rebound.
+    // Requiring this list prevents silently freezing a first-render closure.
     [signet, ...dependencies],
   );
   return state;

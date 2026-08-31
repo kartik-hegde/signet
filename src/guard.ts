@@ -189,6 +189,7 @@ export async function runGuarded<
 
     const executeOrRecover = async (): Promise<Output> => {
       try {
+        executeOptions.signal.throwIfAborted();
         return await execute(input, { ...executeOptions, context });
       } catch (error) {
         const decision = await recoverFrom(error);
@@ -256,15 +257,32 @@ export async function runGuarded<
       // Once the application reports completion, cancellation has lost the race.
       // Verification finalizes the observed outcome and must not be cancelled into
       // an ordinary failure after the effect already exists.
-      const finalizationSignal = new AbortController().signal;
-      const decision = await options.verify({
-        input,
-        output,
-        context,
-        replayed,
-        recovered,
-        signal: finalizationSignal,
-      });
+      const finalizationSignal =
+        options.verifyTimeoutMs === undefined
+          ? new AbortController().signal
+          : AbortSignal.timeout(options.verifyTimeoutMs);
+      const verification = Promise.resolve(
+        options.verify({
+          input,
+          output,
+          context,
+          replayed,
+          recovered,
+          signal: finalizationSignal,
+        }),
+      );
+      let decision: boolean | VerificationDecision;
+      try {
+        decision =
+          options.verifyTimeoutMs === undefined
+            ? await verification
+            : await waitFor(verification, finalizationSignal);
+      } catch (error) {
+        if (finalizationSignal.aborted) {
+          throw new VerificationError("Verification timed out.");
+        }
+        throw error;
+      }
 
       if (!isVerified(decision)) {
         throw new VerificationError(verificationFailureReason(decision));
@@ -280,6 +298,29 @@ export async function runGuarded<
   } catch (error) {
     emit("failed", error);
     throw error;
+  }
+}
+
+async function waitFor<Value>(
+  value: Promise<Value>,
+  signal: AbortSignal,
+): Promise<Value> {
+  signal.throwIfAborted();
+  let notifyAbort = (): void => undefined;
+  const aborted = new Promise<void>((resolve) => {
+    notifyAbort = resolve;
+  });
+  signal.addEventListener("abort", notifyAbort, { once: true });
+  try {
+    return await Promise.race([
+      value,
+      aborted.then((): Value => {
+        signal.throwIfAborted();
+        throw new Error("Verification deadline elapsed without aborting.");
+      }),
+    ]);
+  } finally {
+    signal.removeEventListener("abort", notifyAbort);
   }
 }
 

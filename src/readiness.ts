@@ -39,15 +39,7 @@ export function checkToolReadiness(
     );
   }
   const schema = tool.inputSchema as Schema;
-  if (schema.additionalProperties !== false) {
-    add(
-      diagnostics,
-      "closed_input",
-      "inputSchema.additionalProperties",
-      "Set additionalProperties to false to catch invented arguments.",
-    );
-  }
-  inspectSchema(schema, "inputSchema", diagnostics);
+  inspectSchema(schema, "inputSchema", diagnostics, new WeakSet(), true);
 
   const verb = tool.name.split("_")[0] ?? "";
   if (readVerbs.has(verb) && tool.annotations?.readOnlyHint !== true) {
@@ -89,7 +81,22 @@ function inspectSchema(
   schema: Schema,
   path: string,
   diagnostics: ToolDiagnostic[],
+  seen: WeakSet<object>,
+  root = false,
 ): void {
+  if (seen.has(schema)) return;
+  seen.add(schema);
+  if (
+    (root || schema.type === "object" || isSchemaMap(schema.properties)) &&
+    schema.additionalProperties !== false
+  ) {
+    add(
+      diagnostics,
+      "closed_input",
+      `${path}.additionalProperties`,
+      "Set additionalProperties to false to catch invented arguments.",
+    );
+  }
   const properties = schema.properties;
   if (isSchemaMap(properties)) {
     for (const [name, property] of Object.entries(properties)) {
@@ -102,7 +109,7 @@ function inspectSchema(
           "Describe what the agent should provide.",
         );
       }
-      inspectSchema(property, propertyPath, diagnostics);
+      inspectSchema(property, propertyPath, diagnostics, seen);
     }
   }
   if (
@@ -125,10 +132,55 @@ function inspectSchema(
       "Add maxItems to bound agent-controlled lists.",
     );
   }
+  inspectChild(schema.items, `${path}.items`, diagnostics, seen);
+  inspectChildren(schema.prefixItems, `${path}.prefixItems`, diagnostics, seen);
+  for (const keyword of ["allOf", "anyOf", "oneOf"] as const) {
+    inspectChildren(schema[keyword], `${path}.${keyword}`, diagnostics, seen);
+  }
+  for (const keyword of ["not", "if", "then", "else"] as const) {
+    inspectChild(schema[keyword], `${path}.${keyword}`, diagnostics, seen);
+  }
+  for (const keyword of ["$defs", "definitions"] as const) {
+    const definitions = schema[keyword];
+    if (!isSchemaMap(definitions)) continue;
+    for (const [name, definition] of Object.entries(definitions)) {
+      inspectSchema(
+        definition,
+        `${path}.${keyword}.${name}`,
+        diagnostics,
+        seen,
+      );
+    }
+  }
+}
+
+function inspectChild(
+  value: unknown,
+  path: string,
+  diagnostics: ToolDiagnostic[],
+  seen: WeakSet<object>,
+): void {
+  if (isSchema(value)) inspectSchema(value, path, diagnostics, seen);
+}
+
+function inspectChildren(
+  value: unknown,
+  path: string,
+  diagnostics: ToolDiagnostic[],
+  seen: WeakSet<object>,
+): void {
+  if (!Array.isArray(value)) return;
+  value.forEach((child, index) =>
+    inspectChild(child, `${path}.${index}`, diagnostics, seen),
+  );
+}
+
+function isSchema(value: unknown): value is Schema {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isSchemaMap(value: unknown): value is Record<string, Schema> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return isSchema(value);
 }
 
 function add(

@@ -88,6 +88,7 @@ export interface SignetTool<
     readonly signal: AbortSignal;
   }) => MaybePromise<RecoveryDecision<Output>>;
   readonly outputBudgetBytes?: number;
+  readonly verifyTimeoutMs?: number;
   readonly verify?: (args: {
     readonly input: Input;
     readonly output: Output;
@@ -151,6 +152,7 @@ function validateDefinition(tool: {
   description: string;
   inputSchema: object;
   outputBudgetBytes?: number;
+  verifyTimeoutMs?: number;
 }): void {
   if (!/^[A-Za-z0-9_.-]{1,128}$/.test(tool.name)) {
     throw definitionError(
@@ -173,6 +175,12 @@ function validateDefinition(tool: {
       tool.outputBudgetBytes <= 0)
   ) {
     throw definitionError("outputBudgetBytes must be a positive integer.");
+  }
+  if (
+    tool.verifyTimeoutMs !== undefined &&
+    (!Number.isSafeInteger(tool.verifyTimeoutMs) || tool.verifyTimeoutMs <= 0)
+  ) {
+    throw definitionError("verifyTimeoutMs must be a positive integer.");
   }
 }
 
@@ -336,6 +344,9 @@ export function createSignet<Context = undefined>(
             ...(tool.outputBudgetBytes === undefined
               ? {}
               : { outputBudgetBytes: tool.outputBudgetBytes }),
+            ...(tool.verifyTimeoutMs === undefined
+              ? {}
+              : { verifyTimeoutMs: tool.verifyTimeoutMs }),
             ...(tool.verify ? { verify: tool.verify } : {}),
             ...(observers.size > 0 ? { observe: dispatch } : {}),
           },
