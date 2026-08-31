@@ -1,0 +1,980 @@
+From 9ad3ccc1baf7d1de1c8aff86f5be3a2cd7724be4 Mon Sep 17 00:00:00 2001
+From: kartik-hegde <hegdekartik7@gmail.com>
+Date: Mon, 31 Aug 2026 16:51:33 -0400
+Subject: [PATCH] feat: add Signet-guarded Saleor checkout tools
+
+---
+ .env.signet.example                           |  10 +
+ AGENTS.md                                     |   4 +-
+ next.config.js                                |  10 +
+ package.json                                  |   1 +
+ pnpm-lock.yaml                                |   3 +
+ src/app/(checkout)/actions.ts                 |  92 +++
+ src/checkout/checkout-app.tsx                 |   2 +
+ .../signet/indexed-db-idempotency-store.ts    | 116 ++++
+ src/checkout/signet/signet-checkout-tools.tsx | 608 ++++++++++++++++++
+ 9 files changed, 844 insertions(+), 2 deletions(-)
+ create mode 100644 .env.signet.example
+ create mode 100644 src/checkout/signet/indexed-db-idempotency-store.ts
+ create mode 100644 src/checkout/signet/signet-checkout-tools.tsx
+
+diff --git a/.env.signet.example b/.env.signet.example
+new file mode 100644
+index 0000000..3ce7c81
+--- /dev/null
++++ b/.env.signet.example
+@@ -0,0 +1,10 @@
++NEXT_PUBLIC_SALEOR_API_URL=http://localhost:8000/graphql/
++NEXT_PUBLIC_STOREFRONT_URL=http://localhost:3000
++NEXT_PUBLIC_DEFAULT_CHANNEL=default-channel
++STOREFRONT_CHANNELS=default-channel
++NEXT_PUBLIC_DEFAULT_LOCALE=en
++NEXT_PUBLIC_STOREFRONT_LOCALES=en
++CONTENT_PROVIDER=code
++ALLOW_DUMMY_PAYMENT=true
++NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT=true
++NEXT_PUBLIC_SIGNET_DEMO=true
+diff --git a/AGENTS.md b/AGENTS.md
+index a567c4c..00955b1 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -58,8 +58,8 @@ External skills are pinned in `skills-lock.json`; run `pnpm skills:bootstrap` af
+ 
+ # This is NOT the Next.js you know
+ 
+-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
++This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+ 
+-**Keep this block, including in commits.** It is part of the project's agent setup, maintained by `next dev` for every agent that works here. If it appears as an uncommitted change, that is intentional — commit it as-is. Do not remove it to clean up a diff; it will be regenerated.
++This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+ 
+ <!-- END:nextjs-agent-rules -->
+diff --git a/next.config.js b/next.config.js
+index 3bdcf07..98f0004 100644
+--- a/next.config.js
++++ b/next.config.js
+@@ -1,5 +1,7 @@
+ /** @type {import('next').NextConfig} */
+ import createNextIntlPlugin from "next-intl/plugin";
++import path from "node:path";
++import { fileURLToPath } from "node:url";
+ import { paperCacheLifeProfiles } from "./src/lib/cache-life-profiles.data.mjs";
+ import {
+ 	PUBLIC_ASSET_CACHE_CONTROL,
+@@ -12,6 +14,7 @@ const allowedDevOrigins = process.env.ALLOWED_DEV_ORIGINS?.split(",")
+ 	.filter(Boolean);
+ 
+ const isDevelopment = process.env.NODE_ENV === "development";
++const projectDirectory = path.dirname(fileURLToPath(import.meta.url));
+ 
+ /** Host of the configured Saleor instance — self-hosted deploys serve media from it. */
+ function saleorApiHostname() {
+@@ -64,6 +67,13 @@ const config = {
+ 	// See: https://nextjs.org/docs/app/getting-started/cache-components
+ 	cacheComponents: true,
+ 
++	// The Signet demo consumes the locally built package from the adjacent repository.
++	// Turbopack otherwise treats the storefront directory as a hard filesystem boundary.
++	turbopack: {
++		root: path.resolve(projectDirectory, ".."),
++	},
++	transpilePackages: ["@signet/webmcp"],
++
+ 	// Next.js 16.3 — prefetch one reusable loading shell per route (not per link).
+ 	// See: https://nextjs.org/blog/next-16-3-instant-navigations
+ 	partialPrefetching: true,
+diff --git a/package.json b/package.json
+index 05e91a1..5ad1f71 100644
+--- a/package.json
++++ b/package.json
+@@ -57,6 +57,7 @@
+ 		"@radix-ui/react-popover": "1.1.15",
+ 		"@radix-ui/react-select": "2.2.6",
+ 		"@saleor/auth-sdk": "1.0.3",
++		"@signet/webmcp": "link:../signet",
+ 		"@stripe/react-stripe-js": "6.6.0",
+ 		"@stripe/stripe-js": "9.8.0",
+ 		"@vercel/speed-insights": "1.3.1",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 66093a4..491e52a 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -32,6 +32,9 @@ importers:
+       '@saleor/auth-sdk':
+         specifier: 1.0.3
+         version: 1.0.3(next@16.3.3(@babel/core@7.28.6)(@playwright/test@1.55.0)(@types/node@24.12.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(urql@4.0.6(graphql@16.8.1)(react@19.2.7))
++      '@signet/webmcp':
++        specifier: link:../signet
++        version: link:../signet
+       '@stripe/react-stripe-js':
+         specifier: 6.6.0
+         version: 6.6.0(@stripe/stripe-js@9.8.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+diff --git a/src/app/(checkout)/actions.ts b/src/app/(checkout)/actions.ts
+index 3607f76..51728c7 100644
+--- a/src/app/(checkout)/actions.ts
++++ b/src/app/(checkout)/actions.ts
+@@ -80,6 +80,7 @@ import {
+ import { getStripePaymentGuardError, isStripePaymentEnabled } from "@/checkout/lib/payment/providers/stripe";
+ import { buildMarketingConsentMetadata } from "@/checkout/lib/marketing-consent";
+ import { fetchCheckoutOnServer } from "@/checkout/lib/server/fetch-checkout";
++import { fetchOrderOnServer } from "@/checkout/lib/server/fetch-order";
+ import { getCheckoutServerTranslations } from "@/checkout/lib/server/get-checkout-server-translations";
+ import { toCheckoutActionResult } from "@/checkout/lib/server/mutation-result";
+ import { toTypedDocument } from "@/checkout/lib/server/to-typed-document";
+@@ -609,6 +610,97 @@ export async function runCheckoutComplete(checkoutId: string): Promise<CheckoutC
+ 	return { ok: true, orderId };
+ }
+ 
++/**
++ * Compatibility path for the legacy dummy-payment plugin shipped by the
++ * pinned local Saleor 3.23 stack. Newer Saleor installations use the
++ * transactionInitialize app flow handled by the normal storefront payment
++ * adapter. The gateway is intentionally fixed and the server re-reads the
++ * total before accepting the test payment.
++ */
++export async function executeSignetLegacyDummyPayment(
++	checkoutId: string,
++	expectedAmount: number,
++): Promise<CheckoutCompleteActionResult> {
++	if (!isDummyPaymentAllowed()) {
++		return { ok: false, error: "Test payment is not available in this environment." };
++	}
++
++	const live = await fetchCheckoutOnServer(checkoutId);
++	if (!live.ok || !live.checkout) {
++		return { ok: false, error: "Saleor could not verify the checkout before payment." };
++	}
++
++	const liveAmount = getCheckoutPayAmount(live.checkout);
++	if (liveAmount === null || hasMaterialCheckoutTotalChange(liveAmount, expectedAmount)) {
++		return { ok: false, error: "The checkout total changed before payment." };
++	}
++
++	type LegacyPaymentCreate = {
++		checkoutPaymentCreate?: {
++			errors: Array<{ field?: string | null; message?: string | null; code?: string | null }>;
++			payment?: { id: string } | null;
++		} | null;
++	};
++
++	const payment = await executeRawGraphQL<LegacyPaymentCreate>({
++		query: `mutation SignetLegacyPayment($id: ID!, $amount: PositiveDecimal!) {
++			checkoutPaymentCreate(
++				id: $id
++				input: { amount: $amount, gateway: "mirumee.payments.dummy", token: "dummy" }
++			) {
++				payment { id }
++				errors { field message code }
++			}
++		}`,
++		variables: { id: checkoutId, amount: expectedAmount },
++	});
++
++	if (!payment.ok) {
++		return { ok: false, error: payment.error.message };
++	}
++
++	const payload = payment.data.checkoutPaymentCreate;
++	if (!payload?.payment || payload.errors.length > 0) {
++		return {
++			ok: false,
++			error: payload?.errors[0]?.message ?? "Saleor rejected the legacy dummy payment.",
++		};
++	}
++
++	return runCheckoutComplete(checkoutId);
++}
++
++export type SignetOrderProof = {
++	orderId: string;
++	number: string;
++	email: string;
++	isPaid: boolean;
++	lineCount: number;
++	totalAmount: number;
++	currency: string;
++};
++
++/**
++ * Authoritative order read used by the Signet verification and recovery hooks.
++ * The browser never treats a mutation response as proof that checkout completed.
++ */
++export async function getSignetOrderProof(orderId: string): Promise<SignetOrderProof | null> {
++	const order = await fetchOrderOnServer(orderId);
++	if (!order) {
++		return null;
++	}
++
++	return {
++		orderId: order.id,
++		number: order.number,
++		email: order.userEmail ?? "",
++		isPaid: order.isPaid,
++		lineCount: order.lines.reduce((total, line) => total + line.quantity, 0),
++		totalAmount: order.total.gross.amount,
++		currency: order.total.gross.currency,
++	};
++}
++
+ export async function getAddressValidationRules(
+ 	countryCode: CountryCode,
+ ): Promise<AddressValidationRulesActionResult> {
+diff --git a/src/checkout/checkout-app.tsx b/src/checkout/checkout-app.tsx
+index 3cb6643..9d5d2df 100644
+--- a/src/checkout/checkout-app.tsx
++++ b/src/checkout/checkout-app.tsx
+@@ -22,6 +22,7 @@ import { CheckoutStepUrlGuard } from "@/checkout/components/checkout-step-url-gu
+ import { StripeCheckoutCompletionHost } from "@/checkout/components/payment/stripe/stripe-checkout-completion-host";
+ import { CheckoutLoadingFallback } from "@/checkout/views/saleor-checkout";
+ import { CheckoutCrashFallback } from "@/checkout/views/page-not-found";
++import { SignetCheckoutTools } from "@/checkout/signet/signet-checkout-tools";
+ import "./index.css";
+ 
+ // Composition root: payment modules and CheckoutDataProvider reach Saleor only
+@@ -70,6 +71,7 @@ export function CheckoutApp({
+ 							shippingCountries={shippingCountries}
+ 						>
+ 							<CheckoutContentProvider content={checkoutContent}>
++								<SignetCheckoutTools />
+ 								<CheckoutPaymentReturnErrorProvider>
+ 									<Suspense fallback={null}>
+ 										<StripeCheckoutCompletionHost />
+diff --git a/src/checkout/signet/indexed-db-idempotency-store.ts b/src/checkout/signet/indexed-db-idempotency-store.ts
+new file mode 100644
+index 0000000..e93586a
+--- /dev/null
++++ b/src/checkout/signet/indexed-db-idempotency-store.ts
+@@ -0,0 +1,116 @@
++import type { ExecuteOptions, IdempotencyResult, IdempotencyStore } from "@signet/webmcp";
++
++const DATABASE_NAME = "saleor-signet";
++const STORE_NAME = "completed-operations";
++const DATABASE_VERSION = 1;
++
++type StoredOperation = {
++	key: string;
++	value: unknown;
++	completedAt: string;
++};
++
++function openDatabase(): Promise<IDBDatabase> {
++	return new Promise((resolve, reject) => {
++		const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
++		request.onupgradeneeded = () => {
++			if (!request.result.objectStoreNames.contains(STORE_NAME)) {
++				request.result.createObjectStore(STORE_NAME, { keyPath: "key" });
++			}
++		};
++		request.onsuccess = () => resolve(request.result);
++		request.onerror = () => reject(request.error ?? new Error("Unable to open the Signet operation store."));
++	});
++}
++
++async function readOperation<Output>(key: string): Promise<Output | undefined> {
++	const database = await openDatabase();
++	try {
++		return await new Promise<Output | undefined>((resolve, reject) => {
++			const request = database.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).get(key);
++			request.onsuccess = () =>
++				resolve((request.result as StoredOperation | undefined)?.value as Output | undefined);
++			request.onerror = () =>
++				reject(request.error ?? new Error("Unable to read the Signet operation store."));
++		});
++	} finally {
++		database.close();
++	}
++}
++
++async function writeOperation<Output>(key: string, value: Output): Promise<void> {
++	const database = await openDatabase();
++	try {
++		await new Promise<void>((resolve, reject) => {
++			const transaction = database.transaction(STORE_NAME, "readwrite");
++			transaction.objectStore(STORE_NAME).put({
++				key,
++				value,
++				completedAt: new Date().toISOString(),
++			} satisfies StoredOperation);
++			transaction.oncomplete = () => resolve();
++			transaction.onerror = () =>
++				reject(transaction.error ?? new Error("Unable to save the Signet operation."));
++			transaction.onabort = () =>
++				reject(transaction.error ?? new Error("Saving the Signet operation was aborted."));
++		});
++	} finally {
++		database.close();
++	}
++}
++
++/**
++ * Persists completed operations for the lifetime of this browser profile and
++ * uses the Web Locks API to coalesce equal intent across tabs.
++ */
++export class IndexedDbIdempotencyStore implements IdempotencyStore {
++	readonly #pending = new Map<string, Promise<unknown>>();
++
++	async execute<Output>(
++		key: string,
++		operation: () => Promise<Output>,
++		options: ExecuteOptions,
++	): Promise<IdempotencyResult<Output>> {
++		options.signal.throwIfAborted();
++
++		const pending = this.#pending.get(key) as Promise<Output> | undefined;
++		if (pending) {
++			return { value: await pending, replayed: true };
++		}
++
++		const run = this.#executeLocked(key, operation, options);
++		this.#pending.set(
++			key,
++			run.then((result) => result.value),
++		);
++		try {
++			return await run;
++		} finally {
++			this.#pending.delete(key);
++		}
++	}
++
++	async #executeLocked<Output>(
++		key: string,
++		operation: () => Promise<Output>,
++		options: ExecuteOptions,
++	): Promise<IdempotencyResult<Output>> {
++		const execute = async (): Promise<IdempotencyResult<Output>> => {
++			options.signal.throwIfAborted();
++			const saved = await readOperation<Output>(key);
++			if (saved !== undefined) {
++				return { value: saved, replayed: true };
++			}
++
++			const value = await operation();
++			await writeOperation(key, value);
++			return { value, replayed: false };
++		};
++
++		if (navigator.locks) {
++			return navigator.locks.request(`signet:${key}`, { signal: options.signal }, execute);
++		}
++
++		return execute();
++	}
++}
+diff --git a/src/checkout/signet/signet-checkout-tools.tsx b/src/checkout/signet/signet-checkout-tools.tsx
+new file mode 100644
+index 0000000..c2c8518
+--- /dev/null
++++ b/src/checkout/signet/signet-checkout-tools.tsx
+@@ -0,0 +1,608 @@
++"use client";
++
++import { useCallback, useEffect, useMemo, useState } from "react";
++import { Bot, Check, CircleAlert, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
++
++import { createSignet, type GuardEvent, type SignetTool } from "@signet/webmcp";
++import { useSignetTool } from "@signet/webmcp/react";
++
++import {
++	calculateDeliveryOptions,
++	executeSignetLegacyDummyPayment,
++	getSignetOrderProof,
++	updateCheckoutBillingAddress,
++	updateCheckoutDeliveryMethod,
++	updateCheckoutEmail,
++	updateCheckoutShippingAddress,
++	type SignetOrderProof,
++} from "@/app/(checkout)/actions";
++import type { AddressInput, CountryCode } from "@/checkout/graphql/generated/operations";
++import type { ServerCheckout } from "@/checkout/lib/checkout-types";
++import { executePayment, resolvePaymentProvider } from "@/checkout/lib/payment";
++import { getCheckoutPayAmount, getCheckoutPayCurrency } from "@/checkout/lib/payment/checkout-pay-amount";
++import { useCheckoutGatewayMessages } from "@/checkout/hooks/use-checkout-gateway-messages";
++import { useCheckoutData } from "@/checkout/providers/checkout-data";
++import { cn } from "@/lib/utils";
++
++import { IndexedDbIdempotencyStore } from "./indexed-db-idempotency-store";
++
++const RECOVERY_PREFIX = "saleor-signet:order:";
++const LOST_RESPONSE_FAULT = "saleor-signet:fault:lost-response";
++
++type CheckoutContext = {
++	checkoutId: string | null;
++	channel: string | null;
++	email: string | null;
++	lineCount: number;
++	totalAmount: number | null;
++	currency: string | null;
++};
++
++type ContactInput = {
++	operationId: string;
++	email: string;
++	firstName: string;
++	lastName: string;
++	streetAddress1: string;
++	streetAddress2?: string;
++	city: string;
++	countryArea: string;
++	postalCode: string;
++	countryCode: string;
++	phone?: string;
++};
++
++type DeliveryInput = {
++	operationId: string;
++	deliveryId: string;
++};
++
++type PlaceOrderInput = {
++	operationId: string;
++	expectedTotalAmount: number;
++	expectedCurrency: string;
++};
++
++type ApprovalRequest = {
++	title: string;
++	detail: string;
++	resolve: (confirmed: boolean) => void;
++};
++
++type OrderResult = SignetOrderProof & { status: "placed" };
++
++class CheckoutSnapshot {
++	#checkout: ServerCheckout | null = null;
++
++	update(checkout: ServerCheckout | null): void {
++		this.#checkout = checkout;
++	}
++
++	read(): ServerCheckout | null {
++		return this.#checkout;
++	}
++}
++
++function checkoutContext(checkout: ServerCheckout | null): CheckoutContext {
++	return {
++		checkoutId: checkout?.id ?? null,
++		channel: checkout?.channel.slug ?? null,
++		email: checkout?.email ?? null,
++		lineCount: checkout?.lines.reduce((total, line) => total + line.quantity, 0) ?? 0,
++		totalAmount: checkout ? getCheckoutPayAmount(checkout) : null,
++		currency: checkout ? getCheckoutPayCurrency(checkout) : null,
++	};
++}
++
++function currentCheckout(checkout: ServerCheckout | null): ServerCheckout {
++	if (!checkout) {
++		throw new Error("There is no active Saleor checkout on this page.");
++	}
++	return checkout;
++}
++
++function toAddressInput(input: ContactInput): AddressInput {
++	return {
++		firstName: input.firstName,
++		lastName: input.lastName,
++		streetAddress1: input.streetAddress1,
++		streetAddress2: input.streetAddress2 ?? "",
++		city: input.city,
++		countryArea: input.countryArea,
++		postalCode: input.postalCode,
++		country: input.countryCode as CountryCode,
++		phone: input.phone ?? "",
++	};
++}
++
++function shippingAddressInput(checkout: ServerCheckout): AddressInput | null {
++	const address = checkout.shippingAddress;
++	if (!address) return null;
++	return {
++		firstName: address.firstName,
++		lastName: address.lastName,
++		companyName: address.companyName,
++		streetAddress1: address.streetAddress1,
++		streetAddress2: address.streetAddress2,
++		city: address.city,
++		cityArea: address.cityArea,
++		countryArea: address.countryArea,
++		postalCode: address.postalCode,
++		country: address.country.code as CountryCode,
++		phone: address.phone,
++	};
++}
++
++function nearlyEqual(left: number, right: number): boolean {
++	return Math.abs(left - right) < 0.005;
++}
++
++function eventTone(stage: GuardEvent["stage"]): string {
++	if (stage === "failed") return "text-destructive";
++	if (stage === "succeeded" || stage === "verified" || stage === "recovered") return "text-success";
++	return "text-muted-foreground";
++}
++
++export function SignetCheckoutTools() {
++	const { checkout, refreshCheckout, setCheckout } = useCheckoutData();
++	const gatewayMessages = useCheckoutGatewayMessages();
++	const checkoutState = useMemo(() => new CheckoutSnapshot(), []);
++	useEffect(() => {
++		checkoutState.update(checkout);
++	}, [checkout, checkoutState]);
++
++	const [events, setEvents] = useState<GuardEvent[]>([]);
++	const [proof, setProof] = useState({ recovered: false, replayed: false });
++	const [approval, setApproval] = useState<ApprovalRequest | null>(null);
++	const [faultArmed, setFaultArmed] = useState(false);
++	const idempotencyStore = useMemo(() => new IndexedDbIdempotencyStore(), []);
++	const readContext = useCallback(() => checkoutContext(checkoutState.read()), [checkoutState]);
++	const observe = useCallback((event: GuardEvent) => {
++		setEvents((current) => [event, ...current].slice(0, 12));
++		if (event.stage === "recovered") {
++			setProof((current) => ({ ...current, recovered: true }));
++		}
++		if (event.stage === "replayed") {
++			setProof((current) => ({ ...current, replayed: true }));
++		}
++	}, []);
++
++	const signet = useMemo(
++		() =>
++			createSignet<CheckoutContext>({
++				context: readContext,
++				observe,
++				unsupported: "warn",
++			}),
++		[observe, readContext],
++	);
++
++	const requestApproval = useCallback((title: string, detail: string): Promise<boolean> => {
++		if (process.env.NEXT_PUBLIC_SIGNET_AUTO_CONFIRM === "true") {
++			return Promise.resolve(true);
++		}
++		return new Promise<boolean>((resolve) => setApproval({ title, detail, resolve }));
++	}, []);
++
++	const decideApproval = useCallback((confirmed: boolean) => {
++		setApproval((current) => {
++			current?.resolve(confirmed);
++			return null;
++		});
++	}, []);
++
++	const inspectTool = useMemo<SignetTool<Record<string, never>, CheckoutContext, CheckoutContext>>(
++		() => ({
++			name: "inspect_checkout",
++			title: "Inspect checkout",
++			description:
++				"Read the active Saleor checkout, including line count, customer email, current total, and currency. Call this before making checkout changes.",
++			inputSchema: { type: "object", properties: {}, additionalProperties: false },
++			annotations: { readOnlyHint: true },
++			execute: () => checkoutContext(checkoutState.read()),
++		}),
++		[checkoutState],
++	);
++
++	const contactTool = useMemo<SignetTool<ContactInput, CheckoutContext, CheckoutContext>>(
++		() => ({
++			name: "set_checkout_contact",
++			title: "Set checkout contact and shipping address",
++			description:
++				"Set the guest email and shipping address on the active Saleor checkout. Use a fresh operationId for a new intent and reuse it only when retrying the exact same change.",
++			inputSchema: {
++				type: "object",
++				properties: {
++					operationId: { type: "string", minLength: 8 },
++					email: { type: "string", minLength: 3 },
++					firstName: { type: "string", minLength: 1 },
++					lastName: { type: "string", minLength: 1 },
++					streetAddress1: { type: "string", minLength: 1 },
++					streetAddress2: { type: "string" },
++					city: { type: "string", minLength: 1 },
++					countryArea: { type: "string", minLength: 1 },
++					postalCode: { type: "string", minLength: 1 },
++					countryCode: { type: "string", pattern: "^[A-Z]{2}$" },
++					phone: { type: "string" },
++				},
++				required: [
++					"operationId",
++					"email",
++					"firstName",
++					"lastName",
++					"streetAddress1",
++					"city",
++					"countryArea",
++					"postalCode",
++					"countryCode",
++				],
++				additionalProperties: false,
++			},
++			authorize: ({ context }) => ({
++				allowed: context.checkoutId !== null,
++				reason: "No active checkout is available to update.",
++			}),
++			idempotency: {
++				store: idempotencyStore,
++				key: ({ input, context }) =>
++					`${context.checkoutId}:${input.operationId}:contact:${JSON.stringify([
++						input.email,
++						input.firstName,
++						input.lastName,
++						input.streetAddress1,
++						input.streetAddress2 ?? "",
++						input.city,
++						input.countryArea,
++						input.postalCode,
++						input.countryCode,
++						input.phone ?? "",
++					])}`,
++			},
++			execute: async (input) => {
++				const active = currentCheckout(checkoutState.read());
++				const emailResult = await updateCheckoutEmail(active.id, input.email);
++				if (!emailResult.ok) throw new Error(emailResult.error ?? "Saleor rejected the checkout email.");
++
++				const addressResult = await updateCheckoutShippingAddress(active.id, toAddressInput(input), false);
++				if (!addressResult.ok) {
++					throw new Error(addressResult.error ?? "Saleor rejected the shipping address.");
++				}
++
++				const fresh = await refreshCheckout();
++				if (!fresh) throw new Error("Saleor did not return the updated checkout.");
++				setCheckout(fresh);
++				return checkoutContext(fresh);
++			},
++			verify: async ({ input }) => {
++				const fresh = await refreshCheckout({ updateState: false });
++				return (
++					fresh?.email === input.email &&
++					fresh.shippingAddress?.postalCode === input.postalCode &&
++					fresh.shippingAddress.country.code === input.countryCode
++				);
++			},
++		}),
++		[checkoutState, idempotencyStore, refreshCheckout, setCheckout],
++	);
++
++	const deliveryOptionsTool = useMemo<
++		SignetTool<Record<string, never>, { deliveries: Array<Record<string, unknown>> }, CheckoutContext>
++	>(
++		() => ({
++			name: "list_delivery_options",
++			title: "List delivery options",
++			description:
++				"Calculate the currently eligible Saleor delivery options after the shipping address has been set.",
++			inputSchema: { type: "object", properties: {}, additionalProperties: false },
++			annotations: { readOnlyHint: true },
++			execute: async () => {
++				const active = currentCheckout(checkoutState.read());
++				const result = await calculateDeliveryOptions(active.id);
++				if (!result.ok) throw new Error(result.error ?? "Saleor could not calculate delivery options.");
++				return {
++					deliveries: result.deliveries.map((delivery) => ({
++						deliveryId: delivery.id,
++						name: delivery.shippingMethod?.name ?? "Delivery",
++						price: delivery.shippingMethod?.price.amount ?? null,
++						currency: delivery.shippingMethod?.price.currency ?? null,
++						minimumDays: delivery.shippingMethod?.minimumDeliveryDays ?? null,
++						maximumDays: delivery.shippingMethod?.maximumDeliveryDays ?? null,
++					})),
++				};
++			},
++		}),
++		[checkoutState],
++	);
++
++	const deliveryTool = useMemo<SignetTool<DeliveryInput, CheckoutContext, CheckoutContext>>(
++		() => ({
++			name: "select_delivery_option",
++			title: "Select delivery option",
++			description:
++				"Select one eligible deliveryId returned by list_delivery_options for the active Saleor checkout.",
++			inputSchema: {
++				type: "object",
++				properties: {
++					operationId: { type: "string", minLength: 8 },
++					deliveryId: { type: "string", minLength: 1 },
++				},
++				required: ["operationId", "deliveryId"],
++				additionalProperties: false,
++			},
++			authorize: ({ context }) => ({
++				allowed: context.checkoutId !== null,
++				reason: "No active checkout is available to update.",
++			}),
++			idempotency: {
++				store: idempotencyStore,
++				key: ({ input, context }) =>
++					`${context.checkoutId}:${input.operationId}:delivery:${input.deliveryId}`,
++			},
++			execute: async ({ deliveryId }) => {
++				const active = currentCheckout(checkoutState.read());
++				const result = await updateCheckoutDeliveryMethod(active.id, deliveryId);
++				if (!result.ok) throw new Error(result.error ?? "Saleor rejected the delivery option.");
++				const fresh = await refreshCheckout();
++				if (!fresh) throw new Error("Saleor did not return the updated checkout.");
++				setCheckout(fresh);
++				return checkoutContext(fresh);
++			},
++			verify: async ({ input }) => {
++				const fresh = await refreshCheckout({ updateState: false });
++				return fresh?.delivery?.id === input.deliveryId;
++			},
++		}),
++		[checkoutState, idempotencyStore, refreshCheckout, setCheckout],
++	);
++
++	const placeOrderTool = useMemo<SignetTool<PlaceOrderInput, OrderResult, CheckoutContext>>(
++		() => ({
++			name: "place_order",
++			title: "Place order",
++			description:
++				"Charge the configured local test-payment gateway and convert the active Saleor checkout into one order. First inspect the checkout and provide the exact expected total and currency. Requires explicit shopper approval.",
++			inputSchema: {
++				type: "object",
++				properties: {
++					operationId: { type: "string", minLength: 8 },
++					expectedTotalAmount: { type: "number", minimum: 0 },
++					expectedCurrency: { type: "string", pattern: "^[A-Z]{3}$" },
++				},
++				required: ["operationId", "expectedTotalAmount", "expectedCurrency"],
++				additionalProperties: false,
++			},
++			authorize: ({ context }) => ({
++				allowed: context.checkoutId !== null,
++				reason: "No active checkout is available to place.",
++			}),
++			confirm: ({ input, context }) =>
++				requestApproval(
++					"Approve this test order?",
++					`${context.lineCount} item${context.lineCount === 1 ? "" : "s"} · ${input.expectedCurrency} ${input.expectedTotalAmount.toFixed(2)} · ${context.email ?? "guest checkout"}`,
++				),
++			idempotency: {
++				store: idempotencyStore,
++				key: ({ input, context }) =>
++					`${context.checkoutId}:${input.operationId}:place:${input.expectedCurrency}:${input.expectedTotalAmount.toFixed(2)}`,
++			},
++			execute: async (input) => {
++				const active = currentCheckout(checkoutState.read());
++				const fresh = await refreshCheckout({ updateState: false });
++				if (!fresh) throw new Error("Saleor could not refresh the checkout before payment.");
++
++				const amount = getCheckoutPayAmount(fresh);
++				const currency = getCheckoutPayCurrency(fresh);
++				if (amount === null || currency === null) throw new Error("The live Saleor total is unavailable.");
++				if (!nearlyEqual(amount, input.expectedTotalAmount) || currency !== input.expectedCurrency) {
++					throw new Error(
++						`Checkout total changed to ${currency} ${amount.toFixed(2)}; approval is required again.`,
++					);
++				}
++
++				const billingAddress = shippingAddressInput(fresh);
++				if (!billingAddress) throw new Error("Set a shipping address before placing the order.");
++				if (!fresh.delivery && fresh.isShippingRequired) {
++					throw new Error("Select a delivery option before placing the order.");
++				}
++
++				const billingResult = await updateCheckoutBillingAddress({
++					checkoutId: active.id,
++					billingAddress,
++					saveAddress: false,
++				});
++				if (!billingResult.ok) throw new Error(billingResult.error ?? "Saleor rejected the billing address.");
++
++				const paymentProvider = resolvePaymentProvider(fresh.availablePaymentGateways);
++				const paymentResult =
++					paymentProvider.type === "dummy" && paymentProvider.gateway.id === "mirumee.payments.dummy"
++						? await executeSignetLegacyDummyPayment(fresh.id, amount)
++						: await executePayment(paymentProvider, { checkoutId: fresh.id, amount }, gatewayMessages);
++				if (!paymentResult.ok) throw new Error(paymentResult.error);
++
++				sessionStorage.setItem(`${RECOVERY_PREFIX}${input.operationId}`, paymentResult.orderId);
++				if (sessionStorage.getItem(LOST_RESPONSE_FAULT) === "armed") {
++					sessionStorage.removeItem(LOST_RESPONSE_FAULT);
++					setFaultArmed(false);
++					throw new Error("Injected lost response after Saleor committed the order.");
++				}
++
++				const proof = await getSignetOrderProof(paymentResult.orderId);
++				if (!proof) throw new Error("The order response arrived but authoritative verification failed.");
++				return { ...proof, status: "placed" };
++			},
++			recover: async ({ input }) => {
++				const orderId = sessionStorage.getItem(`${RECOVERY_PREFIX}${input.operationId}`);
++				if (!orderId) return { recovered: false };
++				const proof = await getSignetOrderProof(orderId);
++				return proof ? { recovered: true, output: { ...proof, status: "placed" } } : { recovered: false };
++			},
++			verify: async ({ input, output, context }) => {
++				const proof = await getSignetOrderProof(output.orderId);
++				return (
++					proof?.isPaid === true &&
++					proof.email === context.email &&
++					proof.lineCount === context.lineCount &&
++					proof.currency === input.expectedCurrency &&
++					nearlyEqual(proof.totalAmount, input.expectedTotalAmount)
++				);
++			},
++			outputBudgetBytes: 2048,
++		}),
++		[checkoutState, gatewayMessages, idempotencyStore, refreshCheckout, requestApproval],
++	);
++
++	const inspectState = useSignetTool(signet, inspectTool, []);
++	const contactState = useSignetTool(signet, contactTool, [contactTool]);
++	const optionsState = useSignetTool(signet, deliveryOptionsTool, []);
++	const deliveryState = useSignetTool(signet, deliveryTool, [deliveryTool]);
++	const orderState = useSignetTool(signet, placeOrderTool, [placeOrderTool]);
++
++	const armFault = useCallback(() => {
++		sessionStorage.setItem(LOST_RESPONSE_FAULT, "armed");
++		setFaultArmed(true);
++	}, []);
++
++	if (process.env.NEXT_PUBLIC_SIGNET_DEMO !== "true") return null;
++
++	const registrations = [inspectState, contactState, optionsState, deliveryState, orderState];
++	const registeredCount = registrations.filter(({ status }) => status === "registered").length;
++
++	return (
++		<>
++			<aside
++				className="fixed bottom-4 right-4 z-50 w-[min(25rem,calc(100vw-2rem))] overflow-hidden rounded-card border border-border bg-card shadow-overlay"
++				data-testid="signet-demo-panel"
++			>
++				<div className="border-b border-border bg-foreground px-5 py-4 text-inverse">
++					<div className="flex items-center justify-between gap-3">
++						<div className="flex items-center gap-3">
++							<span className="grid size-9 place-items-center rounded-full bg-background text-foreground">
++								<ShieldCheck className="size-5" aria-hidden />
++							</span>
++							<div>
++								<p className="text-eyebrow text-inverse-muted">Live agent checkout</p>
++								<h2 className="text-base font-semibold">Protected by Signet</h2>
++							</div>
++						</div>
++						<span className="rounded-full border border-inverse px-2.5 py-1 text-xs text-inverse-subtle">
++							{registeredCount}/5 tools
++						</span>
++					</div>
++				</div>
++
++				<div className="space-y-4 p-5">
++					<div className="grid grid-cols-3 gap-2 text-center text-xs">
++						{[
++							["Intent", "validated"],
++							["Effect", "idempotent"],
++							["Outcome", "verified"],
++						].map(([label, value]) => (
++							<div className="rounded-card bg-muted px-2 py-2.5" key={label}>
++								<p className="font-medium text-foreground">{value}</p>
++								<p className="mt-0.5 text-muted-foreground">{label}</p>
++							</div>
++						))}
++					</div>
++
++					<button
++						className={cn(
++							"flex w-full items-center justify-between rounded-button border px-3.5 py-2.5 text-left text-sm transition-colors duration-fast",
++							faultArmed
++								? "border-destructive bg-destructive/5 text-destructive"
++								: "border-border bg-background text-foreground hover:bg-muted",
++						)}
++						onClick={armFault}
++						type="button"
++					>
++						<span className="flex items-center gap-2">
++							<Zap className="size-4" aria-hidden />
++							{faultArmed ? "Lost response armed" : "Arm lost-response proof"}
++						</span>
++						<span className="text-xs text-muted-foreground">one shot</span>
++					</button>
++
++					{proof.recovered || proof.replayed ? (
++						<div className="space-y-2 rounded-card border border-success/30 bg-success/5 p-3 text-xs">
++							{proof.recovered ? (
++								<p className="flex items-center gap-2 font-medium text-success">
++									<Check className="size-3.5" aria-hidden /> Lost response recovered from Saleor
++								</p>
++							) : null}
++							{proof.replayed ? (
++								<p className="flex items-center gap-2 font-medium text-success">
++									<Check className="size-3.5" aria-hidden /> Exact retry replayed without a new order
++								</p>
++							) : null}
++						</div>
++					) : null}
++
++					<div>
++						<div className="mb-2 flex items-center justify-between">
++							<p className="flex items-center gap-2 text-sm font-medium text-foreground">
++								<Bot className="size-4" aria-hidden /> Agent trace
++							</p>
++							<span className="text-xs text-muted-foreground">metadata only</span>
++						</div>
++						<div className="max-h-40 space-y-1.5 overflow-y-auto rounded-card border border-border bg-background p-2.5">
++							{events.length === 0 ? (
++								<p className="py-3 text-center text-xs text-muted-foreground">
++									Waiting for an agent tool call…
++								</p>
++							) : (
++								events.map((event) => (
++									<div
++										className="flex items-center justify-between gap-3 text-xs"
++										key={`${event.invocationId}:${event.stage}`}
++									>
++										<span className="truncate text-muted-foreground">{event.name ?? "registration"}</span>
++										<span className={cn("font-medium", eventTone(event.stage))}>{event.stage}</span>
++									</div>
++								))
++							)}
++						</div>
++					</div>
++				</div>
++			</aside>
++
++			{approval ? (
++				<div
++					className="fixed inset-0 z-[60] grid place-items-center bg-foreground/55 p-4"
++					data-testid="signet-approval"
++				>
++					<div className="w-full max-w-md rounded-card border border-border bg-card p-6 shadow-overlay">
++						<div className="mb-5 flex items-start gap-3">
++							<span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted text-foreground">
++								<CircleAlert className="size-5" aria-hidden />
++							</span>
++							<div>
++								<p className="text-eyebrow text-muted-foreground">Agent requests approval</p>
++								<h2 className="mt-1 text-h3 text-foreground">{approval.title}</h2>
++								<p className="mt-2 text-sm leading-6 text-muted-foreground">{approval.detail}</p>
++							</div>
++						</div>
++						<div className="flex justify-end gap-3">
++							<button
++								className="inline-flex items-center gap-2 rounded-button border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
++								onClick={() => decideApproval(false)}
++								type="button"
++							>
++								<X className="size-4" aria-hidden /> Decline
++							</button>
++							<button
++								className="inline-flex items-center gap-2 rounded-button bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
++								onClick={() => decideApproval(true)}
++								type="button"
++							>
++								<Check className="size-4" aria-hidden /> Approve test order
++							</button>
++						</div>
++					</div>
++				</div>
++			) : null}
++
++			<div className="sr-only" aria-live="polite">
++				<Sparkles className="size-4" aria-hidden /> {registeredCount} Signet tools registered
++			</div>
++		</>
++	);
++}
+-- 
+2.50.1 (Apple Git-155)
+

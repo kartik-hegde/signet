@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-31T20:50:00Z",
+  "application": "Saleor Storefront + Saleor Core 3.23",
+  "task": "place-test-order-after-lost-response",
+  "source": {
+    "storefrontBase": "56f021d42196eaa78b997df010430d8ea7842e99",
+    "storefrontIntegration": "9ad3ccc1baf7d1de1c8aff86f5be3a2cd7724be4",
+    "platform": "ab6315bd59c58b4815175df4c679107ff9695be4",
+    "signet": "100b7d4f4046112fab66705df607e5cb9970d586"
+  },
+  "registeredTools": [
+    "inspect_checkout",
+    "set_checkout_contact",
+    "list_delivery_options",
+    "select_delivery_option",
+    "place_order"
+  ],
+  "fault": {
+    "type": "lost_response_after_commit",
+    "armed": true,
+    "triggeredAfterOrderId": true
+  },
+  "firstCall": {
+    "orderId": "T3JkZXI6OTE4M2M3ZGMtNjE1YS00YzFiLWEzZWYtOTQwODI5ZmVhOTgy",
+    "orderNumber": "22",
+    "stages": [
+      "started",
+      "validated",
+      "authorized",
+      "confirmation_requested",
+      "confirmed",
+      "recovered",
+      "output_validated",
+      "verified",
+      "succeeded"
+    ]
+  },
+  "retry": {
+    "sameOperationId": true,
+    "sameOrderId": true,
+    "stagesInclude": ["replayed", "verified", "succeeded"]
+  },
+  "oracle": {
+    "source": "Saleor Postgres order_order",
+    "email": "proof@example.com",
+    "orderCount": 1,
+    "number": "22",
+    "status": "unfulfilled",
+    "totalAmount": 20,
+    "currency": "USD",
+    "chargeStatus": "full"
+  },
+  "passed": true
+}

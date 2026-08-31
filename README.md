@@ -23,7 +23,7 @@ success response.
 | [`execution-safety/`](./execution-safety/)       | Deterministic post-commit failure and concurrency suite                 | Runnable v0    |
 | [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies                                   | Runnable P1    |
 | [`build-vs-buy/`](./build-vs-buy/)               | Raw, hand-rolled, and Signet implementation baseline                    | Runnable       |
-| [`apps/`](./apps/)                               | App manifests, patches, task definitions, reset hooks, and oracles      | One reference  |
+| [`apps/`](./apps/)                               | App manifests, patches, task definitions, reset hooks, and oracles      | Saleor + reference fixture |
 | [`methodology/`](./methodology/)                 | Benchmark contract, KPIs, experimental design, and publication rules    | Initial design |
 | [`results/`](./results/)                         | Reviewed summaries and benchmark cards; raw/private traces stay ignored | Initial design |
 
@@ -95,6 +95,20 @@ npm run test:agent -- --task=find-payment-recipient
 
 See [`agent-effectiveness/TEST_AGENT.md`](./agent-effectiveness/TEST_AGENT.md) for the
 trace contract and provider adapter seam.
+
+## Run the real Saleor demo
+
+The [`apps/saleor/`](./apps/saleor/) integration uses the current Saleor storefront
+and a full local Saleor Core/Postgres stack. It registers five checkout tools, includes
+an app-owned order approval, injects a lost response after commit, recovers the paid
+order, and grades duplicate safety from Postgres:
+
+```sh
+npm run saleor:preflight
+npm run saleor:oracle -- --email proof@example.com
+```
+
+The captured local proof is in [`results/saleor/latest.md`](./results/saleor/latest.md).
 
 ## Benchmark contract
 

@@ -18,8 +18,9 @@ Each application integration must provide:
    authenticated payment workflow, UI/WebMCP parity checks, database assertions, and a
    native Chrome smoke path. Move or pin it here rather than importing it implicitly
    from a mutable Signet checkout.
-2. Add one commerce application or a reviewed WebArena-Verified Shopping subset after
-   the runner and result schema stabilize.
+2. The first real commerce application is now the sibling-fork Saleor integration in
+   [`saleor/`](./saleor/). It uses the production storefront, full local Saleor stack,
+   a post-commit fault seam, and a Postgres order oracle.
 3. Add a second independent domain before making broad claims. Selection should favor
    consequential multi-step workflows, deterministic reset, authoritative state, and
    manageable public licensing over brand recognition.

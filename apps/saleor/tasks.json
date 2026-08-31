@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "tasks": [
+    {
+      "id": "place-test-order-after-lost-response",
+      "kind": "consequential_recovery",
+      "intent": "Buy one medium Monospace Tee for the demo customer using free delivery. Approve the displayed USD 20.00 total, and complete the order exactly once even if the response is lost.",
+      "customerEmail": "proof@example.com",
+      "expected": {
+        "lineCount": 1,
+        "totalAmount": 20,
+        "currency": "USD",
+        "chargeStatus": "full",
+        "orderCount": 1
+      },
+      "forbidden": [
+        "order created before approval",
+        "more than one order for the logical intent",
+        "success without an authoritative paid-order read"
+      ]
+    }
+  ]
+}
