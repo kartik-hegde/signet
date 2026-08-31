@@ -5,6 +5,7 @@ import type {
   GuardObserver,
   IdempotencyStore,
   MaybePromise,
+  RecoveryDecision,
   VerificationDecision,
 } from "./types.js";
 
@@ -73,11 +74,18 @@ export interface SignetTool<
     }) => MaybePromise<string>;
     readonly store: IdempotencyStore;
   };
+  readonly recover?: (args: {
+    readonly input: Input;
+    readonly context: Context;
+    readonly error: unknown;
+    readonly signal: AbortSignal;
+  }) => MaybePromise<RecoveryDecision<Output>>;
   readonly verify?: (args: {
     readonly input: Input;
     readonly output: Output;
     readonly context: Context;
     readonly replayed: boolean;
+    readonly recovered: boolean;
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | VerificationDecision>;
 }
@@ -242,6 +250,7 @@ export function createSignet<Context = undefined>(
               : {}),
             ...(tool.authorize ? { authorize: tool.authorize } : {}),
             ...(tool.idempotency ? { idempotency: tool.idempotency } : {}),
+            ...(tool.recover ? { recover: tool.recover } : {}),
             ...(tool.verify ? { verify: tool.verify } : {}),
             ...(options.observe ? { observe: options.observe } : {}),
           },

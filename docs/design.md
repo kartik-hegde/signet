@@ -50,6 +50,7 @@ The current `guard()` performs a fixed sequence when a tool warrants it:
 resolve app context
   -> authorize
   -> atomically execute or replay
+  -> optionally recover a proven outcome after an execution error
   -> verify observed outcome
   -> return
 ```

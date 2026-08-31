@@ -49,3 +49,25 @@ state and choose an appropriate reconciliation path.
 
 Do not automatically retry a consequential operation solely because verification
 failed. Use its stable idempotency key and inspect authoritative state first.
+
+## Recover a proven post-commit outcome
+
+When an operation throws after it may have committed, `recover` can inspect the same
+authoritative state before the failure reaches the agent:
+
+```ts
+recover: async ({ input, context, signal }) => {
+  const order = await orders.get(input.orderId, {
+    tenantId: context.tenantId,
+    signal,
+  });
+
+  return order?.state === "cancelled"
+    ? { recovered: true, output: order }
+    : { recovered: false };
+},
+```
+
+This is reconciliation, not retry. Signet calls the handler at most once. A recovered
+output still passes through `verify`, and an idempotency store retains it for later
+replays. Return `recovered: false` unless the requested outcome is proven.

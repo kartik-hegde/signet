@@ -115,6 +115,13 @@ await signet.expose({
     });
   },
 
+  recover: async ({ input, context }) => {
+    const order = await getOrder(input.orderId);
+    return order?.userId === context.userId && order.status === "cancelled"
+      ? { recovered: true, output: order }
+      : { recovered: false };
+  },
+
   verify: async ({ input, context }) => {
     const order = await getOrder(input.orderId);
     return order?.userId === context.userId && order.status === "cancelled";
@@ -127,6 +134,11 @@ idempotency, and authoritative state. Signet is state-aware; it is not an applic
 state store or agent orchestrator.
 
 Signet never retries operations automatically.
+
+`recover` is for ambiguous failures such as a response lost after commit. It may report
+success only after reading authoritative application state. Recovered results still run
+through `verify` and, when idempotency is configured, become the stored result for later
+replays.
 
 ## Test without a model or browser
 
@@ -168,7 +180,7 @@ through a supported native browser agent before shipping.
 - **Expected failures:** `ToolError`, validation, authorization, and verification
   errors remain distinguishable.
 - **Reliable mutations:** app-provided idempotency plus authoritative postcondition
-  verification.
+  recovery and verification.
 - **Cancellation:** the native execution signal reaches every stage and your handler.
 - **Observability:** privacy-safe lifecycle events and optional OpenTelemetry spans.
 - **Deterministic testing:** inspect and invoke tools without a model or browser.
@@ -197,7 +209,8 @@ Signet is pre-release and WebMCP is experimental. The current package includes:
 - application context and disposable native registration;
 - `ToolError`, `ValidationError`, `AuthorizationError`, and
   `VerificationError`;
-- authorization, idempotency, verification, cancellation, and lifecycle observation;
+- authorization, idempotency, recovery, verification, cancellation, and lifecycle
+  observation;
 - deterministic testing utilities;
 - optional OpenTelemetry mapping;
 - standalone and full-stack reference applications.

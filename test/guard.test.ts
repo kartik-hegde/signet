@@ -154,6 +154,136 @@ describe("guard", () => {
     );
   });
 
+  it("recovers an ambiguous execution from authoritative state and caches it", async () => {
+    const store = new MemoryIdempotencyStore();
+    const events: GuardEvent[] = [];
+    const execute = vi.fn(async () => {
+      throw new Error("response lost after commit");
+    });
+    const recover = vi.fn(() => ({
+      recovered: true as const,
+      output: { bookingId: "booking-1", state: "confirmed" as const },
+    }));
+    const verify = vi.fn(({ output }) => output.state === "confirmed");
+    const guarded = guard(execute, {
+      idempotency: { key: () => "booking-1", store },
+      recover,
+      verify,
+      observe: (event) => {
+        events.push(event);
+      },
+    });
+
+    const first = await guarded({}, active());
+    const second = await guarded({}, active());
+
+    expect(first).toEqual(second);
+    expect(execute).toHaveBeenCalledOnce();
+    expect(recover).toHaveBeenCalledOnce();
+    expect(verify).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ recovered: true, replayed: false }),
+    );
+    expect(verify).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ recovered: false, replayed: true }),
+    );
+    expect(events.map((event) => event.stage)).toEqual([
+      "started",
+      "recovered",
+      "verified",
+      "succeeded",
+      "started",
+      "replayed",
+      "verified",
+      "succeeded",
+    ]);
+  });
+
+  it("preserves the execution error when recovery cannot prove an outcome", async () => {
+    const failure = new Error("upstream unavailable");
+    const recover = vi.fn(() => ({ recovered: false as const }));
+    const store = new MemoryIdempotencyStore();
+    const guarded = guard(
+      async () => {
+        throw failure;
+      },
+      {
+        idempotency: { key: () => "operation-1", store },
+        recover,
+      },
+    );
+
+    await expect(guarded({}, active())).rejects.toBe(failure);
+    expect(recover).toHaveBeenCalledWith(
+      expect.objectContaining({ error: failure }),
+    );
+  });
+
+  it("keeps a proven pre-effect failure retryable", async () => {
+    const store = new MemoryIdempotencyStore();
+    const failure = new Error("failed before effect");
+    let committed = false;
+    const execute = vi
+      .fn<() => Promise<{ state: string }>>()
+      .mockRejectedValueOnce(failure)
+      .mockImplementationOnce(async () => {
+        committed = true;
+        return { state: "complete" };
+      });
+    const guarded = guard(execute, {
+      idempotency: { key: () => "operation-1", store },
+      recover: () =>
+        committed
+          ? { recovered: true, output: { state: "complete" } }
+          : { recovered: false },
+    });
+
+    await expect(guarded({}, active())).rejects.toBe(failure);
+    await expect(guarded({}, active())).resolves.toEqual({ state: "complete" });
+    expect(execute).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not conceal an idempotency-store failure", async () => {
+    const failure = new Error("idempotency store unavailable");
+    const recover = vi.fn(() => ({
+      recovered: true as const,
+      output: { state: "complete" },
+    }));
+    const guarded = guard(async () => ({ state: "complete" }), {
+      idempotency: {
+        key: () => "operation-1",
+        store: {
+          async execute() {
+            throw failure;
+          },
+        },
+      },
+      recover,
+    });
+
+    await expect(guarded({}, active())).rejects.toBe(failure);
+    expect(recover).not.toHaveBeenCalled();
+  });
+
+  it("never attempts recovery after cancellation", async () => {
+    const controller = new AbortController();
+    const cancelled = new Error("cancelled");
+    const recover = vi.fn(() => ({ recovered: false as const }));
+    const guarded = guard(
+      async () => {
+        controller.abort(cancelled);
+        throw new Error("handler stopped");
+      },
+      { recover },
+    );
+
+    await expect(guarded({}, { signal: controller.signal })).rejects.toBe(
+      cancelled,
+    );
+    expect(recover).not.toHaveBeenCalled();
+  });
+
   it("passes the signal through idempotency keying and storage", async () => {
     const controller = new AbortController();
     const key = vi.fn(() => "operation-1");

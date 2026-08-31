@@ -104,6 +104,40 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
       .and("contain.text", "succeeded");
   });
 
+  it("recovers a payment when its committed response is lost", () => {
+    const input = paymentInput("lost-response-recovery");
+    cy.intercept("POST", "/webmcp/payments", (request) => {
+      request.continue((response) => {
+        response.send({ forceNetworkError: true });
+      });
+    });
+
+    executeTool("send_payment", input).then((result: any) => {
+      expect(result.replayed).to.equal(true);
+      expect(result.transaction).to.include({
+        senderId: sender.id,
+        receiverId: receiver.id,
+        amount: referencePaymentTask.amountCents,
+        status: "complete",
+      });
+    });
+
+    cy.database("filter", "agentOperations", { operationId: input.operationId }).should(
+      "have.length",
+      1
+    );
+    cy.window().then((win) => {
+      expect(win.__signetGuardEvents?.map((event) => event.stage)).to.deep.equal([
+        "started",
+        "validated",
+        "authorized",
+        "recovered",
+        "verified",
+        "succeeded",
+      ]);
+    });
+  });
+
   it("denies an unowned account in Signet and independently at the server", () => {
     const input = { ...paymentInput("authorization-denial"), sourceAccountId: otherUsersAccountId };
     let browserMutationAttempts = 0;
