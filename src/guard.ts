@@ -538,6 +538,11 @@ export function guard<
   execute: Execute<Input, Output>,
   options: GuardOptions<Input, Output, Context> = {},
 ): Execute<Input, Output> {
+  if (options.idempotency && !options.journal) {
+    throw new TypeError(
+      "Signet idempotency requires an operation journal so failures can be classified safely.",
+    );
+  }
   return (input, executeOptions) =>
     runGuarded(
       input,

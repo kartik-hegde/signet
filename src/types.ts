@@ -172,7 +172,10 @@ export interface GuardOptions<
   /** Obtains app-owned consent always, or only when a new effect will run. */
   readonly confirm?: ConfirmationPolicy<Input, Context>;
 
-  /** Delegates atomic replay/concurrency behavior to an app-provided durable store. */
+  /**
+   * Delegates atomic replay/concurrency behavior to an app-provided durable store.
+   * Requires `journal`, which supplies the evidence needed to release failed claims.
+   */
   readonly idempotency?: {
     readonly key: (args: {
       readonly input: Input;

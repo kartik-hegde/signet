@@ -4,6 +4,11 @@ An idempotency store remembers completed output. An operation journal remembers 
 correlation data needed to find an effect whose response may be lost. They solve
 different parts of the same retry problem.
 
+Signet requires a journal whenever idempotency is configured. Without one, an
+execution error cannot prove whether a claim is safe to release, so the same key can
+become permanently unusable. `guard()` and `expose()` reject that configuration, and
+`checkToolReadiness()` reports it as `idempotency_journal`.
+
 ## Connect a journal
 
 ```ts

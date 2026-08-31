@@ -72,6 +72,7 @@ function stores() {
 describe("IndexedDbIdempotencyStore", () => {
   it("uses the browser's IndexedDB and Web Locks by default", async () => {
     vi.stubGlobal("indexedDB", new IDBFactory());
+    vi.stubGlobal("navigator", { locks: new TestLockManager() });
     try {
       const store = new IndexedDbIdempotencyStore({
         databaseName: `signet-defaults-${crypto.randomUUID()}`,

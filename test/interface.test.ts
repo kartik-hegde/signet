@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createSignet, type ModelContextLike } from "../src/index.js";
+import { MemoryIdempotencyStore } from "../src/testing.js";
 
 function modelContext() {
   const registrations = new Map<
@@ -263,6 +264,16 @@ describe("createSignet", () => {
     await expect(
       signet.expose({ ...tool, name: "bad_limit", outputBudgetBytes: 0 }),
     ).rejects.toThrow("outputBudgetBytes must be a positive integer");
+    await expect(
+      signet.expose({
+        ...tool,
+        name: "missing_journal",
+        idempotency: {
+          key: () => "operation-1",
+          store: new MemoryIdempotencyStore(),
+        },
+      }),
+    ).rejects.toThrow("idempotency requires a journal");
   });
 
   it("rejects duplicate unsupported definitions until disposal", async () => {

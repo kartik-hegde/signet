@@ -16,6 +16,7 @@ import {
 const active = (): { signal: AbortSignal } => ({
   signal: new AbortController().signal,
 });
+const journal = () => ({ store: new MemoryOperationJournal() });
 
 describe("guard", () => {
   it("passes input and the native cancellation signal through unchanged", async () => {
@@ -140,6 +141,7 @@ describe("guard", () => {
           },
           store: new MemoryIdempotencyStore(),
         },
+        journal: journal(),
         observe: (event) => {
           events.push(event);
         },
@@ -167,6 +169,7 @@ describe("guard", () => {
         reason: "Keep this draft unchanged.",
       }),
       idempotency: { key, store: new MemoryIdempotencyStore() },
+      journal: journal(),
     });
 
     await expect(guarded({}, active())).rejects.toEqual(
@@ -190,6 +193,7 @@ describe("guard", () => {
         key: () => "place-order-1",
         store: new MemoryIdempotencyStore(),
       },
+      journal: journal(),
       observe: (event) => {
         events.push(event);
       },
@@ -227,6 +231,7 @@ describe("guard", () => {
     const guarded = guard(execute, {
       confirm: { mode: "effect-only", request: confirm },
       idempotency: { key: () => "same-effect", store },
+      journal: journal(),
     });
 
     const first = guarded({}, active());
@@ -279,6 +284,7 @@ describe("guard", () => {
         key: ({ input }) => input.orderId,
         store,
       },
+      journal: journal(),
       verify,
     });
 
@@ -300,6 +306,7 @@ describe("guard", () => {
     const guarded = guard(execute, {
       authorize,
       idempotency: { key: () => "cancel-order-1", store },
+      journal: journal(),
     });
 
     const first = await guarded({}, active());
@@ -323,6 +330,7 @@ describe("guard", () => {
     const verify = vi.fn(({ output }) => output.state === "confirmed");
     const guarded = guard(execute, {
       idempotency: { key: () => "booking-1", store },
+      journal: journal(),
       recover,
       verify,
       observe: (event) => {
@@ -356,26 +364,15 @@ describe("guard", () => {
     ]);
   });
 
-  it("reports an unknown outcome when no journal proves a pre-effect failure", async () => {
-    const failure = new Error("upstream unavailable");
-    const recover = vi.fn(() => ({ recovered: false as const }));
-    const store = new MemoryIdempotencyStore();
-    const guarded = guard(
-      async () => {
-        throw failure;
-      },
-      {
-        idempotency: { key: () => "operation-1", store },
-        recover,
-      },
-    );
-
-    await expect(guarded({}, active())).rejects.toBeInstanceOf(
-      OutcomeUnknownError,
-    );
-    expect(recover).toHaveBeenCalledWith(
-      expect.objectContaining({ error: failure }),
-    );
+  it("rejects idempotency without a journal before invocation", () => {
+    expect(() =>
+      guard(async () => "done", {
+        idempotency: {
+          key: () => "operation-1",
+          store: new MemoryIdempotencyStore(),
+        },
+      }),
+    ).toThrow("idempotency requires an operation journal");
   });
 
   it("surfaces an explicitly unknown outcome as its own terminal state", async () => {
@@ -621,11 +618,13 @@ describe("guard", () => {
       },
     };
     const guarded = guard(
-      async () => {
+      async (_input, { operation }) => {
+        await operation?.write({ phase: "started" });
         throw new Error("ambiguous handler failure");
       },
       {
         idempotency: { key: () => "operation-1", store },
+        journal: journal(),
         recover: () => ({ recovered: false }),
       },
     );
@@ -653,6 +652,7 @@ describe("guard", () => {
           async abandon() {},
         },
       },
+      journal: journal(),
       recover,
     });
 
@@ -692,6 +692,7 @@ describe("guard", () => {
     };
     const guarded = guard(async () => "done", {
       idempotency: { key, store },
+      journal: journal(),
     });
 
     await guarded({}, { signal: controller.signal });
@@ -709,6 +710,7 @@ describe("guard", () => {
     const begin = vi.spyOn(store, "begin");
     const guarded = guard(async () => "done", {
       idempotency: { key: () => "", store },
+      journal: journal(),
     });
 
     await expect(guarded({}, active())).rejects.toThrow(
@@ -730,6 +732,7 @@ describe("guard", () => {
         },
         store,
       },
+      journal: journal(),
     });
 
     await expect(guarded({}, { signal: controller.signal })).rejects.toBe(
@@ -816,6 +819,7 @@ describe("guard", () => {
           key: () => "operation-1",
           store: new MemoryIdempotencyStore(),
         },
+        journal: journal(),
         observe: (event) => {
           events.push(event);
         },

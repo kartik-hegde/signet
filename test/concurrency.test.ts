@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { guard } from "../src/index.js";
-import { MemoryIdempotencyStore } from "../src/testing.js";
+import {
+  MemoryIdempotencyStore,
+  MemoryOperationJournal,
+} from "../src/testing.js";
 
 const active = (): { signal: AbortSignal } => ({
   signal: new AbortController().signal,
@@ -25,6 +28,7 @@ describe("concurrency", () => {
         key: ({ input }) => input.id,
         store,
       },
+      journal: { store: new MemoryOperationJournal() },
     });
 
     const first = execute({ id: "A" }, active());
