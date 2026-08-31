@@ -17,7 +17,7 @@ The result is a five-tool checkout capability:
 
 You can [browse the complete integration branch](https://github.com/kartik-hegde/storefront/tree/feat/signet-webmcp-demo).
 It is also maintained as a pinned upstream revision plus a reviewable patch in the
-[Signet benchmarks repository](https://github.com/kartik-hegde/signet-benchmarks/tree/main/apps/saleor).
+[Signet benchmarks repository](https://github.com/kartik-hegde/signet-benchmarks/tree/feat/test-agent-evidence/apps/saleor).
 That keeps Saleor's source and license authoritative while making the experiment
 reproducible.
 
