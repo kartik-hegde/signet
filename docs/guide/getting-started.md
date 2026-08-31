@@ -6,7 +6,7 @@ with four fields, then add production controls only where the operation needs th
 ## Install
 
 ```sh
-npm install @signet/webmcp
+npm install @signet/webmcp@alpha
 ```
 
 Your application needs WebMCP declarations during development:

@@ -1,6 +1,6 @@
 {
   "name": "@signet/webmcp",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "description": "Make website capabilities reliable and agent-ready through WebMCP.",
   "type": "module",
   "sideEffects": false,
@@ -9,9 +9,14 @@
     "recipes",
     "skills",
     "AGENTS.md",
+    "CHANGELOG.md",
     "README.md",
     "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

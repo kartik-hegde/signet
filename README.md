@@ -24,8 +24,10 @@ safe execution, testing, and observability.
 ## Get started
 
 ```sh
-npm install @signet/webmcp
+npm install @signet/webmcp@alpha
 ```
+
+Signet is pre-release; see [Stability](#stability) for what may change.
 
 Expose one existing function:
 
@@ -263,6 +265,31 @@ Signet is pre-release and WebMCP is experimental. The current package includes:
 
 There is no hosted runtime, agent planner, automatic retry policy, production browser
 polyfill, Signet JSON format, or compiler.
+
+## Stability
+
+Signet is published as an alpha under the `alpha` dist-tag:
+
+```sh
+npm install @signet/webmcp@alpha
+```
+
+Pre-1.0 versions may make breaking changes in a minor release. Every breaking change
+is recorded in [`CHANGELOG.md`](./CHANGELOG.md) with the migration step. Pin an exact
+version if you need a stable surface today.
+
+| Surface                                                                        | Expectation                                                                    |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `createSignet`, `expose`, the four required tool fields, and the error types   | Proven by the reference application. Changes will be rare and documented.      |
+| Execution controls: `authorize`, `confirm`, `idempotency`, `recover`, `verify` | Semantics are settled; argument shapes may still gain fields.                  |
+| `GuardEvent` stage names and `signet.tools()`                                  | Expected to grow. Treat unknown stages as ignorable rather than exhaustive.    |
+| `/testing`, `/inspector`, `/react`                                             | Developer tooling. Most likely to change as real integrations report friction. |
+| Agent-task evaluation primitives                                               | Earliest surface. Expect reshaping once the evaluation corpus exists.          |
+
+WebMCP itself is experimental and ships behind flags. The consumer half of the
+protocol—how a client enumerates and invokes tools—is not yet covered by the official
+declarations and differs between browser builds, so treat native behavior as a moving
+target and test against the browsers you support.
 
 ## Explore
 
