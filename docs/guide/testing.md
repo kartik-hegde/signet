@@ -93,6 +93,25 @@ authoritative result oracles. Supply the model runner yourself; Signet reports t
 selection accuracy, argument accuracy, and completion rate without becoming an agent
 orchestrator.
 
+## Run the Test Agent prototype
+
+The benchmark repository now contains a local, provider-adaptable Test Agent vertical
+slice. It opens the real application in Chrome, exposes only its live WebMCP tools to a
+model, and records tool inventory, selected arguments, results, lifecycle stages,
+tokens, latency, and an application-owned outcome oracle.
+
+```sh
+git clone https://github.com/kartik-hegde/signet-benchmarks.git
+cd signet-benchmarks
+npm run test:agent -- --task=find-payment-recipient
+```
+
+This prototype deliberately lives with the evaluation fixtures until a second website
+proves the reusable application adapter. See the
+[Test Agent contract](https://github.com/kartik-hegde/signet-benchmarks/blob/main/agent-effectiveness/TEST_AGENT.md)
+and the
+[latest evidence report](https://github.com/kartik-hegde/signet-benchmarks/blob/main/results/evidence/latest.md).
+
 Run Signet's complete local suite with:
 
 ```sh
