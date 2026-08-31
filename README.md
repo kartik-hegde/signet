@@ -5,6 +5,18 @@
 Signet turns application functions you already own into reliable tools that browser
 agents can use through native WebMCP.
 
+Using a coding agent? Give it [`AGENTS.md`](./AGENTS.md), the complete public contract.
+It should not need to inspect Signet's compiled implementation.
+
+For Codex, install the bundled project skill once:
+
+```sh
+mkdir -p .agents/skills
+cp -R node_modules/@signet/webmcp/skills/signet-webmcp .agents/skills/
+```
+
+Then ask it to use `$signet-webmcp` when exposing or reviewing website tools.
+
 You decide what agents should be able to do. Signet handles the boundary around those
 capabilities: registration, input validation, application context, expected errors,
 safe execution, testing, and observability.
