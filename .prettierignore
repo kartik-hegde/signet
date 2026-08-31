@@ -4,3 +4,4 @@ docs/.vitepress/
 examples/cypress-realworld-app/
 node_modules/
 package-lock.json
+.worktrees/

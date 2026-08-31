@@ -81,6 +81,13 @@ describe("createSignet", () => {
     });
 
     expect(registration.status).toBe("registered");
+    expect(signet.tools()).toEqual([
+      expect.objectContaining({
+        name: "double",
+        status: "registered",
+        inputSchema: schema,
+      }),
+    ]);
     expect(native.registrations.get("double")?.tool.description).toBe(
       "Double one number.",
     );
@@ -89,6 +96,31 @@ describe("createSignet", () => {
         .get("double")
         ?.tool.execute({ value: 3 }, { signal: new AbortController().signal }),
     ).resolves.toBe(6);
+  });
+
+  it("allows a development observer to attach after registration", async () => {
+    const native = modelContext();
+    const signet = createSignet({ modelContext: native.context });
+    await signet.expose({
+      name: "late_observer",
+      description: "Return a value to a late observer.",
+      inputSchema: schema,
+      execute: ({ value }: { value: number }) => value,
+    });
+    const stages: string[] = [];
+    const stop = signet.observe(({ stage }) => {
+      stages.push(stage);
+    });
+
+    await native.registrations
+      .get("late_observer")
+      ?.tool.execute({ value: 1 }, { signal: new AbortController().signal });
+    stop();
+    await native.registrations
+      .get("late_observer")
+      ?.tool.execute({ value: 2 }, { signal: new AbortController().signal });
+
+    expect(stages).toEqual(["started", "validated", "executed", "succeeded"]);
   });
 
   it("passes application context and execution signal to the tool", async () => {
@@ -207,5 +239,44 @@ describe("createSignet", () => {
     await expect(
       signet.expose({ ...tool, name: "not valid!" }),
     ).rejects.toThrow("name must be");
+    await expect(
+      signet.expose({ ...tool, name: "bad_limit", outputBudgetBytes: 0 }),
+    ).rejects.toThrow("outputBudgetBytes must be a positive integer");
+  });
+
+  it("rejects duplicate unsupported definitions until disposal", async () => {
+    const signet = createSignet({ unsupported: "ignore" });
+    const tool = {
+      name: "unsupported_duplicate",
+      description: "A tool unavailable in this browser.",
+      inputSchema: schema,
+      execute: () => undefined,
+    };
+    const registration = await signet.expose(tool);
+    await expect(signet.expose(tool)).rejects.toThrow("already exposed");
+    registration.dispose();
+    await expect(signet.expose(tool)).resolves.toMatchObject({
+      status: "unsupported",
+    });
+  });
+
+  it("rejects duplicate names across interfaces in one WebMCP context", async () => {
+    const native = modelContext();
+    const first = createSignet({ modelContext: native.context });
+    const second = createSignet({ modelContext: native.context });
+    const tool = {
+      name: "shared_name",
+      description: "A tool whose name is unique within the document.",
+      inputSchema: schema,
+      execute: () => undefined,
+    };
+
+    const registration = await first.expose(tool);
+    await expect(second.expose(tool)).rejects.toThrow("already exposed");
+
+    registration.dispose();
+    await expect(second.expose(tool)).resolves.toMatchObject({
+      status: "registered",
+    });
   });
 });

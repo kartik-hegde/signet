@@ -64,6 +64,13 @@ On browsers without WebMCP, the human website continues normally and the registr
 has status `unsupported`. Use `createSignet({ unsupported: "throw" })` in tests when
 missing WebMCP should fail.
 
+The [WebMCP draft](https://webmachinelearning.github.io/webmcp/) creates
+`document.modelContext` with the document. Register tools when
+their application logic is ready; an agent that connects later sees the document's
+current tools. If an extension or polyfill supplies a non-native bridge after startup,
+wait for that bridge and pass it explicitly with `createSignet({ modelContext })`.
+Signet does not poll the page or pretend an unavailable protocol is ready.
+
 ## Add application context
 
 Resolve trusted identity and resource context from your application, never from agent

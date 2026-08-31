@@ -65,8 +65,12 @@ hooks only when the workflow needs them.
 - `annotations` maps directly to native WebMCP metadata. Mark discovery and other
   read-only tools with `annotations: { readOnlyHint: true }`; there is no top-level
   `readOnly` option.
-- Execution order is: abort check, input validation, context, authorization,
-  idempotent execute/replay, optional authoritative recovery, verification, result.
+- Execution order is: abort check, input validation, context, authorization, optional
+  confirmation, idempotent execute/replay, optional authoritative recovery, optional
+  output limit, verification, result.
+- Cancellation is honored through execution. Once the handler returns successfully,
+  Signet finishes verification and returns the real outcome; late cancellation emits
+  `completed_after_abort` instead of converting success into `AbortError`.
 - `authorize({ input, context, signal })` returns a boolean or
   `{ allowed, reason? }`. Denial occurs before the handler and before every
   idempotency lookup, including replay. Keep current identity, permission, tenant, and
@@ -76,18 +80,29 @@ hooks only when the workflow needs them.
 - `idempotency.store.execute(key, operation, { signal })` must atomically coalesce
   equal keys and return `{ value, replayed }`. Include principal, operation ID, and
   every intent-changing argument in the key. Signet intentionally ships no durable
-  production store.
+  production store. Use `checkIdempotencyStore()` to verify an adapter.
+- `confirm({ input, context, signal })` lets the application obtain consent after
+  authorization and before any idempotency lookup. Signet does not render the UI.
 - `execute(input, { context, signal })` runs at most once per store operation. Signet
   never retries it automatically.
 - `recover({ input, context, error, signal })` runs only after the handler throws. It
   may return `{ recovered: true, output }` only after authoritative proof; otherwise
   return `{ recovered: false }`. It never conceals idempotency-store failures.
 - `verify({ input, output, context, replayed, recovered, signal })` runs after execute,
-  replay, or recovery. False throws `VerificationError`.
+  replay, or recovery. False throws `VerificationError`. After execution, its fresh
+  finalization signal is not cancelled by the caller; network verifiers should impose
+  their own timeout and must settle.
+- `outputBudgetBytes` warns and emits `output_oversized` when a serialized result
+  exceeds its budget. It never converts a completed operation into failure.
 - `observe(event)` receives metadata only. Stages include `registering`, `registered`,
   `registration_failed`, `unregistered`, `started`, `validated`, `authorized`,
-  `executed`, `replayed`, `recovered`, `verified`, `succeeded`, and `failed`. Observer
-  failure never changes application behavior.
+  `confirmation_requested`, `confirmed`, `declined`, `executed`, `replayed`,
+  `recovered`, `output_validated`, `output_oversized`, `output_unmeasurable`,
+  `completed_after_abort`, `verified`, `succeeded`, and `failed`. Observer failure never
+  changes application behavior.
+- `tools()` returns current metadata-only inventory; `observe(listener)` adds a
+  removable development observer. The React binding lives at `/react`; the optional
+  overlay lives at `/inspector`.
 - Unsupported browsers keep the human site working. Set `unsupported: "throw"` only
   when strict behavior is useful in development or tests.
 

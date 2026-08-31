@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   AuthorizationError,
+  ConfirmationError,
   VerificationError,
   guard,
   type GuardEvent,
@@ -109,6 +110,77 @@ describe("guard", () => {
     });
 
     await expect(guarded({}, active())).resolves.toBe("done");
+  });
+
+  it("confirms after authorization and before idempotency", async () => {
+    const order: string[] = [];
+    const events: GuardEvent[] = [];
+    const guarded = guard(
+      async () => {
+        order.push("execute");
+        return "done";
+      },
+      {
+        authorize: () => {
+          order.push("authorize");
+          return true;
+        },
+        confirm: () => {
+          order.push("confirm");
+          return { confirmed: true };
+        },
+        idempotency: {
+          key: () => {
+            order.push("key");
+            return "operation-1";
+          },
+          store: new MemoryIdempotencyStore(),
+        },
+        observe: (event) => {
+          events.push(event);
+        },
+      },
+    );
+
+    await expect(guarded({}, active())).resolves.toBe("done");
+    expect(order).toEqual(["authorize", "confirm", "key", "execute"]);
+    expect(events.map(({ stage }) => stage)).toEqual([
+      "started",
+      "authorized",
+      "confirmation_requested",
+      "confirmed",
+      "executed",
+      "succeeded",
+    ]);
+  });
+
+  it("fails before idempotency when confirmation is declined", async () => {
+    const execute = vi.fn(async () => "done");
+    const key = vi.fn(() => "operation-1");
+    const guarded = guard(execute, {
+      confirm: () => ({
+        confirmed: false,
+        reason: "Keep this draft unchanged.",
+      }),
+      idempotency: { key, store: new MemoryIdempotencyStore() },
+    });
+
+    await expect(guarded({}, active())).rejects.toEqual(
+      expect.objectContaining({
+        name: "ConfirmationError",
+        code: "confirmation_declined",
+        message: "Keep this draft unchanged.",
+      }),
+    );
+    expect(execute).not.toHaveBeenCalled();
+    expect(key).not.toHaveBeenCalled();
+  });
+
+  it("uses a stable default confirmation-decline message", async () => {
+    const guarded = guard(async () => "done", { confirm: () => false });
+    await expect(guarded({}, active())).rejects.toBeInstanceOf(
+      ConfirmationError,
+    );
   });
 
   it("stops after authorization when cancellation arrives during the check", async () => {
@@ -390,12 +462,14 @@ describe("guard", () => {
     await expect(guarded({}, active())).resolves.toBe("done");
   });
 
-  it("does not report success when cancellation arrives during verification", async () => {
+  it("finishes verification when cancellation arrives after execution", async () => {
     const controller = new AbortController();
     const cancelled = new Error("cancelled during verification");
     const events: GuardEvent[] = [];
     const guarded = guard(async () => ({ state: "complete" }), {
-      verify: async () => {
+      verify: async ({ signal }) => {
+        expect(signal).not.toBe(controller.signal);
+        expect(signal.aborted).toBe(false);
         controller.abort(cancelled);
         return true;
       },
@@ -404,13 +478,15 @@ describe("guard", () => {
       },
     });
 
-    await expect(guarded({}, { signal: controller.signal })).rejects.toBe(
-      cancelled,
-    );
+    await expect(guarded({}, { signal: controller.signal })).resolves.toEqual({
+      state: "complete",
+    });
     expect(events.map((event) => event.stage)).toEqual([
       "started",
       "executed",
-      "failed",
+      "verified",
+      "completed_after_abort",
+      "succeeded",
     ]);
   });
 

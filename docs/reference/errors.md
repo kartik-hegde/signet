@@ -7,7 +7,8 @@ verifier exceptions otherwise retain their original identity.
 
 Thrown before application logic when an invocation does not match the tool's JSON
 Schema. Its `code` is `invalid_input`; `issues` contains machine-readable paths,
-keywords, and messages.
+keywords, and messages. Its bounded message includes the first failing paths so an
+agent can correct the call even when the browser preserves only `Error.message`.
 
 ## `ToolError`
 
@@ -23,6 +24,9 @@ throw new ToolError({
 ```
 
 `retryable` is descriptive. Signet never retries the operation automatically.
+The error message includes the code and retryability because custom error properties
+are not consistently preserved across browser-agent boundaries. `details` remains
+application-side and is never added to the message automatically.
 
 ## `AuthorizationError`
 
@@ -32,6 +36,11 @@ Thrown when `authorize` returns a denial.
 error.name === "AuthorizationError";
 error.code === "authorization_denied";
 ```
+
+## `ConfirmationError`
+
+Thrown when the application-owned `confirm` hook declines an operation. Its code is
+`confirmation_declined`.
 
 ## `VerificationError`
 

@@ -5,7 +5,9 @@ const root = new URL("../", import.meta.url);
 const distFiles = await readdir(new URL("dist/", root));
 assert.deepEqual(distFiles.filter((name) => name.endsWith(".d.ts")).sort(), [
   "index.d.ts",
+  "inspector.d.ts",
   "opentelemetry.d.ts",
+  "react.d.ts",
   "testing.d.ts",
 ]);
 assert.equal(
@@ -25,6 +27,8 @@ assert.doesNotMatch(skill, /TODO/);
 const core = await import("@signet/webmcp");
 const testing = await import("@signet/webmcp/testing");
 const telemetry = await import("@signet/webmcp/opentelemetry");
+const inspector = await import("@signet/webmcp/inspector");
+const react = await import("@signet/webmcp/react");
 
 assert.equal(typeof core.guard, "function");
 assert.equal(typeof core.createSignet, "function");
@@ -34,6 +38,8 @@ assert.equal(typeof core.AuthorizationError, "function");
 assert.equal(typeof core.VerificationError, "function");
 assert.equal(typeof testing.MemoryIdempotencyStore, "function");
 assert.equal(typeof telemetry.openTelemetryObserver, "function");
+assert.equal(typeof inspector.mountSignetInspector, "function");
+assert.equal(typeof react.useSignetTool, "function");
 
 const execute = core.guard(async ({ value }) => value * 2);
 const result = await execute(

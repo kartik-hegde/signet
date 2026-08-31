@@ -2,6 +2,7 @@ export { guard } from "./guard.js";
 export { createSignet } from "./interface.js";
 export {
   AuthorizationError,
+  ConfirmationError,
   SignetError,
   ToolError,
   ValidationError,
@@ -10,8 +11,14 @@ export {
   type ToolErrorOptions,
   type ValidationIssue,
 } from "./errors.js";
+export {
+  assertToolReady,
+  checkToolReadiness,
+  type ToolDiagnostic,
+} from "./readiness.js";
 export type {
   AuthorizationDecision,
+  ConfirmationDecision,
   Execute,
   ExecuteOptions,
   GuardEvent,
@@ -30,5 +37,6 @@ export type {
   SignetInterface,
   SignetRegistration,
   SignetTool,
+  SignetToolSnapshot,
   ToolAnnotations,
 } from "./interface.js";

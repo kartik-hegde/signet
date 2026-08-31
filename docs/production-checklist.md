@@ -26,6 +26,7 @@ Use this before shipping an authenticated or state-changing WebMCP tool.
 - [ ] Preserve the `AbortSignal` through cancellable work.
 - [ ] Do not assume cancellation proves that no effect occurred.
 - [ ] Use existing application review or confirmation UX for consequential actions.
+- [ ] Set and test a task-focused output byte budget.
 
 ## Concurrency and operations
 
@@ -43,5 +44,6 @@ Use this before shipping an authenticated or state-changing WebMCP tool.
 - [ ] Application errors preserve their identity.
 - [ ] Telemetry failure cannot break the operation.
 - [ ] Native discovery, invocation, visible state, and cleanup work in each target agent.
+- [ ] Saved representative tasks retain selection, argument, and completion quality.
 
 See [Testing WebMCP actions](./guide/testing) for examples.

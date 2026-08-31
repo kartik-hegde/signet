@@ -62,15 +62,15 @@ describe("Signet validation and expected errors", () => {
       execute,
     });
 
-    await expect(
-      native.tool?.execute(
-        { orderId: "", unexpected: true },
-        { signal: new AbortController().signal },
-      ),
-    ).rejects.toEqual(
+    const invocation = native.tool?.execute(
+      { orderId: "", unexpected: true },
+      { signal: new AbortController().signal },
+    );
+    await expect(invocation).rejects.toEqual(
       expect.objectContaining({
         name: "ValidationError",
         code: "invalid_input",
+        message: expect.stringMatching(/orderId.*too short/i),
         issues: expect.arrayContaining([
           expect.objectContaining({ keyword: "additionalProperties" }),
           expect.objectContaining({ keyword: "minLength" }),
@@ -98,15 +98,16 @@ describe("Signet validation and expected errors", () => {
       },
     });
 
-    await expect(
-      native.tool?.execute(
-        { orderId: "ord_1" },
-        { signal: new AbortController().signal },
-      ),
-    ).rejects.toEqual(
+    const invocation = native.tool?.execute(
+      { orderId: "ord_1" },
+      { signal: new AbortController().signal },
+    );
+    await expect(invocation).rejects.toEqual(
       expect.objectContaining({
         name: "ToolError",
         code: "already_shipped",
+        message:
+          "[already_shipped] Shipped orders cannot be cancelled. (retryable: no)",
         retryable: false,
         details: { alternative: "return_order" },
       }),
@@ -129,6 +130,31 @@ describe("Signet validation and expected errors", () => {
     ]);
 
     expect(error.code).toBe("invalid_input");
+    expect(error.message).toBe("Invalid tool input — /orderId: is required.");
     expect(error.issues).toHaveLength(1);
+  });
+
+  it("normalizes punctuation from schema-validator messages", () => {
+    const error = new ValidationError([
+      { path: "/query", message: "String is too long.", keyword: "maxLength" },
+    ]);
+    expect(error.message).toBe(
+      "Invalid tool input — /query: String is too long.",
+    );
+  });
+
+  it("caps agent-facing validation details", () => {
+    const error = new ValidationError(
+      Array.from({ length: 5 }, (_, index) => ({
+        path: `/field${index}`,
+        message: "is invalid",
+        keyword: "type",
+      })),
+    );
+
+    expect(error.message).toContain("/field0: is invalid");
+    expect(error.message).not.toContain("/field3");
+    expect(error.message).toContain("plus 2 more issues");
+    expect(error.message.length).toBeLessThanOrEqual(300);
   });
 });

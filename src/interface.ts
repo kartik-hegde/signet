@@ -2,6 +2,8 @@ import { runGuarded } from "./guard.js";
 import { compileInputValidator } from "./validation.js";
 import type {
   AuthorizationDecision,
+  ConfirmationDecision,
+  GuardEvent,
   GuardObserver,
   IdempotencyStore,
   MaybePromise,
@@ -66,6 +68,11 @@ export interface SignetTool<
     readonly context: Context;
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | AuthorizationDecision>;
+  readonly confirm?: (args: {
+    readonly input: Input;
+    readonly context: Context;
+    readonly signal: AbortSignal;
+  }) => MaybePromise<boolean | ConfirmationDecision>;
   readonly idempotency?: {
     readonly key: (args: {
       readonly input: Input;
@@ -80,6 +87,7 @@ export interface SignetTool<
     readonly error: unknown;
     readonly signal: AbortSignal;
   }) => MaybePromise<RecoveryDecision<Output>>;
+  readonly outputBudgetBytes?: number;
   readonly verify?: (args: {
     readonly input: Input;
     readonly output: Output;
@@ -101,6 +109,31 @@ export interface SignetInterface<Context> {
   expose<Input extends Record<string, unknown>, Output>(
     tool: SignetTool<Input, Output, Context>,
   ): Promise<SignetRegistration>;
+  tools(): readonly SignetToolSnapshot[];
+  observe(observer: GuardObserver): () => void;
+}
+
+export interface SignetToolSnapshot {
+  readonly name: string;
+  readonly title?: string;
+  readonly description: string;
+  readonly inputSchema: object;
+  readonly annotations?: ToolAnnotations;
+  readonly exposedTo?: readonly string[];
+  readonly status: "registering" | "registered" | "unsupported";
+}
+
+// WebMCP names are unique within a document, not within a Signet instance.
+// Keep that invariant even when an application creates more than one interface.
+const activeNamesByContext = new WeakMap<ModelContextLike, Set<string>>();
+
+function activeNamesFor(modelContext: ModelContextLike): Set<string> {
+  let names = activeNamesByContext.get(modelContext);
+  if (!names) {
+    names = new Set<string>();
+    activeNamesByContext.set(modelContext, names);
+  }
+  return names;
 }
 
 function browserModelContext(): ModelContextLike | undefined {
@@ -117,6 +150,7 @@ function validateDefinition(tool: {
   name: string;
   description: string;
   inputSchema: object;
+  outputBudgetBytes?: number;
 }): void {
   if (!/^[A-Za-z0-9_.-]{1,128}$/.test(tool.name)) {
     throw definitionError(
@@ -132,6 +166,13 @@ function validateDefinition(tool: {
     Array.isArray(tool.inputSchema)
   ) {
     throw definitionError("inputSchema must be an object.");
+  }
+  if (
+    tool.outputBudgetBytes !== undefined &&
+    (!Number.isSafeInteger(tool.outputBudgetBytes) ||
+      tool.outputBudgetBytes <= 0)
+  ) {
+    throw definitionError("outputBudgetBytes must be a positive integer.");
   }
 }
 
@@ -166,7 +207,20 @@ class Registration implements SignetRegistration {
 export function createSignet<Context = undefined>(
   options: CreateSignetOptions<Context> = {},
 ): SignetInterface<Context> {
-  const activeNames = new Set<string>();
+  const observers = new Set<GuardObserver>();
+  if (options.observe) observers.add(options.observe);
+  const tools = new Map<string, SignetToolSnapshot>();
+  const localNames = new Set<string>();
+
+  const dispatch = (event: GuardEvent): void => {
+    for (const observer of observers) {
+      try {
+        void Promise.resolve(observer(event)).catch(() => undefined);
+      } catch {
+        // Observation never changes application behavior.
+      }
+    }
+  };
 
   const emitRegistration = (
     name: string,
@@ -180,40 +234,55 @@ export function createSignet<Context = undefined>(
     startedAt: number,
     error?: unknown,
   ): void => {
-    if (!options.observe) return;
-    try {
-      void Promise.resolve(
-        options.observe({
-          invocationId,
-          name,
-          stage,
-          timestamp: Date.now(),
-          durationMs: Math.max(0, performance.now() - startedAt),
-          ...(error === undefined ? {} : { error }),
-        }),
-      ).catch(() => undefined);
-    } catch {
-      // Observation never changes registration behavior.
-    }
+    if (observers.size === 0) return;
+    dispatch({
+      invocationId,
+      name,
+      stage,
+      timestamp: Date.now(),
+      durationMs: Math.max(0, performance.now() - startedAt),
+      ...(error === undefined ? {} : { error }),
+    });
   };
 
   return {
+    tools: () => [...tools.values()],
+    observe(observer) {
+      observers.add(observer);
+      return () => observers.delete(observer);
+    },
     async expose(tool) {
       validateDefinition(tool);
-      const validateInput = compileInputValidator(tool.inputSchema);
-      const registrationId = crypto.randomUUID();
-      const startedAt = performance.now();
-
-      if (activeNames.has(tool.name)) {
+      if (localNames.has(tool.name)) {
         throw definitionError(
           'a tool named "' + tool.name + '" is already exposed.',
         );
       }
+      const validateInput = compileInputValidator(tool.inputSchema);
+      localNames.add(tool.name);
+      const registrationId = crypto.randomUUID();
+      const startedAt = performance.now();
+      const snapshot = (
+        status: SignetToolSnapshot["status"],
+      ): SignetToolSnapshot => ({
+        name: tool.name,
+        ...(tool.title === undefined ? {} : { title: tool.title }),
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        ...(tool.annotations === undefined
+          ? {}
+          : { annotations: tool.annotations }),
+        ...(tool.exposedTo === undefined ? {} : { exposedTo: tool.exposedTo }),
+        status,
+      });
 
       const modelContext = options.modelContext ?? browserModelContext();
       if (!modelContext) {
+        tools.set(tool.name, snapshot("unsupported"));
         emitRegistration(tool.name, registrationId, "unsupported", startedAt);
         if (options.unsupported === "throw") {
+          localNames.delete(tool.name);
+          tools.delete(tool.name);
           throw new Error("WebMCP is not available in this environment.");
         }
         if (options.unsupported === "warn") {
@@ -221,10 +290,22 @@ export function createSignet<Context = undefined>(
             "Signet: WebMCP is not available; tool was not exposed.",
           );
         }
-        return new Registration(tool.name, "unsupported", () => undefined);
+        return new Registration(tool.name, "unsupported", () => {
+          localNames.delete(tool.name);
+          tools.delete(tool.name);
+        });
+      }
+
+      const activeNames = activeNamesFor(modelContext);
+      if (activeNames.has(tool.name)) {
+        localNames.delete(tool.name);
+        throw definitionError(
+          'a tool named "' + tool.name + '" is already exposed.',
+        );
       }
 
       activeNames.add(tool.name);
+      tools.set(tool.name, snapshot("registering"));
       const controller = new AbortController();
       emitRegistration(tool.name, registrationId, "registering", startedAt);
 
@@ -249,10 +330,14 @@ export function createSignet<Context = undefined>(
                 }
               : {}),
             ...(tool.authorize ? { authorize: tool.authorize } : {}),
+            ...(tool.confirm ? { confirm: tool.confirm } : {}),
             ...(tool.idempotency ? { idempotency: tool.idempotency } : {}),
             ...(tool.recover ? { recover: tool.recover } : {}),
+            ...(tool.outputBudgetBytes === undefined
+              ? {}
+              : { outputBudgetBytes: tool.outputBudgetBytes }),
             ...(tool.verify ? { verify: tool.verify } : {}),
-            ...(options.observe ? { observe: options.observe } : {}),
+            ...(observers.size > 0 ? { observe: dispatch } : {}),
           },
         );
       };
@@ -277,7 +362,9 @@ export function createSignet<Context = undefined>(
           },
         );
       } catch (error) {
+        localNames.delete(tool.name);
         activeNames.delete(tool.name);
+        tools.delete(tool.name);
         controller.abort();
         emitRegistration(
           tool.name,
@@ -289,11 +376,14 @@ export function createSignet<Context = undefined>(
         throw error;
       }
 
+      tools.set(tool.name, snapshot("registered"));
       emitRegistration(tool.name, registrationId, "registered", startedAt);
 
       return new Registration(tool.name, "registered", () => {
         controller.abort();
+        localNames.delete(tool.name);
         activeNames.delete(tool.name);
+        tools.delete(tool.name);
         emitRegistration(tool.name, registrationId, "unregistered", startedAt);
       });
     },
