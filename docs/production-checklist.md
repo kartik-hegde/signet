@@ -22,6 +22,7 @@ Use this before shipping an authenticated or state-changing WebMCP tool.
 
 - [ ] Define a stable, correctly scoped idempotency key.
 - [ ] Coordinate duplicate work atomically in durable storage.
+- [ ] Distinguish a live owner from abandoned in-flight work across tabs or processes.
 - [ ] Verify the intended state independently when false success matters.
 - [ ] Preserve the `AbortSignal` through cancellable work.
 - [ ] Do not assume cancellation proves that no effect occurred.
@@ -45,6 +46,7 @@ Use this before shipping an authenticated or state-changing WebMCP tool.
 - [ ] Execution and replay both run verification.
 - [ ] Exact replay does not create a second effect or unwanted confirmation prompt.
 - [ ] Ambiguous recovery produces `outcome_unknown`, never a blind retry.
+- [ ] A reload retry recovers the prior in-flight attempt without repeating its effect.
 - [ ] Application errors preserve their identity.
 - [ ] Telemetry failure cannot break the operation.
 - [ ] Native discovery, invocation, visible state, and cleanup work in each target agent.

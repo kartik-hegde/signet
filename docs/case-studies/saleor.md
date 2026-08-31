@@ -28,10 +28,10 @@ adapter. Signet owns the narrow agent boundary: runtime schemas, lifecycle regis
 authorization ordering, duplicate coordination, confirmation, recovery, verification
 and privacy-safe events. It does not duplicate Saleor's checkout engine.
 
-The React composition layer creates one Signet instance, a durable IndexedDB
-idempotency adapter and a session-scoped operation journal. Tool definitions live in a
-plain TypeScript module, while the optional demo panel is isolated from the production
-boundary.
+The React composition layer creates one Signet instance, the shipped
+`IndexedDbIdempotencyStore` and a session-scoped operation journal. Tool definitions
+live in a plain TypeScript module with an injected Saleor action boundary, while the
+optional demo panel is isolated from the production boundary.
 
 ## The consequential path
 
@@ -70,7 +70,7 @@ therefore not the grader.
 
 ## What the integration taught us
 
-Three library changes came directly from this exercise:
+Four library changes came directly from this exercise:
 
 1. Confirmation needed a replay-aware mode. Prompting before an idempotency lookup made
    safe retries annoying and semantically misleading.
@@ -79,7 +79,15 @@ Three library changes came directly from this exercise:
 3. Execute and recovery needed a shared operation journal. Ad hoc storage works for a
    demo, but a small typed correlation contract is clearer, testable and replaceable by
    durable application storage.
+4. The store could not decide whether a thrown handler failed before or after payment.
+   Idempotency therefore became phased: the guard releases only a journal-proven
+   pre-effect failure and preserves abandoned in-flight work for recovery after reload.
 
-The resulting API stays deliberately small: applications still choose the storage,
-keys, consent UI and authoritative verifier. Signet makes their ordering and failure
-semantics hard to get wrong.
+The integration now imports its IndexedDB adapter from `@signet/webmcp/stores`; the
+test-only memory store remains explicitly unsafe for real effects. Its unit tests run
+all five definitions through `assertToolReady`, then exercise replay, concurrent calls,
+reload recovery, stale totals and invented arguments through the WebMCP test harness.
+
+The resulting API stays deliberately small: applications still choose keys, consent
+UI and authoritative verification. Signet supplies the conservative browser store and
+makes the ordering and failure semantics hard to get wrong.

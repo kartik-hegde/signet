@@ -8,16 +8,28 @@ operation atomically.
 
 ```ts
 interface IdempotencyStore {
-  execute<Output>(
-    key: string,
-    operation: () => Promise<Output>,
-    options: { signal: AbortSignal },
-  ): Promise<{ value: Output; replayed: boolean }>;
+  begin<Output>(
+    key,
+    options,
+  ): Promise<
+    | { state: "fresh" }
+    | { state: "in_flight" }
+    | { state: "completed"; value: Output }
+  >;
+  complete<Output>(key, value, options): Promise<void>;
+  release(key, options): Promise<void>;
+  abandon(key, options): Promise<void>;
 }
 ```
 
-The store owns the race. A `get()` followed by a separate `set()` is not sufficient:
-two workers can both observe a miss and perform the effect.
+The store owns the race, while the guard owns the effect boundary. A `get()` followed
+by a separate `set()` is not sufficient: two workers can both observe a miss and
+perform the effect. The store must not delete an in-flight claim merely because the
+handler threw; only the guard can use its operation journal to prove no effect started.
+
+`release` deletes a claim after that proof. `abandon` releases live ownership but keeps
+the durable `in_flight` state so a later invocation can recover it. This distinction is
+required after a lost response or crash.
 
 ## Scope keys to the operation
 
@@ -42,7 +54,8 @@ Signet has no global lock or queue. Coordination is per store key:
 
 | Invocations          | Expected behavior                                       |
 | -------------------- | ------------------------------------------------------- |
-| Same key, concurrent | One operation; other callers share or replay its result |
+| Same key, concurrent | Wait for its live owner, then replay the result         |
+| Same key, abandoned  | Recover; never execute the effect again speculatively   |
 | Same key, later      | Return the durable result according to retention policy |
 | Different keys       | Execute concurrently                                    |
 
@@ -69,24 +82,26 @@ await Promise.all([
 
 ## Production storage
 
-`MemoryIdempotencyStore` demonstrates the semantics in tests. It is process-local,
-unbounded, and not production infrastructure.
+`IndexedDbIdempotencyStore` from `@signet/webmcp/stores` is the conservative browser
+adapter. It combines IndexedDB durability with a Web Lock per key, allowing it to tell
+live work from an abandoned record across tabs. It is scoped to one browser profile;
+server-side enforcement is still required when requests can arrive elsewhere.
+
+`MemoryIdempotencyStore` from `@signet/webmcp/testing` demonstrates the same phases in
+tests. It is process-local, unbounded, and unsafe for real effects.
 
 A durable adapter must define:
 
 - atomic acquisition and duplicate behavior;
 - leases or recovery for interrupted workers;
 - result persistence and retention;
-- failure and retry policy;
+- explicit release versus abandoned-work recovery;
 - multi-process correctness;
 - transaction boundaries with the business effect.
 
-Once a store starts the supplied operation, a successful result owns the outcome: it
-must be persisted and returned even if that caller is aborted before the result arrives.
-A duplicate caller waiting on existing work may cancel its own wait without cancelling
-or evicting the shared operation. `checkIdempotencyStore()` enforces both this late-abort
-rule and per-key concurrency with fresh keys on every run, so it can safely exercise a
-persistent store repeatedly.
+`checkIdempotencyStore()` enforces fresh claims, live-owner waiting, abandoned-work
+reporting, completion, explicit release, cancellation, and per-key concurrency with
+fresh keys on every run, so it can safely exercise a persistent store repeatedly.
 
 Signet intentionally does not claim “exactly once.” A database and every downstream
 system would need compatible transaction semantics for that claim to be meaningful.

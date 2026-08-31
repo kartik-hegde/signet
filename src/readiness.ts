@@ -11,6 +11,8 @@ interface ToolDefinition {
   readonly description: string;
   readonly inputSchema: object;
   readonly annotations?: ToolAnnotations;
+  readonly idempotency?: unknown;
+  readonly journal?: unknown;
   readonly outputBudgetBytes?: number;
 }
 type Schema = Record<string, unknown>;
@@ -48,6 +50,14 @@ export function checkToolReadiness(
       "read_only_hint",
       "annotations.readOnlyHint",
       "Mark read-only tools so agents can plan safely.",
+    );
+  }
+  if (tool.idempotency !== undefined && tool.journal === undefined) {
+    add(
+      diagnostics,
+      "idempotency_journal",
+      "journal",
+      "Configure an operation journal with idempotency so failures can be classified safely.",
     );
   }
   if (

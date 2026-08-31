@@ -72,6 +72,7 @@ export interface SignetTool<
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | AuthorizationDecision>;
   readonly confirm?: ConfirmationPolicy<Input, Context>;
+  /** Requires `journal` so a failed claim is released only with pre-effect evidence. */
   readonly idempotency?: {
     readonly key: (args: {
       readonly input: Input;
@@ -160,6 +161,8 @@ function validateDefinition(tool: {
   name: string;
   description: string;
   inputSchema: object;
+  idempotency?: unknown;
+  journal?: unknown;
   outputBudgetBytes?: number;
   verifyTimeoutMs?: number;
 }): void {
@@ -190,6 +193,11 @@ function validateDefinition(tool: {
     (!Number.isSafeInteger(tool.verifyTimeoutMs) || tool.verifyTimeoutMs <= 0)
   ) {
     throw definitionError("verifyTimeoutMs must be a positive integer.");
+  }
+  if (tool.idempotency !== undefined && tool.journal === undefined) {
+    throw definitionError(
+      "idempotency requires a journal so failures can be classified safely.",
+    );
   }
 }
 

@@ -1,7 +1,10 @@
 /// <reference types="webmcp-types" />
 
 import { createSignet, type GuardEvent } from "../../../../src/index";
-import { MemoryIdempotencyStore } from "../../../../src/testing";
+import {
+  MemoryIdempotencyStore,
+  MemoryOperationJournal,
+} from "../../../../src/testing";
 import { backendPort } from "../utils/portUtils";
 
 type ToolInput<T extends object> = T & Record<string, unknown>;
@@ -116,6 +119,7 @@ export function registerPaymentTools(
   if (!document.modelContext) return lifecycle;
 
   const idempotencyStore = new MemoryIdempotencyStore();
+  const operationJournal = new MemoryOperationJournal();
   const readTools = createSignet();
   const paymentTools = createSignet<PaymentContext>({
     context: ({ signal }) =>
@@ -224,7 +228,9 @@ export function registerPaymentTools(
           ].join(":"),
         store: idempotencyStore,
       },
-      execute: async (input, { signal }) => {
+      journal: { store: operationJournal },
+      execute: async (input, { operation, signal }) => {
+        await operation?.write({ operationId: input.operationId });
         const result = await requestJson<PaymentResponse>("/payments", {
           method: "POST",
           signal,
@@ -233,13 +239,18 @@ export function registerPaymentTools(
         onPaymentCreated(result.transaction.id);
         return result;
       },
-      recover: async ({ input, context, signal }) => {
+      recover: async ({ input, context, operation, signal }) => {
+        const correlation = await operation?.read<{ operationId: string }>();
+        if (correlation?.operationId !== input.operationId) {
+          return { recovered: false };
+        }
         try {
           const authoritative = await requestJson<AuthoritativePayment>(
             "/payments/" + encodeURIComponent(input.operationId),
             { signal },
           );
           if (!matchesPayment(authoritative, input, context)) {
+            await operation?.remove();
             return { recovered: false };
           }
 
@@ -248,7 +259,14 @@ export function registerPaymentTools(
             recovered: true,
             output: { ...authoritative, replayed: true },
           };
-        } catch {
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            "status" in error &&
+            error.status === 404
+          ) {
+            await operation?.remove();
+          }
           return { recovered: false };
         }
       },
@@ -283,6 +301,7 @@ export function registerPaymentTools(
         for (const handle of handles) handle.dispose();
       });
       idempotencyStore.clear();
+      operationJournal.clear();
     },
     { once: true },
   );

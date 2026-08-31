@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { PostgresIdempotencyStore } from "../recipes/postgres-idempotency.js";
 
 interface StoredRow {
+  state: "in_flight" | "completed";
   value: unknown;
 }
 
@@ -13,11 +14,20 @@ function poolWithMemoryRow() {
       sql: string,
       values?: readonly unknown[],
     ): Promise<{ rows: Result[] }> {
-      if (sql.startsWith("select value")) {
+      if (sql.startsWith("select state")) {
         return { rows: (row ? [row] : []) as unknown as Result[] };
       }
       if (sql.startsWith("insert into")) {
-        row = { value: JSON.parse(values?.[1] as string) as unknown };
+        row = { state: "in_flight", value: null };
+      }
+      if (sql.startsWith("update signet_operations")) {
+        row = {
+          state: "completed",
+          value: JSON.parse(values?.[1] as string) as unknown,
+        };
+      }
+      if (sql.startsWith("delete from")) {
+        row = undefined;
       }
       return { rows: [] };
     },
@@ -30,31 +40,42 @@ describe("PostgresIdempotencyStore recipe", () => {
   it("stores and replays a void result without SQL null", async () => {
     const store = new PostgresIdempotencyStore(poolWithMemoryRow());
     const options = { signal: new AbortController().signal };
-    let effects = 0;
-    const operation = async (): Promise<void> => {
-      effects += 1;
-    };
-
-    await expect(store.execute("void", operation, options)).resolves.toEqual({
-      value: undefined,
-      replayed: false,
+    await expect(store.begin("void", options)).resolves.toEqual({
+      state: "fresh",
     });
-    await expect(store.execute("void", operation, options)).resolves.toEqual({
+    await store.complete("void", undefined, options);
+    await expect(store.begin("void", options)).resolves.toEqual({
+      state: "completed",
       value: undefined,
-      replayed: true,
     });
-    expect(effects).toBe(1);
   });
 
-  it("preserves the original error when rollback also fails", async () => {
+  it("distinguishes abandon from release", async () => {
+    const store = new PostgresIdempotencyStore(poolWithMemoryRow());
+    const options = { signal: new AbortController().signal };
+
+    await store.begin("operation", options);
+    await store.abandon("operation", options);
+    await expect(store.begin("operation", options)).resolves.toEqual({
+      state: "in_flight",
+    });
+    await store.release("operation", options);
+    await expect(store.begin("operation", options)).resolves.toEqual({
+      state: "fresh",
+    });
+  });
+
+  it("preserves the original error when unlock also fails", async () => {
     const original = new Error("insert failed");
     const client = {
       async query<Result extends Record<string, unknown>>(
         sql: string,
       ): Promise<{ rows: Result[] }> {
-        if (sql.startsWith("select value")) return { rows: [] };
+        if (sql.startsWith("select state")) return { rows: [] };
         if (sql.startsWith("insert into")) throw original;
-        if (sql === "rollback") throw new Error("rollback failed");
+        if (sql.startsWith("select pg_advisory_unlock")) {
+          throw new Error("unlock failed");
+        }
         return { rows: [] };
       },
       release() {},
@@ -64,9 +85,7 @@ describe("PostgresIdempotencyStore recipe", () => {
     });
 
     await expect(
-      store.execute("failure", async () => "done", {
-        signal: new AbortController().signal,
-      }),
+      store.begin("failure", { signal: new AbortController().signal }),
     ).rejects.toBe(original);
   });
 });

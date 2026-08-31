@@ -67,48 +67,66 @@ describe("checkIdempotencyStore", () => {
       checkIdempotencyStore(() => new MemoryIdempotencyStore()),
     ).resolves.toEqual({
       passed: [
-        "coalesces equal keys",
+        "claims fresh keys",
+        "waits for live equal keys",
+        "reports abandoned in-flight work",
+        "persists completed results",
+        "releases proven pre-effect claims",
         "runs distinct keys concurrently",
-        "evicts failures",
         "honors pre-aborted calls",
-        "returns completed owner work after late abort",
       ],
     });
   });
 
-  it("rejects a store that does not coalesce", async () => {
+  it("rejects a store that does not wait for a live owner", async () => {
     await expect(
       checkIdempotencyStore(() => ({
-        async execute(_key, operation) {
-          return { value: await operation(), replayed: false };
+        async begin() {
+          return { state: "fresh" as const };
         },
+        async complete() {},
+        async release() {},
+        async abandon() {},
       })),
-    ).rejects.toThrow("coalesce concurrent equal keys");
+    ).rejects.toThrow("wait for a live equal-key owner");
   });
 
   it("rejects a store that serializes distinct keys", async () => {
     await expect(
       checkIdempotencyStore(
         () => {
+          const inner = new MemoryIdempotencyStore();
           let tail = Promise.resolve();
-          const operations = new Map<string, Promise<unknown>>();
+          const unlockByKey = new Map<string, () => void>();
           return {
-            async execute<Output>(
+            async begin<Output>(key: string, options: { signal: AbortSignal }) {
+              const previous = tail;
+              let release: (() => void) | undefined;
+              tail = new Promise<void>((resolve) => {
+                release = resolve;
+              });
+              await previous;
+              unlockByKey.set(key, release!);
+              return await inner.begin<Output>(key, options);
+            },
+            async complete<Output>(
               key: string,
-              operation: () => Promise<Output>,
+              value: Output,
+              options: { signal: AbortSignal },
             ) {
-              const existing = operations.get(key) as
-                Promise<Output> | undefined;
-              if (existing) {
-                return { value: await existing, replayed: true };
-              }
-              const pending = tail.then(operation);
-              operations.set(key, pending);
-              tail = pending.then(
-                () => undefined,
-                () => undefined,
-              );
-              return { value: await pending, replayed: false };
+              await inner.complete(key, value, options);
+              unlockByKey.get(key)?.();
+              unlockByKey.delete(key);
+            },
+            async release(key: string, options: { signal: AbortSignal }) {
+              await inner.release(key, options);
+              unlockByKey.get(key)?.();
+              unlockByKey.delete(key);
+            },
+            async abandon(key: string, options: { signal: AbortSignal }) {
+              await inner.abandon(key, options);
+              unlockByKey.get(key)?.();
+              unlockByKey.delete(key);
             },
           };
         },
@@ -118,60 +136,26 @@ describe("checkIdempotencyStore", () => {
   });
 
   it("uses fresh keys on every conformance run", async () => {
-    const operations = new Map<string, Promise<unknown>>();
-    const createStore = () => ({
-      async execute<Output>(
-        key: string,
-        operation: () => Promise<Output>,
-        options: { signal: AbortSignal },
-      ) {
-        options.signal.throwIfAborted();
-        const existing = operations.get(key) as Promise<Output> | undefined;
-        if (existing) return { value: await existing, replayed: true };
-        const pending = operation();
-        operations.set(key, pending);
-        void pending.catch(() => operations.delete(key));
-        return { value: await pending, replayed: false };
-      },
-    });
+    const shared = new MemoryIdempotencyStore();
+    const createStore = () => shared;
 
     await checkIdempotencyStore(createStore);
     await expect(checkIdempotencyStore(createStore)).resolves.toBeDefined();
   });
 
-  it("rejects a store that abandons completed owner work after abort", async () => {
+  it("rejects a store that deletes abandoned work", async () => {
     await expect(
       checkIdempotencyStore(() => {
-        const operations = new Map<string, Promise<unknown>>();
+        const inner = new MemoryIdempotencyStore();
         return {
-          async execute<Output>(
-            key: string,
-            operation: () => Promise<Output>,
-            options: { signal: AbortSignal },
-          ) {
-            options.signal.throwIfAborted();
-            const existing = operations.get(key) as Promise<Output> | undefined;
-            if (existing) {
-              return { value: await existing, replayed: true };
-            }
-            const pending = operation();
-            operations.set(key, pending);
-            void pending.catch(() => operations.delete(key));
-            const abort = new Promise<void>((resolve) => {
-              options.signal.addEventListener("abort", () => resolve(), {
-                once: true,
-              });
-            }).then((): Output => {
-              options.signal.throwIfAborted();
-              throw new Error("abort event fired without an aborted signal");
-            });
-            return {
-              value: await Promise.race([pending, abort]),
-              replayed: false,
-            };
+          begin: inner.begin.bind(inner),
+          complete: inner.complete.bind(inner),
+          release: inner.release.bind(inner),
+          async abandon(key: string, options: { signal: AbortSignal }) {
+            await inner.release(key, options);
           },
         };
       }),
-    ).rejects.toThrow("completed owner work after a late abort");
+    ).rejects.toThrow("report abandoned in-flight work");
   });
 });

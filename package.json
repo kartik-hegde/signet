@@ -21,6 +21,10 @@
       "types": "./dist/testing.d.ts",
       "import": "./dist/testing.js"
     },
+    "./stores": {
+      "types": "./dist/stores.d.ts",
+      "import": "./dist/stores.js"
+    },
     "./opentelemetry": {
       "types": "./dist/opentelemetry.d.ts",
       "import": "./dist/opentelemetry.js"
@@ -78,6 +82,7 @@
     "@types/react": "^19.2.18",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.9.1",
+    "fake-indexeddb": "^6.2.5",
     "prettier": "^3.9.6",
     "publint": "^0.3.24",
     "react": "^19.2.8",

@@ -81,22 +81,33 @@ export type RecoveryDecision<Output> =
       readonly reason?: string;
     };
 
-export interface IdempotencyResult<Output> {
-  readonly value: Output;
-  readonly replayed: boolean;
-}
+export type IdempotencyBeginResult<Output> =
+  | { readonly state: "fresh" }
+  | { readonly state: "in_flight" }
+  | { readonly state: "completed"; readonly value: Output };
 
 export interface IdempotencyStore {
   /**
-   * Coalesces equal keys. Once this call starts `operation`, a successful
-   * operation must be persisted and returned even if its caller is aborted.
-   * A caller joining existing work may stop waiting without cancelling it.
+   * Atomically claims a fresh key, waits for a live equal-key owner, or reports
+   * durable work left in flight by an owner that is no longer running.
    */
-  execute<Output>(
+  begin<Output>(
     key: string,
-    operation: () => Promise<Output>,
     options: ExecuteOptions,
-  ): Promise<IdempotencyResult<Output>>;
+  ): Promise<IdempotencyBeginResult<Output>>;
+
+  /** Persists a completed result and releases live ownership. */
+  complete<Output>(
+    key: string,
+    value: Output,
+    options: ExecuteOptions,
+  ): Promise<void>;
+
+  /** Deletes a claim proven not to have crossed the effect boundary. */
+  release(key: string, options: ExecuteOptions): Promise<void>;
+
+  /** Releases live ownership while retaining a durable in-flight claim. */
+  abandon(key: string, options: ExecuteOptions): Promise<void>;
 }
 
 export type GuardStage =
@@ -161,7 +172,10 @@ export interface GuardOptions<
   /** Obtains app-owned consent always, or only when a new effect will run. */
   readonly confirm?: ConfirmationPolicy<Input, Context>;
 
-  /** Delegates atomic replay/concurrency behavior to an app-provided durable store. */
+  /**
+   * Delegates atomic replay/concurrency behavior to an app-provided durable store.
+   * Requires `journal`, which supplies the evidence needed to release failed claims.
+   */
   readonly idempotency?: {
     readonly key: (args: {
       readonly input: Input;

@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { assertToolReady, checkToolReadiness, guard } from "../src/index.js";
-import { MemoryIdempotencyStore } from "../src/testing.js";
+import {
+  MemoryIdempotencyStore,
+  MemoryOperationJournal,
+} from "../src/testing.js";
 
 const active = () => ({ signal: new AbortController().signal });
 
@@ -36,6 +39,7 @@ describe("output limits", () => {
           key: () => "write-1",
           store: new MemoryIdempotencyStore(),
         },
+        journal: { store: new MemoryOperationJournal() },
         observe: ({ stage }) => {
           stages.push(stage);
         },
@@ -134,6 +138,29 @@ describe("tool readiness", () => {
       "output_limit",
     ]);
     expect(() => assertToolReady(tool)).toThrow("inputSchema.properties.query");
+  });
+
+  it("reports idempotency without the journal required for safe release", () => {
+    const diagnostics = checkToolReadiness({
+      name: "place_order",
+      description: "Place one order and return its identifier.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+      idempotency: {
+        key: () => "operation-1",
+        store: new MemoryIdempotencyStore(),
+      },
+    });
+
+    expect(diagnostics).toContainEqual({
+      code: "idempotency_journal",
+      path: "journal",
+      message:
+        "Configure an operation journal with idempotency so failures can be classified safely.",
+    });
   });
 
   it("checks nested objects, array items, alternatives, and definitions", () => {

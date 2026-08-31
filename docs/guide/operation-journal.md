@@ -4,6 +4,11 @@ An idempotency store remembers completed output. An operation journal remembers 
 correlation data needed to find an effect whose response may be lost. They solve
 different parts of the same retry problem.
 
+Signet requires a journal whenever idempotency is configured. Without one, an
+execution error cannot prove whether a claim is safe to release, so the same key can
+become permanently unusable. `guard()` and `expose()` reject that configuration, and
+`checkToolReadiness()` reports it as `idempotency_journal`.
+
 ## Connect a journal
 
 ```ts
@@ -17,8 +22,9 @@ const tool = {
     store: operationJournal,
   },
   async execute(input, { operation, signal }) {
-    const result = await orders.place(input, { signal });
-    await operation?.write({ orderId: result.orderId });
+    const orderId = crypto.randomUUID();
+    await operation?.write({ orderId });
+    const result = await orders.place({ ...input, orderId }, { signal });
     return result;
   },
   async recover({ operation, signal }) {
@@ -57,6 +63,11 @@ entries small and limited to non-secret correlation data such as an order, payme
 job, or request ID. Do not journal agent inputs, credentials, or full outputs by
 default.
 
+Write a client-generated correlation ID immediately before crossing the irreversible
+effect boundary. If execution fails and the configured journal is still empty, Signet
+can prove the failure was pre-effect and call `release`. A present record is retained
+until recovery proves the outcome and `complete` clears it.
+
 `WebStorageOperationJournal` is suitable for a single browser profile and accepts
 `sessionStorage`, `localStorage`, or a structurally compatible store. It is not a
 multi-device production guarantee. `MemoryOperationJournal` from `/testing` is for
@@ -70,7 +81,9 @@ Journal adapters must impose their own timeout for remote I/O.
 
 ## Unknown is a real outcome
 
-Return `{ recovered: false }` when the original error is known to remain the correct
-failure. Return `{ recovered: false, outcome: "unknown", reason? }` when the effect may
-exist but cannot be located. Signet raises `OutcomeUnknownError` and emits
-`outcome_unknown`; it never retries automatically.
+Return `{ recovered: false }` when no result can be proved. With phased idempotency,
+Signet returns the original error only when an empty configured journal independently
+proves a pre-effect failure; otherwise the durable claim remains in flight and the
+outcome is unknown. Return `{ recovered: false, outcome: "unknown", reason? }` to supply
+a more precise explanation. Signet raises `OutcomeUnknownError` and emits
+`outcome_unknown`; it never retries the effect automatically.

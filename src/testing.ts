@@ -1,6 +1,6 @@
 import type {
   ExecuteOptions,
-  IdempotencyResult,
+  IdempotencyBeginResult,
   IdempotencyStore,
   OperationJournal,
   OperationJournalOptions,
@@ -57,39 +57,85 @@ export function createWebMcpTestHarness(): WebMcpTestHarness {
 }
 
 /**
- * Process-local idempotency for tests and demos. It is intentionally not a
- * production default: durable semantics belong in the application's database.
+ * Process-local idempotency for tests. It is unsafe for real effects because a
+ * process restart loses both completed results and in-flight claims.
  */
 export class MemoryIdempotencyStore implements IdempotencyStore {
-  readonly #operations = new Map<string, Promise<unknown>>();
+  readonly #operations = new Map<
+    string,
+    | { readonly state: "in_flight" }
+    | { readonly state: "completed"; readonly value: unknown }
+  >();
+  readonly #claims = new Map<
+    string,
+    { readonly settled: Promise<void>; settle(): void }
+  >();
 
-  async execute<Output>(
+  async begin<Output>(
     key: string,
-    operation: () => Promise<Output>,
     options: ExecuteOptions,
-  ): Promise<IdempotencyResult<Output>> {
+  ): Promise<IdempotencyBeginResult<Output>> {
     options.signal.throwIfAborted();
 
-    const existing = this.#operations.get(key) as Promise<Output> | undefined;
-    if (existing) {
-      return { value: await waitFor(existing, options.signal), replayed: true };
+    const live = this.#claims.get(key);
+    if (live) {
+      await waitFor(live.settled, options.signal);
+      return await this.begin<Output>(key, options);
     }
 
-    const pending = Promise.resolve().then(operation);
-    this.#operations.set(key, pending);
-    void pending.then(undefined, () => {
-      if (this.#operations.get(key) === pending) {
-        this.#operations.delete(key);
-      }
-    });
+    const existing = this.#operations.get(key);
+    if (existing?.state === "completed") {
+      return { state: "completed", value: existing.value as Output };
+    }
 
-    // The owner has started the operation. Its completed result wins a late
-    // cancellation; callers joining the same promise may still stop waiting.
-    return { value: await pending, replayed: false };
+    if (!existing) this.#operations.set(key, { state: "in_flight" });
+    this.#claims.set(key, deferred());
+    return { state: existing ? "in_flight" : "fresh" };
+  }
+
+  complete<Output>(
+    key: string,
+    value: Output,
+    options: ExecuteOptions,
+  ): Promise<void> {
+    options.signal.throwIfAborted();
+    this.#requireClaim(key);
+    this.#operations.set(key, { state: "completed", value });
+    this.#settle(key);
+    return Promise.resolve();
+  }
+
+  release(key: string, options: ExecuteOptions): Promise<void> {
+    options.signal.throwIfAborted();
+    this.#requireClaim(key);
+    this.#operations.delete(key);
+    this.#settle(key);
+    return Promise.resolve();
+  }
+
+  abandon(key: string, options: ExecuteOptions): Promise<void> {
+    options.signal.throwIfAborted();
+    this.#requireClaim(key);
+    this.#settle(key);
+    return Promise.resolve();
   }
 
   clear(): void {
+    for (const claim of this.#claims.values()) claim.settle();
+    this.#claims.clear();
     this.#operations.clear();
+  }
+
+  #requireClaim(key: string): void {
+    if (!this.#claims.has(key)) {
+      throw new Error(`No live idempotency claim exists for "${key}".`);
+    }
+  }
+
+  #settle(key: string): void {
+    const claim = this.#claims.get(key);
+    this.#claims.delete(key);
+    claim?.settle();
   }
 }
 
@@ -126,11 +172,13 @@ export class MemoryOperationJournal implements OperationJournal {
 
 export interface IdempotencyConformanceResult {
   readonly passed: readonly [
-    "coalesces equal keys",
+    "claims fresh keys",
+    "waits for live equal keys",
+    "reports abandoned in-flight work",
+    "persists completed results",
+    "releases proven pre-effect claims",
     "runs distinct keys concurrently",
-    "evicts failures",
     "honors pre-aborted calls",
-    "returns completed owner work after late abort",
   ];
 }
 
@@ -146,23 +194,27 @@ export async function checkIdempotencyStore(
 ): Promise<IdempotencyConformanceResult> {
   const run = crypto.randomUUID();
   const key = (name: string): string => `signet:${run}:${name}`;
+  await checkFreshClaim(createStore(), key("fresh"));
   await checkEqualKeys(createStore(), key("same"));
+  await checkAbandonedClaim(createStore(), key("abandoned"));
+  await checkCompletion(createStore(), key("completed"));
+  await checkRelease(createStore(), key("released"));
   await checkDistinctKeys(
     createStore(),
     key("first"),
     key("second"),
     options.concurrencyTimeoutMs ?? 1_000,
   );
-  await checkFailureEviction(createStore(), key("retry"));
   await checkPreAbort(createStore(), key("aborted"));
-  await checkLateAbort(createStore(), key("late-abort"));
   return {
     passed: [
-      "coalesces equal keys",
+      "claims fresh keys",
+      "waits for live equal keys",
+      "reports abandoned in-flight work",
+      "persists completed results",
+      "releases proven pre-effect claims",
       "runs distinct keys concurrently",
-      "evicts failures",
       "honors pre-aborted calls",
-      "returns completed owner work after late abort",
     ],
   };
 }
@@ -171,33 +223,77 @@ const active = (): ExecuteOptions => ({
   signal: new AbortController().signal,
 });
 
+async function checkFreshClaim(
+  store: IdempotencyStore,
+  key: string,
+): Promise<void> {
+  const result = await store.begin(key, active());
+  if (result.state !== "fresh") {
+    throw new Error("Idempotency store must claim a new key as fresh.");
+  }
+  await store.release(key, active());
+}
+
 async function checkEqualKeys(
   store: IdempotencyStore,
   key: string,
 ): Promise<void> {
-  let calls = 0;
-  let release: (() => void) | undefined;
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const operation = async (): Promise<number> => {
-    calls += 1;
-    await gate;
-    return 7;
-  };
-  const first = store.execute(key, operation, active());
-  const second = store.execute(key, operation, active());
-  await Promise.resolve();
-  release?.();
-  const results = await Promise.all([first, second]);
-  if (
-    calls !== 1 ||
-    results[0].value !== 7 ||
-    results[1].value !== 7 ||
-    results.filter(({ replayed }) => replayed).length !== 1
-  ) {
-    throw new Error("Idempotency store must coalesce concurrent equal keys.");
+  const first = await store.begin(key, active());
+  if (first.state !== "fresh") {
+    throw new Error("Idempotency store must claim a new key as fresh.");
   }
+  const second = store.begin<number>(key, active());
+  if (
+    await resolvesWithin(
+      second.then(() => undefined),
+      10,
+    )
+  ) {
+    throw new Error("Idempotency store must wait for a live equal-key owner.");
+  }
+  await store.complete(key, 7, active());
+  const replay = await second;
+  if (replay.state !== "completed" || replay.value !== 7) {
+    throw new Error("Idempotency store must replay the live owner's result.");
+  }
+}
+
+async function checkAbandonedClaim(
+  store: IdempotencyStore,
+  key: string,
+): Promise<void> {
+  await store.begin(key, active());
+  await store.abandon(key, active());
+  const result = await store.begin(key, active());
+  if (result.state !== "in_flight") {
+    throw new Error("Idempotency store must report abandoned in-flight work.");
+  }
+  await store.release(key, active());
+}
+
+async function checkCompletion(
+  store: IdempotencyStore,
+  key: string,
+): Promise<void> {
+  await store.begin(key, active());
+  await store.complete(key, { ok: true }, active());
+  const result = await store.begin<{ ok: boolean }>(key, active());
+  if (result.state !== "completed" || result.value.ok !== true) {
+    throw new Error("Idempotency store must persist completed results.");
+  }
+}
+
+async function checkRelease(
+  store: IdempotencyStore,
+  key: string,
+): Promise<void> {
+  await store.begin(key, active());
+  await store.release(key, active());
+  const result = await store.begin(key, active());
+  if (result.state !== "fresh") {
+    throw new Error("Idempotency store must release proven pre-effect claims.");
+  }
+  await store.release(key, active());
 }
 
 async function checkDistinctKeys(
@@ -206,55 +302,20 @@ async function checkDistinctKeys(
   secondKey: string,
   timeoutMs: number,
 ): Promise<void> {
-  const started = new Set<string>();
-  let bothStarted: (() => void) | undefined;
-  const concurrent = new Promise<void>((resolve) => {
-    bothStarted = resolve;
-  });
-  let release: (() => void) | undefined;
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const run = (key: string) =>
-    store.execute(
-      key,
-      async () => {
-        started.add(key);
-        if (started.size === 2) bothStarted?.();
-        await gate;
-        return key;
-      },
-      active(),
-    );
-  const first = run(firstKey);
-  const second = run(secondKey);
-  const startedConcurrently = await resolvesWithin(concurrent, timeoutMs);
-  release?.();
-  await Promise.all([first, second]);
-  if (!startedConcurrently) {
+  const claims = Promise.all([
+    store.begin(firstKey, active()),
+    store.begin(secondKey, active()),
+  ]);
+  if (
+    !(await resolvesWithin(
+      claims.then(() => undefined),
+      timeoutMs,
+    ))
+  ) {
     throw new Error("Idempotency store must not serialize distinct keys.");
   }
-}
-
-async function checkFailureEviction(
-  store: IdempotencyStore,
-  key: string,
-): Promise<void> {
-  const failure = new Error("expected conformance failure");
-  await store
-    .execute(key, async () => Promise.reject(failure), active())
-    .then(
-      () => {
-        throw new Error("Idempotency store concealed an operation failure.");
-      },
-      (error: unknown) => {
-        if (error !== failure) throw error;
-      },
-    );
-  const retry = await store.execute(key, () => Promise.resolve("ok"), active());
-  if (retry.value !== "ok" || retry.replayed) {
-    throw new Error("Idempotency store must evict failed operations.");
-  }
+  await store.release(firstKey, active());
+  await store.release(secondKey, active());
 }
 
 async function checkPreAbort(
@@ -264,68 +325,14 @@ async function checkPreAbort(
   const controller = new AbortController();
   const reason = new Error("expected conformance abort");
   controller.abort(reason);
-  let called = false;
-  await store
-    .execute(
-      key,
-      () => {
-        called = true;
-        return Promise.resolve();
-      },
-      { signal: controller.signal },
-    )
-    .then(
-      () => {
-        throw new Error("Idempotency store accepted a pre-aborted call.");
-      },
-      (error: unknown) => {
-        if (error !== reason) throw error;
-      },
-    );
-  if (called) {
-    throw new Error("Idempotency store ran a pre-aborted operation.");
-  }
-}
-
-async function checkLateAbort(
-  store: IdempotencyStore,
-  key: string,
-): Promise<void> {
-  const controller = new AbortController();
-  let markStarted: (() => void) | undefined;
-  let finish: (() => void) | undefined;
-  const started = new Promise<void>((resolve) => {
-    markStarted = resolve;
-  });
-  const gate = new Promise<void>((resolve) => {
-    finish = resolve;
-  });
-  const pending = store.execute(
-    key,
-    async () => {
-      markStarted?.();
-      await gate;
-      return "complete";
+  await store.begin(key, { signal: controller.signal }).then(
+    () => {
+      throw new Error("Idempotency store accepted a pre-aborted call.");
     },
-    { signal: controller.signal },
+    (error: unknown) => {
+      if (error !== reason) throw error;
+    },
   );
-  await started;
-  controller.abort(new Error("expected conformance late abort"));
-  finish?.();
-  let result: IdempotencyResult<string>;
-  try {
-    result = await pending;
-  } catch (error) {
-    throw new Error(
-      "Idempotency store must return completed owner work after a late abort.",
-      { cause: error },
-    );
-  }
-  if (result.value !== "complete" || result.replayed) {
-    throw new Error(
-      "Idempotency store must return completed owner work after a late abort.",
-    );
-  }
 }
 
 function resolvesWithin(
@@ -339,6 +346,14 @@ function resolvesWithin(
       resolve(true);
     });
   });
+}
+
+function deferred(): { readonly settled: Promise<void>; settle(): void } {
+  let settle: (() => void) | undefined;
+  const settled = new Promise<void>((resolve) => {
+    settle = resolve;
+  });
+  return { settled, settle: () => settle?.() };
 }
 
 function waitFor<Output>(

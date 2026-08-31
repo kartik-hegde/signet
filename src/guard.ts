@@ -268,16 +268,10 @@ export async function runGuarded<
         recovered = true;
         emit("recovered");
       }
-      if (!decision.recovered && decision.outcome === "unknown") {
-        throw new OutcomeUnknownError(decision.reason, { cause: error });
-      }
       return decision;
     };
 
-    const executeOrRecover = async (): Promise<Output> => {
-      if (confirmation.mode === "effect-only") {
-        await confirm();
-      }
+    const executeOperation = async (): Promise<Output> => {
       try {
         executeOptions.signal.throwIfAborted();
         return await execute(input, {
@@ -288,21 +282,134 @@ export async function runGuarded<
       } catch (error) {
         const decision = await recoverFrom(error);
         if (decision.recovered) return decision.output;
+        if (decision.outcome === "unknown") {
+          throw new OutcomeUnknownError(decision.reason, { cause: error });
+        }
         throw error;
       }
     };
 
     if (options.idempotency) {
-      const result = await options.idempotency.store.execute(
-        idempotencyKey!,
-        executeOrRecover,
-        executeOptions,
-      );
-      output = result.value;
-      replayed = result.replayed;
-      if (!recovered) emit(replayed ? "replayed" : "executed");
+      const key = idempotencyKey!;
+      const store = options.idempotency.store;
+      const settlementOptions = {
+        signal: new AbortController().signal,
+      };
+      const begun = await store.begin<Output>(key, executeOptions);
+
+      if (begun.state === "completed") {
+        output = begun.value;
+        replayed = true;
+        emit("replayed");
+        if (operation) {
+          try {
+            await operation.remove();
+          } catch {
+            // The completed result is authoritative; stale correlation is safe.
+          }
+        }
+      } else {
+        let settled = false;
+        const complete = async (value: Output): Promise<void> => {
+          try {
+            await store.complete(key, value, settlementOptions);
+          } catch (error) {
+            throw new OutcomeUnknownError(
+              "The effect completed, but its idempotency result could not be persisted.",
+              { cause: error },
+            );
+          }
+          settled = true;
+          if (operation) {
+            try {
+              await operation.remove();
+            } catch {
+              // The durable result is authoritative; stale correlation data is safe.
+            }
+          }
+        };
+
+        try {
+          if (begun.state === "in_flight") {
+            const interrupted = new Error(
+              "A previous attempt left this operation in flight.",
+            );
+            interrupted.name = "InterruptedOperationError";
+            const decision = await recoverFrom(interrupted);
+            if (!decision.recovered) {
+              throw new OutcomeUnknownError(
+                decision.outcome === "unknown"
+                  ? decision.reason
+                  : "A previous attempt may have produced an effect, but recovery could not prove its outcome.",
+                { cause: interrupted },
+              );
+            }
+            output = decision.output;
+            await complete(output);
+          } else {
+            try {
+              if (confirmation.mode === "effect-only") await confirm();
+              executeOptions.signal.throwIfAborted();
+            } catch (error) {
+              await store.release(key, settlementOptions);
+              settled = true;
+              throw error;
+            }
+
+            try {
+              output = await execute(input, {
+                context,
+                ...(operation === undefined ? {} : { operation }),
+                signal: executeOptions.signal,
+              });
+            } catch (error) {
+              const decision = await recoverFrom(error);
+              if (decision.recovered) {
+                output = decision.output;
+              } else if (decision.outcome === "unknown") {
+                throw new OutcomeUnknownError(decision.reason, {
+                  cause: error,
+                });
+              } else {
+                if (operation) {
+                  let entry: unknown;
+                  try {
+                    entry = await operation.read();
+                  } catch (journalError) {
+                    throw new OutcomeUnknownError(
+                      "The operation failed, and its journal could not prove whether the effect started.",
+                      { cause: new AggregateError([error, journalError]) },
+                    );
+                  }
+                  if (entry === undefined) {
+                    await store.release(key, settlementOptions);
+                    settled = true;
+                    throw error;
+                  }
+                }
+                throw new OutcomeUnknownError(
+                  "The effect may have started, but recovery could not prove its outcome.",
+                  { cause: error },
+                );
+              }
+            }
+
+            await complete(output);
+            if (!recovered) emit("executed");
+          }
+        } finally {
+          if (!settled) {
+            try {
+              await store.abandon(key, settlementOptions);
+            } catch {
+              // Preserve the operation error; the durable in-flight row remains safe.
+            }
+          }
+        }
+      }
     } else {
-      output = await executeOrRecover();
+      if (confirmation.mode === "effect-only") await confirm();
+      output = await executeOperation();
       if (!recovered) emit("executed");
     }
 
@@ -431,6 +538,11 @@ export function guard<
   execute: Execute<Input, Output>,
   options: GuardOptions<Input, Output, Context> = {},
 ): Execute<Input, Output> {
+  if (options.idempotency && !options.journal) {
+    throw new TypeError(
+      "Signet idempotency requires an operation journal so failures can be classified safely.",
+    );
+  }
   return (input, executeOptions) =>
     runGuarded(
       input,

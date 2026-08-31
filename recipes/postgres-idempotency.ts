@@ -1,11 +1,15 @@
-import type { IdempotencyStore } from "@signet/webmcp";
+import type {
+  ExecuteOptions,
+  IdempotencyBeginResult,
+  IdempotencyStore,
+} from "@signet/webmcp";
 
 interface PostgresClient {
   query<Row extends Record<string, unknown> = Record<string, unknown>>(
     sql: string,
     values?: readonly unknown[],
   ): Promise<{ rows: Row[] }>;
-  release(): void;
+  release(error?: Error): void;
 }
 
 interface PostgresPool {
@@ -16,63 +20,142 @@ type StoredResult<Output> =
   | { readonly hasValue: false }
   | { readonly hasValue: true; readonly value: Output };
 
+type OperationRow<Output> = {
+  state: "in_flight" | "completed";
+  value: StoredResult<Output> | null;
+};
+
+/**
+ * Cross-process phased idempotency using session-level PostgreSQL advisory locks.
+ *
+ * Create the table first:
+ *
+ *   create table signet_operations (
+ *     key text primary key,
+ *     state text not null check (state in ('in_flight', 'completed')),
+ *     value jsonb,
+ *     updated_at timestamptz not null default now()
+ *   );
+ *
+ * A connection is intentionally held from begin through complete, release, or
+ * abandon. If the process dies, PostgreSQL releases its advisory lock while the
+ * durable in-flight row remains available for authoritative recovery.
+ */
+export class PostgresIdempotencyStore implements IdempotencyStore {
+  readonly #claims = new Map<string, PostgresClient>();
+
+  constructor(private readonly pool: PostgresPool) {}
+
+  async begin<Output>(
+    key: string,
+    options: ExecuteOptions,
+  ): Promise<IdempotencyBeginResult<Output>> {
+    options.signal.throwIfAborted();
+    const client = await this.pool.connect();
+    let claimed = false;
+    try {
+      await client.query("select pg_advisory_lock(hashtextextended($1, 0))", [
+        key,
+      ]);
+      claimed = true;
+      options.signal.throwIfAborted();
+
+      const stored = await client.query<OperationRow<Output>>(
+        "select state, value from signet_operations where key = $1",
+        [key],
+      );
+      const existing = stored.rows[0];
+      if (existing?.state === "completed") {
+        await this.#unlock(client, key);
+        return {
+          state: "completed",
+          value: resultValue(existing.value),
+        };
+      }
+
+      if (!existing) {
+        await client.query(
+          "insert into signet_operations (key, state, value) values ($1, 'in_flight', null)",
+          [key],
+        );
+      }
+      this.#claims.set(key, client);
+      return { state: existing ? "in_flight" : "fresh" };
+    } catch (error) {
+      if (claimed) await this.#unlockAfterError(client, key);
+      else client.release(asError(error));
+      throw error;
+    }
+  }
+
+  async complete<Output>(
+    key: string,
+    value: Output,
+    options: ExecuteOptions,
+  ): Promise<void> {
+    options.signal.throwIfAborted();
+    const client = this.#claim(key);
+    await client.query(
+      "update signet_operations set state = 'completed', value = $2::jsonb, updated_at = now() where key = $1",
+      [key, JSON.stringify(storedResult(value))],
+    );
+    await this.#settle(key, client);
+  }
+
+  async release(key: string, options: ExecuteOptions): Promise<void> {
+    options.signal.throwIfAborted();
+    const client = this.#claim(key);
+    await client.query("delete from signet_operations where key = $1", [key]);
+    await this.#settle(key, client);
+  }
+
+  async abandon(key: string, options: ExecuteOptions): Promise<void> {
+    options.signal.throwIfAborted();
+    const client = this.#claim(key);
+    await this.#settle(key, client);
+  }
+
+  #claim(key: string): PostgresClient {
+    const client = this.#claims.get(key);
+    if (!client)
+      throw new Error(`No live idempotency claim exists for "${key}".`);
+    return client;
+  }
+
+  async #settle(key: string, client: PostgresClient): Promise<void> {
+    this.#claims.delete(key);
+    await this.#unlock(client, key);
+  }
+
+  async #unlock(client: PostgresClient, key: string): Promise<void> {
+    try {
+      await client.query("select pg_advisory_unlock(hashtextextended($1, 0))", [
+        key,
+      ]);
+      client.release();
+    } catch (error) {
+      client.release(asError(error));
+      throw error;
+    }
+  }
+
+  async #unlockAfterError(client: PostgresClient, key: string): Promise<void> {
+    try {
+      await this.#unlock(client, key);
+    } catch {
+      // Preserve the operation or database error that required cleanup.
+    }
+  }
+}
+
 function storedResult<Output>(value: Output): StoredResult<Output> {
   return value === undefined ? { hasValue: false } : { hasValue: true, value };
 }
 
-function resultValue<Output>(stored: StoredResult<Output>): Output {
-  return (stored.hasValue ? stored.value : undefined) as Output;
+function resultValue<Output>(stored: StoredResult<Output> | null): Output {
+  return (stored?.hasValue ? stored.value : undefined) as Output;
 }
 
-/**
- * A compact cross-process store using a transaction-scoped PostgreSQL advisory lock.
- * Create `signet_operations(key text primary key, value jsonb not null)` first.
- * Values use a small envelope so a void handler remains void when replayed.
- * For long-running work, replace the held transaction with a leased-claim design.
- */
-export class PostgresIdempotencyStore implements IdempotencyStore {
-  constructor(private readonly pool: PostgresPool) {}
-
-  async execute<Output>(
-    key: string,
-    operation: () => Promise<Output>,
-    options: { signal: AbortSignal },
-  ): Promise<{ value: Output; replayed: boolean }> {
-    options.signal.throwIfAborted();
-    const client = await this.pool.connect();
-    try {
-      await client.query("begin");
-      await client.query(
-        "select pg_advisory_xact_lock(hashtextextended($1, 0))",
-        [key],
-      );
-      options.signal.throwIfAborted();
-      const stored = await client.query<{ value: StoredResult<Output> }>(
-        "select value from signet_operations where key = $1",
-        [key],
-      );
-      const existing = stored.rows[0];
-      if (existing) {
-        await client.query("commit");
-        return { value: resultValue(existing.value), replayed: true };
-      }
-
-      const value = await operation();
-      await client.query(
-        "insert into signet_operations (key, value) values ($1, $2::jsonb)",
-        [key, JSON.stringify(storedResult(value))],
-      );
-      await client.query("commit");
-      return { value, replayed: false };
-    } catch (error) {
-      try {
-        await client.query("rollback");
-      } catch {
-        // Preserve the operation or database error that caused the rollback.
-      }
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
 }

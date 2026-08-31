@@ -108,15 +108,19 @@ registration.dispose();
   Keep current identity, permission, tenant, and resource access here. Put mutable
   eligibility changed by success, such as `status === "open"`, inside `execute` so a
   valid replay can reach its stored result.
-- `idempotency.store.execute(key, operation, { signal })` is application-supplied. The
-  key must include principal, operation ID, and every intent-changing argument. Signet
-  deliberately has no default production store.
+- `idempotency.store` uses phased `begin`, `complete`, `release`, and `abandon`
+  methods. Signet executes only fresh claims, recovers abandoned in-flight claims, and
+  replays completed results. Only a journal-proven pre-effect failure is released;
+  ambiguous work is abandoned but retained. The key must include principal, operation
+  ID, and every intent-changing argument. A conservative browser adapter ships from
+  `@signet/webmcp/stores`; server applications can adapt the PostgreSQL recipe.
 - A function-valued `confirm` runs on every call before idempotency. Use
   `{ mode: "effect-only", request }` to prompt only when the store will run a new effect.
 - `journal: { store, key? }` supplies a scoped `operation` handle to execute, recover,
   and verify. It reuses the idempotency key when `key` is omitted. The app owns storage.
 - `execute(input, { context, operation?, signal })` is never automatically retried by Signet.
-- `recover({ input, context, error, operation?, signal })` runs only after the handler throws. Return
+- `recover({ input, context, error, operation?, signal })` runs after the handler throws or
+  for abandoned in-flight work. Return
   `{ recovered: true, output }` only after authoritative proof. Return
   `{ recovered: false, outcome: "unknown", reason? }` when neither success nor
   non-execution can be proved. It does not conceal store failures.

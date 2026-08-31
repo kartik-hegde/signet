@@ -8,6 +8,7 @@ assert.deepEqual(distFiles.filter((name) => name.endsWith(".d.ts")).sort(), [
   "inspector.d.ts",
   "opentelemetry.d.ts",
   "react.d.ts",
+  "stores.d.ts",
   "testing.d.ts",
 ]);
 assert.equal(
@@ -29,6 +30,7 @@ const testing = await import("@signet/webmcp/testing");
 const telemetry = await import("@signet/webmcp/opentelemetry");
 const inspector = await import("@signet/webmcp/inspector");
 const react = await import("@signet/webmcp/react");
+const stores = await import("@signet/webmcp/stores");
 
 assert.equal(typeof core.guard, "function");
 assert.equal(typeof core.createSignet, "function");
@@ -43,6 +45,7 @@ assert.equal(typeof testing.MemoryOperationJournal, "function");
 assert.equal(typeof telemetry.openTelemetryObserver, "function");
 assert.equal(typeof inspector.mountSignetInspector, "function");
 assert.equal(typeof react.useSignetTool, "function");
+assert.equal(typeof stores.IndexedDbIdempotencyStore, "function");
 
 const execute = core.guard(async ({ value }) => value * 2);
 const result = await execute(
