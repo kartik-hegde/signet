@@ -1,32 +1,58 @@
 # Product work tracker
 
-This ordered list tracks the shortest path from an existing human website to a
-production-ready agent interface. “Done” means implemented and covered by local,
-package, documentation, and reference-app CI; it does not mean the pre-release API is
-frozen.
+## Mission
 
-|   # | Status   | Work item                      | Delivered outcome                                                                                                                                                     |
-| --: | -------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-|   1 | Deferred | Publish a real release         | Publish only after local API and reference integrations settle.                                                                                                       |
-|   2 | Done     | Agent-legible failures         | Field-level capped validation messages and coded tool errors cross the native boundary.                                                                               |
-|   3 | Resolved | Agent arrives after page load  | Native WebMCP owns `modelContext` from document creation; late agents see registered tools. Late extension/polyfill bridges are injected explicitly, without polling. |
-|   4 | Done     | React binding                  | Race-safe `useSignetTool` with status and error state.                                                                                                                |
-|   5 | Done     | Confirmation stage             | App-owned confirmation runs after authorization and before idempotency with auditable events.                                                                         |
-|   6 | Done     | Durable idempotency path       | Store conformance kit plus a copyable PostgreSQL adapter; reference app retains server-authoritative replay.                                                          |
-|   7 | Done     | Completed mutation after abort | A completed handler wins the cancellation race, verification finishes, and `completed_after_abort` is observable.                                                     |
-|   8 | Done     | Inspector                      | Optional dependency-free overlay for exact inventory and privacy-safe lifecycle timing.                                                                               |
-|   9 | Done     | Tool readiness lint            | Portable diagnostics and assertion for common agent-usability defects.                                                                                                |
-|  10 | Done     | Output contract                | Optional serialized byte budget warns without discarding completed effects.                                                                                           |
-|  11 | Done     | Cross-instance duplicates      | Active names are scoped to the shared WebMCP context.                                                                                                                 |
-|  12 | Done     | Agent-selection evaluations    | Saved-task harness separately scores selection, arguments, and authoritative completion.                                                                              |
-|  13 | Deferred | Adapters beyond React          | Add only after real Vue or Svelte integrations prove the binding shape.                                                                                               |
-|  14 | Backlog  | Scaffold command               | Revisit after real integrations show what can be generated without hiding application intent.                                                                         |
+Signet turns an existing website into a discoverable, reliable, and measurable agent
+interface. WebMCP is the first delivery protocol, not the product category.
 
-## Next proof points
+The initial customer is a B2B SaaS team with repetitive, authenticated browser
+workflows that customers or internal operators already automate through brittle UI
+scripts, browser agents, or manual work. They adopt Signet to improve task completion,
+reduce automation breakage, and expose consequential actions without rebuilding their
+application backend.
 
-| Priority | Status | Work item                         | Exit criterion                                                                                       |
-| -------: | ------ | --------------------------------- | ---------------------------------------------------------------------------------------------------- |
-|        1 | Next   | Integrate three external websites | Each exposes one read and one consequential workflow with less custom boundary code than raw WebMCP. |
-|        2 | Next   | Run saved tasks with real agents  | Establish selection, valid-argument, completion, and token baselines across representative tasks.    |
-|        3 | Next   | Harden the Inspector from usage   | Add value capture only if developers request it, and only behind explicit redaction/consent.         |
-|        4 | Next   | Release candidate                 | Freeze the small proven surface, write migration/stability notes, then publish the first alpha.      |
+The current constraint is evidence, not more runtime capability. New work must either
+make Signet installable, prove the category, or remove measured friction from a real
+integration.
+
+## Ordered priorities
+
+| Priority | Work item                                                  | User journey and why it matters                                                                                                                                                                                                                                                                                                     | Exit criterion                                                                                                                                                                                                                           | Status                                         |
+| -------: | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+|        1 | Merge and publish the first alpha                          | A developer who finds Signet must be able to run a normal package install. An unpublished package prevents every external adoption test and contaminates onboarding measurements.                                                                                                                                                   | PR #13 is merged; stability and changelog notes are written; an installable alpha is published with provenance.                                                                                                                          | Ready after merge and publication approval     |
+|        2 | Establish the reference benchmark baseline                 | A developer needs evidence that an intentional agent interface beats UI automation and that Signet adds value beyond raw WebMCP. Measure two different claims: UI versus WebMCP for agent completion, steps, tokens, and latency; raw WebMCP versus Signet for implementation effort, failure handling, reliability, and diagnosis. | Payment and at least one read workflow run repeatedly through comparable UI, raw WebMCP, and Signet paths with published methodology and raw results.                                                                                    | Ready now; harness exists                      |
+|        3 | Build the Signet Test Agent vertical slice                 | After implementing a tool, a developer opens the real site in Chrome, gives a natural-language task, watches a real model select and invoke WebMCP tools, sees the complete trace and authoritative outcome, then saves the task as a regression test. This closes the largest gap between implementation and confidence.           | A local, provider-agnostic runner attaches through Chrome DevTools MCP; supports WebMCP-only task execution; records inventory, selection, arguments, lifecycle stages, result, oracle, tokens, and latency; saves and reruns a fixture. | Planned next; evaluation primitives exist      |
+|        4 | Publish the first evidence report                          | A prospective adopter must understand what improves and what does not before investing. Credible numbers are the demand-generation asset, not a feature list.                                                                                                                                                                       | Public report includes repeated-run completion rates, distributions, failures, token and latency measurements, developer effort, limitations, and reproducible fixtures.                                                                 | Pending priorities 2–3                         |
+|        5 | Integrate three external B2B SaaS websites                 | A real team must reach one useful read workflow and one consequential workflow without Signet-specific architecture work. These pilots reveal whether the actual bottleneck is authoring, testing, browser setup, or production reliability.                                                                                        | Three pilots use the published package; record time to first capability, time to tested workflow, custom boundary code, coding-agent tokens, defects, and qualitative friction.                                                          | Recruiting after alpha                         |
+|        6 | Build the public agent-interface evaluation corpus         | A developer changing a description or schema needs realistic regression tasks, while Signet needs evidence that compounds from the first integration. A reproducible task corpus is a stronger early moat than low-volume analytics.                                                                                                | Versioned public fixtures cover discovery, selection, arguments, multi-tool continuation, errors, and authoritative outcomes across the reference app and consenting pilots.                                                             | Seeded by reference app and evaluation harness |
+|        7 | Make the development loop coherent                         | The developer should move through `define → check → inspect in Chrome → run agent task → diagnose → save test` without stitching together unrelated commands and panels.                                                                                                                                                            | One documented command path and local results view complete the loop; median pilot setup time and manual steps materially decrease.                                                                                                      | Pending Test Agent usage                       |
+|        8 | Participate in WebMCP standards and browser tooling        | Developers need Signet to track the real browser contract. Reporting transport, execution, lifecycle, and typing gaps builds credibility and prevents private workarounds from becoming product debt.                                                                                                                               | Reproducible findings are filed upstream; Signet docs track accepted behavior; no proprietary protocol is invented for a standards gap.                                                                                                  | Start now and continue alongside integrations  |
+|        9 | Decide whether a Chrome companion is justified             | Developers may want a side-panel experience, but Chrome already ships WebMCP inspection and manual execution. Signet should add a browser extension only if it materially reduces setup or uniquely unifies agent-task results with Signet’s internal stages.                                                                       | Build only if browser setup or trace fragmentation is a top-two problem in at least two pilots; otherwise keep the local runner and official Chrome tooling.                                                                             | Gated hypothesis                               |
+|       10 | Decide the authoring product from measured friction        | A visual authoring environment is valuable only if choosing and defining capabilities—not evaluation or browser setup—is repeatedly the primary blocker. Round-trip code synchronization is not assumed.                                                                                                                            | Prototype narrow, ejectable authoring assistance only if authoring is a top-two friction point in at least two of three pilots. No full Studio before this gate.                                                                         | Gated hypothesis                               |
+|       11 | Decide whether production analytics becomes a product      | Runtime calls expose failures and timing, but a website alone cannot observe prompts where an agent selected nothing. Hosted analytics also introduces accounts, retention, privacy policy, and data-processing obligations.                                                                                                        | Make a company-level decision only after pilots request production visibility; remain opt-in, metadata-first, and explicit about what cannot be measured without agent-side integration.                                                 | Deferred hypothesis                            |
+|       12 | Add protocols, frameworks, or scaffolding only from demand | Developers should not pay dependency and maintenance costs for speculative adapters. The small core remains native-shaped and ejectable.                                                                                                                                                                                            | Add an adapter only after multiple real integrations need the same shape; add a second protocol abstraction only when a second protocol integration exists.                                                                              | Deferred                                       |
+
+## Test Agent observability contract
+
+The Test Agent combines four layers without turning Signet into a production agent:
+
+1. **Definition:** exact tools, descriptions, schemas, annotations, availability, and
+   output budgets.
+2. **Invocation:** selected tool, arguments, Signet lifecycle stages, errors, result,
+   and timing.
+3. **Agent quality:** natural-language task, selection accuracy, argument validity,
+   continuation, tokens, latency, and optional UI fallback rate.
+4. **Outcome:** an application-owned oracle proving whether authoritative state reached
+   the intended result.
+
+Local test runs may capture arguments and results explicitly. Production observation
+remains private by default and cannot infer non-selection without an agent-side signal.
+
+## Implemented foundation
+
+PR #13 contains the current kernel: native WebMCP exposure, validation, application
+context, agent-legible errors, confirmation, authorization, idempotency conformance,
+recovery, verification, cancellation semantics, output budgets, lifecycle observation,
+tool inventory, readiness checks, Inspector, React lifecycle binding, deterministic
+WebMCP harness, and saved-task evaluation primitives. Treat this as enough foundation
+to gather evidence; do not add another runtime hook without integration proof.
