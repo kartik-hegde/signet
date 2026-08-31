@@ -98,6 +98,27 @@ describe("createSignet", () => {
     ).resolves.toBe(6);
   });
 
+  it("supplies a signal when a WebMCP host passes empty execution options", async () => {
+    const native = modelContext();
+    const signet = createSignet({ modelContext: native.context });
+
+    await signet.expose({
+      name: "host_compatible",
+      description: "Run through a host that omits its execution signal.",
+      inputSchema: schema,
+      execute: ({ value }: { value: number }, { signal }) => {
+        expect(signal).toBeInstanceOf(AbortSignal);
+        return value;
+      },
+    });
+
+    await expect(
+      native.registrations
+        .get("host_compatible")
+        ?.tool.execute({ value: 7 }, {} as { signal: AbortSignal }),
+    ).resolves.toBe(7);
+  });
+
   it("allows a development observer to attach after registration", async () => {
     const native = modelContext();
     const signet = createSignet({ modelContext: native.context });

@@ -321,8 +321,11 @@ export function createSignet<Context = undefined>(
         input: Record<string, unknown>,
         executeOptions?: { signal: AbortSignal },
       ) => {
-        const normalizedOptions = executeOptions ?? {
-          signal: new AbortController().signal,
+        // Some WebMCP hosts currently invoke tools with an empty options object.
+        // Keep cancellation when supplied, but do not let a host compatibility
+        // detail bypass the guard before the application operation can run.
+        const normalizedOptions = {
+          signal: executeOptions?.signal ?? new AbortController().signal,
         };
         return runGuarded(
           input as Parameters<typeof tool.execute>[0],
