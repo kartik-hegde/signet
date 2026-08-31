@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "recordedAt": "2026-08-31T20:50:00Z",
+  "recordedAt": "2026-08-31T21:26:17Z",
   "application": "Saleor Storefront + Saleor Core 3.23",
   "task": "place-test-order-after-lost-response",
   "source": {
     "storefrontBase": "56f021d42196eaa78b997df010430d8ea7842e99",
-    "storefrontIntegration": "9ad3ccc1baf7d1de1c8aff86f5be3a2cd7724be4",
+    "storefrontIntegration": "ac059eb615a5d850df746522cb23ffaf32d883aa",
     "platform": "ab6315bd59c58b4815175df4c679107ff9695be4",
-    "signet": "100b7d4f4046112fab66705df607e5cb9970d586"
+    "signet": "cbf8913f2a2953ac47c594187d47176c554c0fc7"
   },
   "registeredTools": [
     "inspect_checkout",
@@ -22,8 +22,8 @@
     "triggeredAfterOrderId": true
   },
   "firstCall": {
-    "orderId": "T3JkZXI6OTE4M2M3ZGMtNjE1YS00YzFiLWEzZWYtOTQwODI5ZmVhOTgy",
-    "orderNumber": "22",
+    "orderId": "T3JkZXI6YzY2Yjk0NmQtMzU2Ny00NGE1LWJiMDQtOTFjNDkzMjYyZjVk",
+    "orderNumber": "25",
     "stages": [
       "started",
       "validated",
@@ -39,13 +39,14 @@
   "retry": {
     "sameOperationId": true,
     "sameOrderId": true,
+    "requestedAnotherApproval": false,
     "stagesInclude": ["replayed", "verified", "succeeded"]
   },
   "oracle": {
     "source": "Saleor Postgres order_order",
-    "email": "proof@example.com",
+    "email": "native-mthqztvb@example.com",
     "orderCount": 1,
-    "number": "22",
+    "number": "25",
     "status": "unfulfilled",
     "totalAmount": 20,
     "currency": "USD",

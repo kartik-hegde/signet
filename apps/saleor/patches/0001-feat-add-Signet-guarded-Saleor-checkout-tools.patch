@@ -1,4 +1,4 @@
-From 9ad3ccc1baf7d1de1c8aff86f5be3a2cd7724be4 Mon Sep 17 00:00:00 2001
+From ac059eb615a5d850df746522cb23ffaf32d883aa Mon Sep 17 00:00:00 2001
 From: kartik-hegde <hegdekartik7@gmail.com>
 Date: Mon, 31 Aug 2026 16:51:33 -0400
 Subject: [PATCH] feat: add Signet-guarded Saleor checkout tools
@@ -9,14 +9,20 @@ Subject: [PATCH] feat: add Signet-guarded Saleor checkout tools
  next.config.js                                |  10 +
  package.json                                  |   1 +
  pnpm-lock.yaml                                |   3 +
- src/app/(checkout)/actions.ts                 |  92 +++
+ src/app/(checkout)/actions.ts                 |  92 +++++
  src/checkout/checkout-app.tsx                 |   2 +
- .../signet/indexed-db-idempotency-store.ts    | 116 ++++
- src/checkout/signet/signet-checkout-tools.tsx | 608 ++++++++++++++++++
- 9 files changed, 844 insertions(+), 2 deletions(-)
+ src/checkout/signet/checkout-model.ts         | 103 ++++++
+ src/checkout/signet/checkout-tools.ts         | 342 ++++++++++++++++++
+ .../signet/indexed-db-idempotency-store.ts    | 116 ++++++
+ src/checkout/signet/signet-checkout-tools.tsx | 122 +++++++
+ src/checkout/signet/signet-demo-panel.tsx     | 176 +++++++++
+ 12 files changed, 979 insertions(+), 2 deletions(-)
  create mode 100644 .env.signet.example
+ create mode 100644 src/checkout/signet/checkout-model.ts
+ create mode 100644 src/checkout/signet/checkout-tools.ts
  create mode 100644 src/checkout/signet/indexed-db-idempotency-store.ts
  create mode 100644 src/checkout/signet/signet-checkout-tools.tsx
+ create mode 100644 src/checkout/signet/signet-demo-panel.tsx
 
 diff --git a/.env.signet.example b/.env.signet.example
 new file mode 100644
@@ -239,6 +245,463 @@ index 3cb6643..9d5d2df 100644
  								<CheckoutPaymentReturnErrorProvider>
  									<Suspense fallback={null}>
  										<StripeCheckoutCompletionHost />
+diff --git a/src/checkout/signet/checkout-model.ts b/src/checkout/signet/checkout-model.ts
+new file mode 100644
+index 0000000..37b6708
+--- /dev/null
++++ b/src/checkout/signet/checkout-model.ts
+@@ -0,0 +1,103 @@
++import type { AddressInput, CountryCode } from "@/checkout/graphql/generated/operations";
++import type { ServerCheckout } from "@/checkout/lib/checkout-types";
++import { getCheckoutPayAmount, getCheckoutPayCurrency } from "@/checkout/lib/payment/checkout-pay-amount";
++
++export const LOST_RESPONSE_FAULT = "saleor-signet:fault:lost-response";
++
++export type CheckoutContext = {
++	checkoutId: string | null;
++	channel: string | null;
++	email: string | null;
++	lineCount: number;
++	totalAmount: number | null;
++	currency: string | null;
++};
++
++export type ContactInput = {
++	operationId: string;
++	email: string;
++	firstName: string;
++	lastName: string;
++	streetAddress1: string;
++	streetAddress2?: string;
++	city: string;
++	countryArea: string;
++	postalCode: string;
++	countryCode: string;
++	phone?: string;
++};
++
++export type DeliveryInput = {
++	operationId: string;
++	deliveryId: string;
++};
++
++export type PlaceOrderInput = {
++	operationId: string;
++	expectedTotalAmount: number;
++	expectedCurrency: string;
++};
++
++export class CheckoutSnapshot {
++	#checkout: ServerCheckout | null = null;
++
++	update(checkout: ServerCheckout | null): void {
++		this.#checkout = checkout;
++	}
++
++	read(): ServerCheckout | null {
++		return this.#checkout;
++	}
++}
++
++export function checkoutContext(checkout: ServerCheckout | null): CheckoutContext {
++	return {
++		checkoutId: checkout?.id ?? null,
++		channel: checkout?.channel.slug ?? null,
++		email: checkout?.email ?? null,
++		lineCount: checkout?.lines.reduce((total, line) => total + line.quantity, 0) ?? 0,
++		totalAmount: checkout ? getCheckoutPayAmount(checkout) : null,
++		currency: checkout ? getCheckoutPayCurrency(checkout) : null,
++	};
++}
++
++export function requireCheckout(checkout: ServerCheckout | null): ServerCheckout {
++	if (!checkout) throw new Error("There is no active Saleor checkout on this page.");
++	return checkout;
++}
++
++export function toAddressInput(input: ContactInput): AddressInput {
++	return {
++		firstName: input.firstName,
++		lastName: input.lastName,
++		streetAddress1: input.streetAddress1,
++		streetAddress2: input.streetAddress2 ?? "",
++		city: input.city,
++		countryArea: input.countryArea,
++		postalCode: input.postalCode,
++		country: input.countryCode as CountryCode,
++		phone: input.phone ?? "",
++	};
++}
++
++export function shippingAddressInput(checkout: ServerCheckout): AddressInput | null {
++	const address = checkout.shippingAddress;
++	if (!address) return null;
++	return {
++		firstName: address.firstName,
++		lastName: address.lastName,
++		companyName: address.companyName,
++		streetAddress1: address.streetAddress1,
++		streetAddress2: address.streetAddress2,
++		city: address.city,
++		cityArea: address.cityArea,
++		countryArea: address.countryArea,
++		postalCode: address.postalCode,
++		country: address.country.code as CountryCode,
++		phone: address.phone,
++	};
++}
++
++export function nearlyEqual(left: number, right: number): boolean {
++	return Math.abs(left - right) < 0.005;
++}
+diff --git a/src/checkout/signet/checkout-tools.ts b/src/checkout/signet/checkout-tools.ts
+new file mode 100644
+index 0000000..e31fe4b
+--- /dev/null
++++ b/src/checkout/signet/checkout-tools.ts
+@@ -0,0 +1,342 @@
++import type { IdempotencyStore, OperationJournal, SignetTool } from "@signet/webmcp";
++
++import {
++	calculateDeliveryOptions,
++	executeSignetLegacyDummyPayment,
++	getSignetOrderProof,
++	updateCheckoutBillingAddress,
++	updateCheckoutDeliveryMethod,
++	updateCheckoutEmail,
++	updateCheckoutShippingAddress,
++	type SignetOrderProof,
++} from "@/app/(checkout)/actions";
++import type { CheckoutGatewayMessagesHook } from "@/checkout/hooks/use-checkout-gateway-messages";
++import { executePayment, resolvePaymentProvider } from "@/checkout/lib/payment";
++import { getCheckoutPayAmount, getCheckoutPayCurrency } from "@/checkout/lib/payment/checkout-pay-amount";
++import type { CheckoutDataContextValue } from "@/checkout/providers/checkout-data";
++
++import {
++	checkoutContext,
++	type CheckoutContext,
++	type CheckoutSnapshot,
++	type ContactInput,
++	type DeliveryInput,
++	LOST_RESPONSE_FAULT,
++	nearlyEqual,
++	type PlaceOrderInput,
++	requireCheckout,
++	shippingAddressInput,
++	toAddressInput,
++} from "./checkout-model";
++
++type OrderResult = SignetOrderProof & { status: "placed" };
++type OrderCorrelation = { phase: "payment_started" } | { phase: "order_created"; orderId: string };
++
++type ToolDependencies = {
++	checkoutState: CheckoutSnapshot;
++	refreshCheckout: CheckoutDataContextValue["refreshCheckout"];
++	setCheckout: CheckoutDataContextValue["setCheckout"];
++	gatewayMessages: CheckoutGatewayMessagesHook;
++	idempotencyStore: IdempotencyStore;
++	operationJournal: OperationJournal;
++	requestApproval(title: string, detail: string): Promise<boolean>;
++	onFaultConsumed(): void;
++};
++
++export type CheckoutToolSet = {
++	inspect: SignetTool<Record<string, never>, CheckoutContext, CheckoutContext>;
++	contact: SignetTool<ContactInput, CheckoutContext, CheckoutContext>;
++	deliveryOptions: SignetTool<
++		Record<string, never>,
++		{ deliveries: Array<Record<string, unknown>> },
++		CheckoutContext
++	>;
++	delivery: SignetTool<DeliveryInput, CheckoutContext, CheckoutContext>;
++	placeOrder: SignetTool<PlaceOrderInput, OrderResult, CheckoutContext>;
++};
++
++export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToolSet {
++	const {
++		checkoutState,
++		gatewayMessages,
++		idempotencyStore,
++		onFaultConsumed,
++		operationJournal,
++		refreshCheckout,
++		requestApproval,
++		setCheckout,
++	} = dependencies;
++
++	const inspect: CheckoutToolSet["inspect"] = {
++		name: "inspect_checkout",
++		title: "Inspect checkout",
++		description:
++			"Read the active Saleor checkout, including line count, customer email, current total, and currency. Call this before making checkout changes.",
++		inputSchema: { type: "object", properties: {}, additionalProperties: false },
++		annotations: { readOnlyHint: true },
++		execute: () => checkoutContext(checkoutState.read()),
++	};
++
++	const contact: CheckoutToolSet["contact"] = {
++		name: "set_checkout_contact",
++		title: "Set checkout contact and shipping address",
++		description:
++			"Set the guest email and shipping address on the active Saleor checkout. Use a fresh operationId for a new intent and reuse it only when retrying the exact same change.",
++		inputSchema: {
++			type: "object",
++			properties: {
++				operationId: { type: "string", minLength: 8 },
++				email: { type: "string", minLength: 3 },
++				firstName: { type: "string", minLength: 1 },
++				lastName: { type: "string", minLength: 1 },
++				streetAddress1: { type: "string", minLength: 1 },
++				streetAddress2: { type: "string" },
++				city: { type: "string", minLength: 1 },
++				countryArea: { type: "string", minLength: 1 },
++				postalCode: { type: "string", minLength: 1 },
++				countryCode: { type: "string", pattern: "^[A-Z]{2}$" },
++				phone: { type: "string" },
++			},
++			required: [
++				"operationId",
++				"email",
++				"firstName",
++				"lastName",
++				"streetAddress1",
++				"city",
++				"countryArea",
++				"postalCode",
++				"countryCode",
++			],
++			additionalProperties: false,
++		},
++		authorize: requireActiveCheckout,
++		idempotency: {
++			store: idempotencyStore,
++			key: ({ input, context }) =>
++				`${context.checkoutId}:${input.operationId}:contact:${JSON.stringify([
++					input.email,
++					input.firstName,
++					input.lastName,
++					input.streetAddress1,
++					input.streetAddress2 ?? "",
++					input.city,
++					input.countryArea,
++					input.postalCode,
++					input.countryCode,
++					input.phone ?? "",
++				])}`,
++		},
++		execute: async (input) => {
++			const active = requireCheckout(checkoutState.read());
++			const emailResult = await updateCheckoutEmail(active.id, input.email);
++			if (!emailResult.ok) throw new Error(emailResult.error ?? "Saleor rejected the checkout email.");
++
++			const addressResult = await updateCheckoutShippingAddress(active.id, toAddressInput(input), false);
++			if (!addressResult.ok) {
++				throw new Error(addressResult.error ?? "Saleor rejected the shipping address.");
++			}
++
++			return await refreshAndAdopt(refreshCheckout, setCheckout);
++		},
++		verify: async ({ input }) => {
++			const fresh = await refreshCheckout({ updateState: false });
++			return (
++				fresh?.email === input.email &&
++				fresh.shippingAddress?.postalCode === input.postalCode &&
++				fresh.shippingAddress.country.code === input.countryCode
++			);
++		},
++	};
++
++	const deliveryOptions: CheckoutToolSet["deliveryOptions"] = {
++		name: "list_delivery_options",
++		title: "List delivery options",
++		description:
++			"Calculate the currently eligible Saleor delivery options after the shipping address has been set.",
++		inputSchema: { type: "object", properties: {}, additionalProperties: false },
++		annotations: { readOnlyHint: true },
++		execute: async () => {
++			const active = requireCheckout(checkoutState.read());
++			const result = await calculateDeliveryOptions(active.id);
++			if (!result.ok) throw new Error(result.error ?? "Saleor could not calculate delivery options.");
++			return {
++				deliveries: result.deliveries.map((delivery) => ({
++					deliveryId: delivery.id,
++					name: delivery.shippingMethod?.name ?? "Delivery",
++					price: delivery.shippingMethod?.price.amount ?? null,
++					currency: delivery.shippingMethod?.price.currency ?? null,
++					minimumDays: delivery.shippingMethod?.minimumDeliveryDays ?? null,
++					maximumDays: delivery.shippingMethod?.maximumDeliveryDays ?? null,
++				})),
++			};
++		},
++	};
++
++	const delivery: CheckoutToolSet["delivery"] = {
++		name: "select_delivery_option",
++		title: "Select delivery option",
++		description:
++			"Select one eligible deliveryId returned by list_delivery_options for the active Saleor checkout.",
++		inputSchema: {
++			type: "object",
++			properties: {
++				operationId: { type: "string", minLength: 8 },
++				deliveryId: { type: "string", minLength: 1 },
++			},
++			required: ["operationId", "deliveryId"],
++			additionalProperties: false,
++		},
++		authorize: requireActiveCheckout,
++		idempotency: {
++			store: idempotencyStore,
++			key: ({ input, context }) => `${context.checkoutId}:${input.operationId}:delivery:${input.deliveryId}`,
++		},
++		execute: async ({ deliveryId }) => {
++			const active = requireCheckout(checkoutState.read());
++			const result = await updateCheckoutDeliveryMethod(active.id, deliveryId);
++			if (!result.ok) throw new Error(result.error ?? "Saleor rejected the delivery option.");
++			return await refreshAndAdopt(refreshCheckout, setCheckout);
++		},
++		verify: async ({ input }) => {
++			const fresh = await refreshCheckout({ updateState: false });
++			return fresh?.delivery?.id === input.deliveryId;
++		},
++	};
++
++	const placeOrder: CheckoutToolSet["placeOrder"] = {
++		name: "place_order",
++		title: "Place order",
++		description:
++			"Charge the configured local test-payment gateway and convert the active Saleor checkout into one order. First inspect the checkout and provide the exact expected total and currency. Requires explicit shopper approval.",
++		inputSchema: {
++			type: "object",
++			properties: {
++				operationId: { type: "string", minLength: 8 },
++				expectedTotalAmount: { type: "number", minimum: 0 },
++				expectedCurrency: { type: "string", pattern: "^[A-Z]{3}$" },
++			},
++			required: ["operationId", "expectedTotalAmount", "expectedCurrency"],
++			additionalProperties: false,
++		},
++		authorize: requireActiveCheckout,
++		confirm: {
++			mode: "effect-only",
++			request: ({ input, context }) =>
++				requestApproval(
++					"Approve this test order?",
++					`${context.lineCount} item${context.lineCount === 1 ? "" : "s"} · ${input.expectedCurrency} ${input.expectedTotalAmount.toFixed(2)} · ${context.email ?? "guest checkout"}`,
++				),
++		},
++		idempotency: {
++			store: idempotencyStore,
++			key: placeOrderKey,
++		},
++		journal: { store: operationJournal },
++		execute: async (input, { operation }) => {
++			const active = requireCheckout(checkoutState.read());
++			const fresh = await refreshCheckout({ updateState: false });
++			if (!fresh) throw new Error("Saleor could not refresh the checkout before payment.");
++
++			const amount = getCheckoutPayAmount(fresh);
++			const currency = getCheckoutPayCurrency(fresh);
++			if (amount === null || currency === null) throw new Error("The live Saleor total is unavailable.");
++			if (!nearlyEqual(amount, input.expectedTotalAmount) || currency !== input.expectedCurrency) {
++				throw new Error(
++					`Checkout total changed to ${currency} ${amount.toFixed(2)}; approval is required again.`,
++				);
++			}
++
++			const billingAddress = shippingAddressInput(fresh);
++			if (!billingAddress) throw new Error("Set a shipping address before placing the order.");
++			if (!fresh.delivery && fresh.isShippingRequired) {
++				throw new Error("Select a delivery option before placing the order.");
++			}
++
++			const billingResult = await updateCheckoutBillingAddress({
++				checkoutId: active.id,
++				billingAddress,
++				saveAddress: false,
++			});
++			if (!billingResult.ok) throw new Error(billingResult.error ?? "Saleor rejected the billing address.");
++
++			const paymentProvider = resolvePaymentProvider(fresh.availablePaymentGateways);
++			await operation?.write<OrderCorrelation>({ phase: "payment_started" });
++			const paymentResult =
++				paymentProvider.type === "dummy" && paymentProvider.gateway.id === "mirumee.payments.dummy"
++					? await executeSignetLegacyDummyPayment(fresh.id, amount)
++					: await executePayment(paymentProvider, { checkoutId: fresh.id, amount }, gatewayMessages);
++			if (!paymentResult.ok) {
++				await operation?.remove();
++				throw new Error(paymentResult.error);
++			}
++
++			await operation?.write<OrderCorrelation>({
++				phase: "order_created",
++				orderId: paymentResult.orderId,
++			});
++			if (sessionStorage.getItem(LOST_RESPONSE_FAULT) === "armed") {
++				sessionStorage.removeItem(LOST_RESPONSE_FAULT);
++				onFaultConsumed();
++				throw new Error("Injected lost response after Saleor committed the order.");
++			}
++
++			const proof = await getSignetOrderProof(paymentResult.orderId);
++			if (!proof) throw new Error("The order response arrived but authoritative verification failed.");
++			return { ...proof, status: "placed" };
++		},
++		recover: async ({ operation }) => {
++			const correlation = await operation?.read<OrderCorrelation>();
++			if (!correlation) return { recovered: false };
++			if (correlation.phase === "payment_started") {
++				return {
++					recovered: false,
++					outcome: "unknown",
++					reason: "Payment started, but no Saleor order ID was recorded.",
++				};
++			}
++			const proof = await getSignetOrderProof(correlation.orderId);
++			return proof
++				? { recovered: true, output: { ...proof, status: "placed" } }
++				: {
++						recovered: false,
++						outcome: "unknown",
++						reason: "The correlated Saleor order could not be verified.",
++					};
++		},
++		verify: async ({ input, output, context }) => {
++			const proof = await getSignetOrderProof(output.orderId);
++			return (
++				proof?.isPaid === true &&
++				proof.email === context.email &&
++				proof.lineCount === context.lineCount &&
++				proof.currency === input.expectedCurrency &&
++				nearlyEqual(proof.totalAmount, input.expectedTotalAmount)
++			);
++		},
++		outputBudgetBytes: 2048,
++	};
++
++	return { inspect, contact, deliveryOptions, delivery, placeOrder };
++}
++
++function requireActiveCheckout({ context }: { context: CheckoutContext }) {
++	return {
++		allowed: context.checkoutId !== null,
++		reason: "No active checkout is available to update.",
++	};
++}
++
++function placeOrderKey({ input, context }: { input: PlaceOrderInput; context: CheckoutContext }) {
++	return `${context.checkoutId}:${input.operationId}:place:${input.expectedCurrency}:${input.expectedTotalAmount.toFixed(2)}`;
++}
++
++async function refreshAndAdopt(
++	refreshCheckout: CheckoutDataContextValue["refreshCheckout"],
++	setCheckout: CheckoutDataContextValue["setCheckout"],
++): Promise<CheckoutContext> {
++	const fresh = await refreshCheckout();
++	if (!fresh) throw new Error("Saleor did not return the updated checkout.");
++	setCheckout(fresh);
++	return checkoutContext(fresh);
++}
 diff --git a/src/checkout/signet/indexed-db-idempotency-store.ts b/src/checkout/signet/indexed-db-idempotency-store.ts
 new file mode 100644
 index 0000000..e93586a
@@ -363,168 +826,49 @@ index 0000000..e93586a
 +}
 diff --git a/src/checkout/signet/signet-checkout-tools.tsx b/src/checkout/signet/signet-checkout-tools.tsx
 new file mode 100644
-index 0000000..c2c8518
+index 0000000..f659a56
 --- /dev/null
 +++ b/src/checkout/signet/signet-checkout-tools.tsx
-@@ -0,0 +1,608 @@
+@@ -0,0 +1,122 @@
 +"use client";
 +
 +import { useCallback, useEffect, useMemo, useState } from "react";
-+import { Bot, Check, CircleAlert, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
 +
-+import { createSignet, type GuardEvent, type SignetTool } from "@signet/webmcp";
++import { createSignet, type GuardEvent, WebStorageOperationJournal } from "@signet/webmcp";
 +import { useSignetTool } from "@signet/webmcp/react";
 +
-+import {
-+	calculateDeliveryOptions,
-+	executeSignetLegacyDummyPayment,
-+	getSignetOrderProof,
-+	updateCheckoutBillingAddress,
-+	updateCheckoutDeliveryMethod,
-+	updateCheckoutEmail,
-+	updateCheckoutShippingAddress,
-+	type SignetOrderProof,
-+} from "@/app/(checkout)/actions";
-+import type { AddressInput, CountryCode } from "@/checkout/graphql/generated/operations";
-+import type { ServerCheckout } from "@/checkout/lib/checkout-types";
-+import { executePayment, resolvePaymentProvider } from "@/checkout/lib/payment";
-+import { getCheckoutPayAmount, getCheckoutPayCurrency } from "@/checkout/lib/payment/checkout-pay-amount";
 +import { useCheckoutGatewayMessages } from "@/checkout/hooks/use-checkout-gateway-messages";
 +import { useCheckoutData } from "@/checkout/providers/checkout-data";
-+import { cn } from "@/lib/utils";
 +
++import { CheckoutSnapshot, checkoutContext, LOST_RESPONSE_FAULT } from "./checkout-model";
++import { createCheckoutTools } from "./checkout-tools";
 +import { IndexedDbIdempotencyStore } from "./indexed-db-idempotency-store";
-+
-+const RECOVERY_PREFIX = "saleor-signet:order:";
-+const LOST_RESPONSE_FAULT = "saleor-signet:fault:lost-response";
-+
-+type CheckoutContext = {
-+	checkoutId: string | null;
-+	channel: string | null;
-+	email: string | null;
-+	lineCount: number;
-+	totalAmount: number | null;
-+	currency: string | null;
-+};
-+
-+type ContactInput = {
-+	operationId: string;
-+	email: string;
-+	firstName: string;
-+	lastName: string;
-+	streetAddress1: string;
-+	streetAddress2?: string;
-+	city: string;
-+	countryArea: string;
-+	postalCode: string;
-+	countryCode: string;
-+	phone?: string;
-+};
-+
-+type DeliveryInput = {
-+	operationId: string;
-+	deliveryId: string;
-+};
-+
-+type PlaceOrderInput = {
-+	operationId: string;
-+	expectedTotalAmount: number;
-+	expectedCurrency: string;
-+};
-+
-+type ApprovalRequest = {
-+	title: string;
-+	detail: string;
-+	resolve: (confirmed: boolean) => void;
-+};
-+
-+type OrderResult = SignetOrderProof & { status: "placed" };
-+
-+class CheckoutSnapshot {
-+	#checkout: ServerCheckout | null = null;
-+
-+	update(checkout: ServerCheckout | null): void {
-+		this.#checkout = checkout;
-+	}
-+
-+	read(): ServerCheckout | null {
-+		return this.#checkout;
-+	}
-+}
-+
-+function checkoutContext(checkout: ServerCheckout | null): CheckoutContext {
-+	return {
-+		checkoutId: checkout?.id ?? null,
-+		channel: checkout?.channel.slug ?? null,
-+		email: checkout?.email ?? null,
-+		lineCount: checkout?.lines.reduce((total, line) => total + line.quantity, 0) ?? 0,
-+		totalAmount: checkout ? getCheckoutPayAmount(checkout) : null,
-+		currency: checkout ? getCheckoutPayCurrency(checkout) : null,
-+	};
-+}
-+
-+function currentCheckout(checkout: ServerCheckout | null): ServerCheckout {
-+	if (!checkout) {
-+		throw new Error("There is no active Saleor checkout on this page.");
-+	}
-+	return checkout;
-+}
-+
-+function toAddressInput(input: ContactInput): AddressInput {
-+	return {
-+		firstName: input.firstName,
-+		lastName: input.lastName,
-+		streetAddress1: input.streetAddress1,
-+		streetAddress2: input.streetAddress2 ?? "",
-+		city: input.city,
-+		countryArea: input.countryArea,
-+		postalCode: input.postalCode,
-+		country: input.countryCode as CountryCode,
-+		phone: input.phone ?? "",
-+	};
-+}
-+
-+function shippingAddressInput(checkout: ServerCheckout): AddressInput | null {
-+	const address = checkout.shippingAddress;
-+	if (!address) return null;
-+	return {
-+		firstName: address.firstName,
-+		lastName: address.lastName,
-+		companyName: address.companyName,
-+		streetAddress1: address.streetAddress1,
-+		streetAddress2: address.streetAddress2,
-+		city: address.city,
-+		cityArea: address.cityArea,
-+		countryArea: address.countryArea,
-+		postalCode: address.postalCode,
-+		country: address.country.code as CountryCode,
-+		phone: address.phone,
-+	};
-+}
-+
-+function nearlyEqual(left: number, right: number): boolean {
-+	return Math.abs(left - right) < 0.005;
-+}
-+
-+function eventTone(stage: GuardEvent["stage"]): string {
-+	if (stage === "failed") return "text-destructive";
-+	if (stage === "succeeded" || stage === "verified" || stage === "recovered") return "text-success";
-+	return "text-muted-foreground";
-+}
++import { type ApprovalRequest, SignetDemoPanel } from "./signet-demo-panel";
 +
 +export function SignetCheckoutTools() {
 +	const { checkout, refreshCheckout, setCheckout } = useCheckoutData();
 +	const gatewayMessages = useCheckoutGatewayMessages();
 +	const checkoutState = useMemo(() => new CheckoutSnapshot(), []);
-+	useEffect(() => {
-+		checkoutState.update(checkout);
-+	}, [checkout, checkoutState]);
++	useEffect(() => checkoutState.update(checkout), [checkout, checkoutState]);
 +
 +	const [events, setEvents] = useState<GuardEvent[]>([]);
 +	const [proof, setProof] = useState({ recovered: false, replayed: false });
 +	const [approval, setApproval] = useState<ApprovalRequest | null>(null);
 +	const [faultArmed, setFaultArmed] = useState(false);
++
 +	const idempotencyStore = useMemo(() => new IndexedDbIdempotencyStore(), []);
++	const operationJournal = useMemo(
++		() =>
++			new WebStorageOperationJournal(
++				{
++					getItem: (key) => sessionStorage.getItem(key),
++					setItem: (key, value) => sessionStorage.setItem(key, value),
++					removeItem: (key) => sessionStorage.removeItem(key),
++				},
++				"saleor-signet:operation:",
++			),
++		[],
++	);
 +	const readContext = useCallback(() => checkoutContext(checkoutState.read()), [checkoutState]);
 +	const observe = useCallback((event: GuardEvent) => {
 +		setEvents((current) => [event, ...current].slice(0, 12));
@@ -538,7 +882,7 @@ index 0000000..c2c8518
 +
 +	const signet = useMemo(
 +		() =>
-+			createSignet<CheckoutContext>({
++			createSignet({
 +				context: readContext,
 +				observe,
 +				unsupported: "warn",
@@ -547,11 +891,40 @@ index 0000000..c2c8518
 +	);
 +
 +	const requestApproval = useCallback((title: string, detail: string): Promise<boolean> => {
-+		if (process.env.NEXT_PUBLIC_SIGNET_AUTO_CONFIRM === "true") {
-+			return Promise.resolve(true);
-+		}
++		if (process.env.NEXT_PUBLIC_SIGNET_AUTO_CONFIRM === "true") return Promise.resolve(true);
 +		return new Promise<boolean>((resolve) => setApproval({ title, detail, resolve }));
 +	}, []);
++
++	const tools = useMemo(
++		() =>
++			createCheckoutTools({
++				checkoutState,
++				refreshCheckout,
++				setCheckout,
++				gatewayMessages,
++				idempotencyStore,
++				operationJournal,
++				requestApproval,
++				onFaultConsumed: () => setFaultArmed(false),
++			}),
++		[
++			checkoutState,
++			gatewayMessages,
++			idempotencyStore,
++			operationJournal,
++			refreshCheckout,
++			requestApproval,
++			setCheckout,
++		],
++	);
++
++	const registrations = [
++		useSignetTool(signet, tools.inspect, [tools.inspect]),
++		useSignetTool(signet, tools.contact, [tools.contact]),
++		useSignetTool(signet, tools.deliveryOptions, [tools.deliveryOptions]),
++		useSignetTool(signet, tools.delivery, [tools.delivery]),
++		useSignetTool(signet, tools.placeOrder, [tools.placeOrder]),
++	];
 +
 +	const decideApproval = useCallback((confirmed: boolean) => {
 +		setApproval((current) => {
@@ -560,272 +933,6 @@ index 0000000..c2c8518
 +		});
 +	}, []);
 +
-+	const inspectTool = useMemo<SignetTool<Record<string, never>, CheckoutContext, CheckoutContext>>(
-+		() => ({
-+			name: "inspect_checkout",
-+			title: "Inspect checkout",
-+			description:
-+				"Read the active Saleor checkout, including line count, customer email, current total, and currency. Call this before making checkout changes.",
-+			inputSchema: { type: "object", properties: {}, additionalProperties: false },
-+			annotations: { readOnlyHint: true },
-+			execute: () => checkoutContext(checkoutState.read()),
-+		}),
-+		[checkoutState],
-+	);
-+
-+	const contactTool = useMemo<SignetTool<ContactInput, CheckoutContext, CheckoutContext>>(
-+		() => ({
-+			name: "set_checkout_contact",
-+			title: "Set checkout contact and shipping address",
-+			description:
-+				"Set the guest email and shipping address on the active Saleor checkout. Use a fresh operationId for a new intent and reuse it only when retrying the exact same change.",
-+			inputSchema: {
-+				type: "object",
-+				properties: {
-+					operationId: { type: "string", minLength: 8 },
-+					email: { type: "string", minLength: 3 },
-+					firstName: { type: "string", minLength: 1 },
-+					lastName: { type: "string", minLength: 1 },
-+					streetAddress1: { type: "string", minLength: 1 },
-+					streetAddress2: { type: "string" },
-+					city: { type: "string", minLength: 1 },
-+					countryArea: { type: "string", minLength: 1 },
-+					postalCode: { type: "string", minLength: 1 },
-+					countryCode: { type: "string", pattern: "^[A-Z]{2}$" },
-+					phone: { type: "string" },
-+				},
-+				required: [
-+					"operationId",
-+					"email",
-+					"firstName",
-+					"lastName",
-+					"streetAddress1",
-+					"city",
-+					"countryArea",
-+					"postalCode",
-+					"countryCode",
-+				],
-+				additionalProperties: false,
-+			},
-+			authorize: ({ context }) => ({
-+				allowed: context.checkoutId !== null,
-+				reason: "No active checkout is available to update.",
-+			}),
-+			idempotency: {
-+				store: idempotencyStore,
-+				key: ({ input, context }) =>
-+					`${context.checkoutId}:${input.operationId}:contact:${JSON.stringify([
-+						input.email,
-+						input.firstName,
-+						input.lastName,
-+						input.streetAddress1,
-+						input.streetAddress2 ?? "",
-+						input.city,
-+						input.countryArea,
-+						input.postalCode,
-+						input.countryCode,
-+						input.phone ?? "",
-+					])}`,
-+			},
-+			execute: async (input) => {
-+				const active = currentCheckout(checkoutState.read());
-+				const emailResult = await updateCheckoutEmail(active.id, input.email);
-+				if (!emailResult.ok) throw new Error(emailResult.error ?? "Saleor rejected the checkout email.");
-+
-+				const addressResult = await updateCheckoutShippingAddress(active.id, toAddressInput(input), false);
-+				if (!addressResult.ok) {
-+					throw new Error(addressResult.error ?? "Saleor rejected the shipping address.");
-+				}
-+
-+				const fresh = await refreshCheckout();
-+				if (!fresh) throw new Error("Saleor did not return the updated checkout.");
-+				setCheckout(fresh);
-+				return checkoutContext(fresh);
-+			},
-+			verify: async ({ input }) => {
-+				const fresh = await refreshCheckout({ updateState: false });
-+				return (
-+					fresh?.email === input.email &&
-+					fresh.shippingAddress?.postalCode === input.postalCode &&
-+					fresh.shippingAddress.country.code === input.countryCode
-+				);
-+			},
-+		}),
-+		[checkoutState, idempotencyStore, refreshCheckout, setCheckout],
-+	);
-+
-+	const deliveryOptionsTool = useMemo<
-+		SignetTool<Record<string, never>, { deliveries: Array<Record<string, unknown>> }, CheckoutContext>
-+	>(
-+		() => ({
-+			name: "list_delivery_options",
-+			title: "List delivery options",
-+			description:
-+				"Calculate the currently eligible Saleor delivery options after the shipping address has been set.",
-+			inputSchema: { type: "object", properties: {}, additionalProperties: false },
-+			annotations: { readOnlyHint: true },
-+			execute: async () => {
-+				const active = currentCheckout(checkoutState.read());
-+				const result = await calculateDeliveryOptions(active.id);
-+				if (!result.ok) throw new Error(result.error ?? "Saleor could not calculate delivery options.");
-+				return {
-+					deliveries: result.deliveries.map((delivery) => ({
-+						deliveryId: delivery.id,
-+						name: delivery.shippingMethod?.name ?? "Delivery",
-+						price: delivery.shippingMethod?.price.amount ?? null,
-+						currency: delivery.shippingMethod?.price.currency ?? null,
-+						minimumDays: delivery.shippingMethod?.minimumDeliveryDays ?? null,
-+						maximumDays: delivery.shippingMethod?.maximumDeliveryDays ?? null,
-+					})),
-+				};
-+			},
-+		}),
-+		[checkoutState],
-+	);
-+
-+	const deliveryTool = useMemo<SignetTool<DeliveryInput, CheckoutContext, CheckoutContext>>(
-+		() => ({
-+			name: "select_delivery_option",
-+			title: "Select delivery option",
-+			description:
-+				"Select one eligible deliveryId returned by list_delivery_options for the active Saleor checkout.",
-+			inputSchema: {
-+				type: "object",
-+				properties: {
-+					operationId: { type: "string", minLength: 8 },
-+					deliveryId: { type: "string", minLength: 1 },
-+				},
-+				required: ["operationId", "deliveryId"],
-+				additionalProperties: false,
-+			},
-+			authorize: ({ context }) => ({
-+				allowed: context.checkoutId !== null,
-+				reason: "No active checkout is available to update.",
-+			}),
-+			idempotency: {
-+				store: idempotencyStore,
-+				key: ({ input, context }) =>
-+					`${context.checkoutId}:${input.operationId}:delivery:${input.deliveryId}`,
-+			},
-+			execute: async ({ deliveryId }) => {
-+				const active = currentCheckout(checkoutState.read());
-+				const result = await updateCheckoutDeliveryMethod(active.id, deliveryId);
-+				if (!result.ok) throw new Error(result.error ?? "Saleor rejected the delivery option.");
-+				const fresh = await refreshCheckout();
-+				if (!fresh) throw new Error("Saleor did not return the updated checkout.");
-+				setCheckout(fresh);
-+				return checkoutContext(fresh);
-+			},
-+			verify: async ({ input }) => {
-+				const fresh = await refreshCheckout({ updateState: false });
-+				return fresh?.delivery?.id === input.deliveryId;
-+			},
-+		}),
-+		[checkoutState, idempotencyStore, refreshCheckout, setCheckout],
-+	);
-+
-+	const placeOrderTool = useMemo<SignetTool<PlaceOrderInput, OrderResult, CheckoutContext>>(
-+		() => ({
-+			name: "place_order",
-+			title: "Place order",
-+			description:
-+				"Charge the configured local test-payment gateway and convert the active Saleor checkout into one order. First inspect the checkout and provide the exact expected total and currency. Requires explicit shopper approval.",
-+			inputSchema: {
-+				type: "object",
-+				properties: {
-+					operationId: { type: "string", minLength: 8 },
-+					expectedTotalAmount: { type: "number", minimum: 0 },
-+					expectedCurrency: { type: "string", pattern: "^[A-Z]{3}$" },
-+				},
-+				required: ["operationId", "expectedTotalAmount", "expectedCurrency"],
-+				additionalProperties: false,
-+			},
-+			authorize: ({ context }) => ({
-+				allowed: context.checkoutId !== null,
-+				reason: "No active checkout is available to place.",
-+			}),
-+			confirm: ({ input, context }) =>
-+				requestApproval(
-+					"Approve this test order?",
-+					`${context.lineCount} item${context.lineCount === 1 ? "" : "s"} · ${input.expectedCurrency} ${input.expectedTotalAmount.toFixed(2)} · ${context.email ?? "guest checkout"}`,
-+				),
-+			idempotency: {
-+				store: idempotencyStore,
-+				key: ({ input, context }) =>
-+					`${context.checkoutId}:${input.operationId}:place:${input.expectedCurrency}:${input.expectedTotalAmount.toFixed(2)}`,
-+			},
-+			execute: async (input) => {
-+				const active = currentCheckout(checkoutState.read());
-+				const fresh = await refreshCheckout({ updateState: false });
-+				if (!fresh) throw new Error("Saleor could not refresh the checkout before payment.");
-+
-+				const amount = getCheckoutPayAmount(fresh);
-+				const currency = getCheckoutPayCurrency(fresh);
-+				if (amount === null || currency === null) throw new Error("The live Saleor total is unavailable.");
-+				if (!nearlyEqual(amount, input.expectedTotalAmount) || currency !== input.expectedCurrency) {
-+					throw new Error(
-+						`Checkout total changed to ${currency} ${amount.toFixed(2)}; approval is required again.`,
-+					);
-+				}
-+
-+				const billingAddress = shippingAddressInput(fresh);
-+				if (!billingAddress) throw new Error("Set a shipping address before placing the order.");
-+				if (!fresh.delivery && fresh.isShippingRequired) {
-+					throw new Error("Select a delivery option before placing the order.");
-+				}
-+
-+				const billingResult = await updateCheckoutBillingAddress({
-+					checkoutId: active.id,
-+					billingAddress,
-+					saveAddress: false,
-+				});
-+				if (!billingResult.ok) throw new Error(billingResult.error ?? "Saleor rejected the billing address.");
-+
-+				const paymentProvider = resolvePaymentProvider(fresh.availablePaymentGateways);
-+				const paymentResult =
-+					paymentProvider.type === "dummy" && paymentProvider.gateway.id === "mirumee.payments.dummy"
-+						? await executeSignetLegacyDummyPayment(fresh.id, amount)
-+						: await executePayment(paymentProvider, { checkoutId: fresh.id, amount }, gatewayMessages);
-+				if (!paymentResult.ok) throw new Error(paymentResult.error);
-+
-+				sessionStorage.setItem(`${RECOVERY_PREFIX}${input.operationId}`, paymentResult.orderId);
-+				if (sessionStorage.getItem(LOST_RESPONSE_FAULT) === "armed") {
-+					sessionStorage.removeItem(LOST_RESPONSE_FAULT);
-+					setFaultArmed(false);
-+					throw new Error("Injected lost response after Saleor committed the order.");
-+				}
-+
-+				const proof = await getSignetOrderProof(paymentResult.orderId);
-+				if (!proof) throw new Error("The order response arrived but authoritative verification failed.");
-+				return { ...proof, status: "placed" };
-+			},
-+			recover: async ({ input }) => {
-+				const orderId = sessionStorage.getItem(`${RECOVERY_PREFIX}${input.operationId}`);
-+				if (!orderId) return { recovered: false };
-+				const proof = await getSignetOrderProof(orderId);
-+				return proof ? { recovered: true, output: { ...proof, status: "placed" } } : { recovered: false };
-+			},
-+			verify: async ({ input, output, context }) => {
-+				const proof = await getSignetOrderProof(output.orderId);
-+				return (
-+					proof?.isPaid === true &&
-+					proof.email === context.email &&
-+					proof.lineCount === context.lineCount &&
-+					proof.currency === input.expectedCurrency &&
-+					nearlyEqual(proof.totalAmount, input.expectedTotalAmount)
-+				);
-+			},
-+			outputBudgetBytes: 2048,
-+		}),
-+		[checkoutState, gatewayMessages, idempotencyStore, refreshCheckout, requestApproval],
-+	);
-+
-+	const inspectState = useSignetTool(signet, inspectTool, []);
-+	const contactState = useSignetTool(signet, contactTool, [contactTool]);
-+	const optionsState = useSignetTool(signet, deliveryOptionsTool, []);
-+	const deliveryState = useSignetTool(signet, deliveryTool, [deliveryTool]);
-+	const orderState = useSignetTool(signet, placeOrderTool, [placeOrderTool]);
-+
 +	const armFault = useCallback(() => {
 +		sessionStorage.setItem(LOST_RESPONSE_FAULT, "armed");
 +		setFaultArmed(true);
@@ -833,9 +940,61 @@ index 0000000..c2c8518
 +
 +	if (process.env.NEXT_PUBLIC_SIGNET_DEMO !== "true") return null;
 +
-+	const registrations = [inspectState, contactState, optionsState, deliveryState, orderState];
-+	const registeredCount = registrations.filter(({ status }) => status === "registered").length;
++	return (
++		<SignetDemoPanel
++			approval={approval}
++			events={events}
++			faultArmed={faultArmed}
++			proof={proof}
++			registeredCount={registrations.filter(({ status }) => status === "registered").length}
++			onArmFault={armFault}
++			onApproval={decideApproval}
++		/>
++	);
++}
+diff --git a/src/checkout/signet/signet-demo-panel.tsx b/src/checkout/signet/signet-demo-panel.tsx
+new file mode 100644
+index 0000000..e6540a6
+--- /dev/null
++++ b/src/checkout/signet/signet-demo-panel.tsx
+@@ -0,0 +1,176 @@
++import type { GuardEvent } from "@signet/webmcp";
++import { Bot, Check, CircleAlert, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
 +
++import { cn } from "@/lib/utils";
++
++export type ApprovalRequest = {
++	title: string;
++	detail: string;
++	resolve(confirmed: boolean): void;
++};
++
++type SignetDemoPanelProps = {
++	approval: ApprovalRequest | null;
++	events: GuardEvent[];
++	faultArmed: boolean;
++	proof: { recovered: boolean; replayed: boolean };
++	registeredCount: number;
++	onArmFault(): void;
++	onApproval(confirmed: boolean): void;
++};
++
++function eventTone(stage: GuardEvent["stage"]): string {
++	if (stage === "failed") return "text-destructive";
++	if (stage === "outcome_unknown") return "text-warning";
++	if (stage === "succeeded" || stage === "verified" || stage === "recovered") return "text-success";
++	return "text-muted-foreground";
++}
++
++export function SignetDemoPanel({
++	approval,
++	events,
++	faultArmed,
++	proof,
++	registeredCount,
++	onArmFault,
++	onApproval,
++}: SignetDemoPanelProps) {
 +	return (
 +		<>
 +			<aside
@@ -880,7 +1039,7 @@ index 0000000..c2c8518
 +								? "border-destructive bg-destructive/5 text-destructive"
 +								: "border-border bg-background text-foreground hover:bg-muted",
 +						)}
-+						onClick={armFault}
++						onClick={onArmFault}
 +						type="button"
 +					>
 +						<span className="flex items-center gap-2">
@@ -952,14 +1111,14 @@ index 0000000..c2c8518
 +						<div className="flex justify-end gap-3">
 +							<button
 +								className="inline-flex items-center gap-2 rounded-button border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-+								onClick={() => decideApproval(false)}
++								onClick={() => onApproval(false)}
 +								type="button"
 +							>
 +								<X className="size-4" aria-hidden /> Decline
 +							</button>
 +							<button
 +								className="inline-flex items-center gap-2 rounded-button bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-+								onClick={() => decideApproval(true)}
++								onClick={() => onApproval(true)}
 +								type="button"
 +							>
 +								<Check className="size-4" aria-hidden /> Approve test order

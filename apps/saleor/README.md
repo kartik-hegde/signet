@@ -40,7 +40,7 @@ transport, and payment code as the human UI. `place_order` adds:
 2. exact total/currency validation before payment;
 3. an app-owned shopper approval dialog;
 4. browser-profile idempotency with cross-tab Web Locks;
-5. a correlation record for ambiguous outcomes;
+5. a typed operation journal for ambiguous outcomes;
 6. authoritative order recovery and paid-order verification; and
 7. privacy-safe lifecycle events rendered in the demo panel.
 
@@ -87,8 +87,8 @@ npm run saleor:oracle -- --email proof@example.com
 5. Saleor commits the paid order; the page intentionally throws away that response.
 6. Signet uses the correlation record to re-read Saleor, then reports `recovered`,
    `verified`, and `succeeded`.
-7. Retry the identical operation ID. Signet reports `replayed`; the Postgres oracle
-   still reports exactly one order.
+7. Retry the identical operation ID. Signet reports `replayed` without requesting a
+   second approval; the Postgres oracle still reports exactly one order.
 
 The deterministic fault is one-shot and occurs only after Saleor returns an order ID.
 It does not stub GraphQL, the payment mutation, checkout completion, or verification.
