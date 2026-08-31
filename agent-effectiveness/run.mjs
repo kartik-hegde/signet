@@ -50,7 +50,10 @@ if (rescoreOnly) {
     completedViaWebMcp: run.toolSequence.includes("send_payment"),
   }));
   const scorecard = buildScorecard(runs);
-  scorecard.provenance.sourceRunGeneratedAt = prior.generatedAt;
+  scorecard.provenance.sourceRunGeneratedAt =
+    process.env.P1_SOURCE_RUN_GENERATED_AT ??
+    prior.provenance.sourceRunGeneratedAt ??
+    prior.generatedAt;
   writeFileSync(resolve(publicDir, "latest.json"), `${JSON.stringify(scorecard, null, 2)}\n`);
   writeFileSync(resolve(publicDir, "latest.md"), renderMarkdown(scorecard));
   process.stdout.write(renderConsole(scorecard));
