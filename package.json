@@ -1,7 +1,7 @@
 {
   "name": "@signet/webmcp",
   "version": "0.0.1",
-  "description": "WebMCP toolkit for turning website capabilities into discoverable, reliable, testable agent tools.",
+  "description": "Turn an existing website into a reliable, testable agent interface. Native WebMCP exposure with validation, confirmation, idempotency, and evaluation.",
   "type": "module",
   "sideEffects": false,
   "files": [
