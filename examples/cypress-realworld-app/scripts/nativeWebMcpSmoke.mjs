@@ -141,6 +141,41 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+async function executeNativeTool(name, input) {
+  const execution = await cdp.evaluate(`(async () => {
+    const tools = await document.modelContext.getTools();
+    const tool = tools.find(candidate => candidate.name === ${JSON.stringify(name)});
+    if (!tool) throw new Error(${JSON.stringify(`${name} was not registered`)});
+    try {
+      return {
+        ok: true,
+        result: await document.modelContext.executeTool(tool, ${JSON.stringify(
+          JSON.stringify(input)
+        )}),
+        inputTransport: "json-string"
+      };
+    } catch (stringError) {
+      try {
+        return {
+          ok: true,
+          result: await document.modelContext.executeTool(tool, ${JSON.stringify(input)}),
+          inputTransport: "object",
+          firstError: String(stringError)
+        };
+      } catch (objectError) {
+        return {
+          ok: false,
+          stringError: String(stringError),
+          objectError: String(objectError),
+          guardStages: (window.__signetGuardEvents || []).map(event => event.stage)
+        };
+      }
+    }
+  })()`);
+  assert(execution.ok, `Native ${name} execution failed: ${JSON.stringify(execution)}`);
+  return execution;
+}
+
 const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), "signet-native-webmcp-"));
 const debugPort = await unusedPort();
 let chrome;
@@ -233,31 +268,21 @@ try {
       `Unexpected native tools: ${JSON.stringify(toolNames)}`
     );
 
-    const executeExpression = `(async () => {
-      const tools = await document.modelContext.getTools();
-      const tool = tools.find(candidate => candidate.name === "send_payment");
-      if (!tool) throw new Error("send_payment was not registered");
-      try {
-        await document.modelContext.executeTool(tool, ${JSON.stringify(JSON.stringify(payment))});
-        return { ok: true, inputTransport: "json-string" };
-      } catch (stringError) {
-        try {
-          await document.modelContext.executeTool(tool, ${JSON.stringify(payment)});
-          return { ok: true, inputTransport: "object", firstError: String(stringError) };
-        } catch (objectError) {
-          return {
-            ok: false,
-            stringError: String(stringError),
-            objectError: String(objectError),
-            guardStages: (window.__signetGuardEvents || []).map(event => event.stage)
-          };
-        }
-      }
-    })()`;
-    const firstExecution = await cdp.evaluate(executeExpression);
-    assert(firstExecution.ok, `Native execution failed: ${JSON.stringify(firstExecution)}`);
-    const secondExecution = await cdp.evaluate(executeExpression);
-    assert(secondExecution.ok, `Native replay failed: ${JSON.stringify(secondExecution)}`);
+    const accountExecution = await executeNativeTool("list_payment_accounts", {});
+    assert(
+      JSON.stringify(accountExecution.result).includes(payment.sourceAccountId),
+      "The native account tool did not return the signed-in user's source account."
+    );
+    const searchExecution = await executeNativeTool("search_payment_users", {
+      query: "Lia Rosenbaum",
+    });
+    assert(
+      JSON.stringify(searchExecution.result).includes(payment.receiverId),
+      "The native recipient search did not return Lia Rosenbaum."
+    );
+
+    const firstExecution = await executeNativeTool("send_payment", payment);
+    const secondExecution = await executeNativeTool("send_payment", payment);
 
     const authoritative = await cdp.evaluate(`(async () => {
       const response = await fetch(${JSON.stringify(
@@ -290,6 +315,10 @@ try {
       supported: true,
       browser: chromePath,
       toolNames,
+      discovery: {
+        accountToolSucceeded: true,
+        searchToolSucceeded: true,
+      },
       mutation: {
         operationId: payment.operationId,
         transactionId: transactions[0].id,

@@ -22,15 +22,23 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
   });
 
   it("publishes useful tools only for the signed-in page", () => {
-    executeTool("search_payment_users", { query: "Lia" }).its("users").should("deep.include", {
-      id: receiver.id,
-      username: receiver.username,
-      displayName: receiver.displayName,
-    });
+    cy.window().then(async (win) => {
+      const searchResult: any = await win.__webMcpTest.executeToolWithoutOptions(
+        "search_payment_users",
+        { query: "Lia" }
+      );
+      expect(searchResult.users).to.deep.include({
+        id: receiver.id,
+        username: receiver.username,
+        displayName: receiver.displayName,
+      });
 
-    executeTool("list_payment_accounts", {})
-      .its("accounts.0")
-      .should("include", { id: sender.sourceAccountId });
+      const accountResult: any = await win.__webMcpTest.executeToolWithoutOptions(
+        "list_payment_accounts",
+        {}
+      );
+      expect(accountResult.accounts[0]).to.include({ id: sender.sourceAccountId });
+    });
 
     cy.logoutByXstate();
     cy.window().then((win) => {

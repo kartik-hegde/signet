@@ -50,5 +50,10 @@ export function installWebMcpCapture(win: Cypress.AUTWindow) {
       const execution = signal ? { signal } : { signal: new win.AbortController().signal };
       return tool.execute(input, execution);
     },
+    executeToolWithoutOptions: async (name, input) => {
+      const tool = tools.get(name);
+      if (!tool) throw new Error(`WebMCP tool is not registered: ${name}`);
+      return (tool.execute as (input: Record<string, unknown>) => Promise<unknown>)(input);
+    },
   };
 }

@@ -274,7 +274,7 @@ The repeat runner stops on the first failure and writes `cypress/results/referen
 
 ## Exercise native Chrome WebMCP
 
-The normal suite injects only the minimum capture object needed for deterministic tests. The separate native lane launches a clean Chrome profile with its WebMCP development features, does not install the capture object, discovers the real registrations with `document.modelContext.getTools()`, executes `send_payment` with `document.modelContext.executeTool()`, and checks the authenticated authoritative read plus exact database deltas:
+The normal suite injects only the minimum capture object needed for deterministic tests. The separate native lane launches a clean Chrome profile with its WebMCP development features, does not install the capture object, discovers the real registrations with `document.modelContext.getTools()`, executes both discovery tools and `send_payment` with `document.modelContext.executeTool()`, and checks their results, the authenticated authoritative read, and exact database deltas:
 
 ```sh
 # Report capability without failing when the local Chrome build lacks WebMCP
