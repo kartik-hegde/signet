@@ -24,6 +24,22 @@
     "./opentelemetry": {
       "types": "./dist/opentelemetry.d.ts",
       "import": "./dist/opentelemetry.js"
+    },
+    "./inspector": {
+      "types": "./dist/inspector.d.ts",
+      "import": "./dist/inspector.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.js"
+    },
+    "./svelte": {
+      "types": "./dist/svelte.d.ts",
+      "import": "./dist/svelte.js"
     }
   },
   "scripts": {
@@ -52,10 +68,22 @@
     "node": ">=20"
   },
   "peerDependencies": {
-    "@opentelemetry/api": ">=1.9.0 <2"
+    "@opentelemetry/api": ">=1.9.0 <2",
+    "react": ">=18 <20",
+    "svelte": ">=4 <6",
+    "vue": ">=3.3 <4"
   },
   "peerDependenciesMeta": {
     "@opentelemetry/api": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    },
+    "vue": {
       "optional": true
     }
   },
@@ -63,16 +91,20 @@
     "@eslint/js": "^10.0.1",
     "@opentelemetry/api": "^1.9.0",
     "@types/node": "^24.3.0",
+    "@types/react": "^19.2.18",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.9.1",
     "prettier": "^3.9.6",
     "publint": "^0.3.24",
+    "react": "^19.2.8",
     "rollup": "^4.63.1",
     "rollup-plugin-dts": "^6.5.1",
+    "svelte": "^5.57.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.68.0",
     "vitepress": "2.0.0-alpha.19",
     "vitest": "^4.1.11",
+    "vue": "^3.5.42",
     "webmcp-types": "^0.1.5"
   },
   "license": "MIT",

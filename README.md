@@ -2,8 +2,8 @@
 
 **Make your website agent-ready—in minutes.**
 
-Signet turns application functions you already own into reliable tools that browser
-agents can use through native WebMCP.
+Signet turns application functions you already own into production-ready tools that
+browser agents can discover and use through native WebMCP.
 
 Using a coding agent? Give it [`AGENTS.md`](./AGENTS.md), the complete public contract.
 It should not need to inspect Signet's compiled implementation.
@@ -103,6 +103,9 @@ await signet.expose({
   // keep mutable order eligibility inside execute.
   authorize: ({ context }) => context.scopes.includes("orders:cancel"),
 
+  // Your application renders the review UI; Signet orders and observes the gate.
+  confirm: ({ input }) => confirmCancellation(input.orderId),
+
   idempotency: {
     store: productionIdempotencyStore,
     key: ({ input, context }) => `${context.userId}:${input.orderId}:cancel`,
@@ -132,6 +135,9 @@ await signet.expose({
       ? { recovered: true, output: order }
       : { recovered: false };
   },
+
+  // Prevent an accidental bulk response from consuming the agent's context.
+  maxOutputBytes: 20_000,
 
   verify: async ({ input, context }) => {
     const order = await getOrder(input.orderId);
@@ -188,18 +194,43 @@ The capture-only test boundary supports discovery, invocation, cancellation, and
 unregistration. It is not a production WebMCP polyfill. Test representative workflows
 through a supported native browser agent before shipping.
 
+Run static readiness checks in the same test:
+
+```ts
+import { assertToolReady } from "@signet/webmcp";
+
+expect(() => assertToolReady(searchProductsTool)).not.toThrow();
+```
+
+For a component-owned capability, use the lifecycle binding for your framework:
+
+```ts
+import { useSignetTool } from "@signet/webmcp/react";
+
+const state = useSignetTool(signet, searchProductsTool, [shopId]);
+```
+
+React, Vue, and Svelte entry points all handle teardown while asynchronous registration
+is still in flight. During development, `mountSignetInspector(signet)` from
+`@signet/webmcp/inspector` shows exact schemas, annotations, registration state, and
+privacy-safe lifecycle timings.
+
 ## What Signet provides
 
 - **Code-first exposure:** readable TypeScript that maps directly to native WebMCP.
 - **Runtime validation:** JSON Schema validation before application code runs.
 - **State-aware lifecycle:** per-call application context and disposable registrations.
+- **Framework lifecycle:** race-safe React, Vue, and Svelte bindings.
 - **Expected failures:** `ToolError`, validation, authorization, and verification
   errors remain distinguishable.
 - **Reliable mutations:** app-provided idempotency plus authoritative postcondition
   recovery and verification.
 - **Cancellation:** the native execution signal reaches every stage and your handler.
 - **Observability:** privacy-safe lifecycle events and optional OpenTelemetry spans.
+- **Readiness tooling:** static agent-usability diagnostics and a local Inspector.
+- **Output discipline:** optional byte ceilings for task-focused results.
 - **Deterministic testing:** inspect and invoke tools without a model or browser.
+- **Agent evaluation:** saved-task scoring for selection, arguments, and outcomes.
 - **Reference proof:** a signed-in payment application with real mutations, denials,
   replay protection, verification, human-UI parity, native Chrome coverage, and a live
   Inspector.
@@ -223,11 +254,10 @@ Signet is pre-release and WebMCP is experimental. The current package includes:
 - `createSignet().expose()`;
 - JSON Schema definition and invocation validation;
 - application context and disposable native registration;
-- `ToolError`, `ValidationError`, `AuthorizationError`, and
-  `VerificationError`;
-- authorization, idempotency, recovery, verification, cancellation, and lifecycle
-  observation;
-- deterministic testing utilities;
+- agent-legible errors, confirmation, authorization, idempotency, recovery,
+  verification, output limits, cancellation, and lifecycle observation;
+- deterministic testing, store conformance, readiness, and agent-task evaluation;
+- React, Vue, and Svelte lifecycle bindings plus a local Inspector;
 - optional OpenTelemetry mapping;
 - standalone and full-stack reference applications.
 

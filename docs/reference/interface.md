@@ -31,9 +31,11 @@ Optional native fields:
 Optional Signet controls:
 
 - `authorize`;
+- `confirm`;
 - `idempotency`;
 - `recover`;
-- `verify`.
+- `verify`;
+- `maxOutputBytes`.
 
 The execution callback receives the validated input plus application `context` and
 the native WebMCP `AbortSignal`.
@@ -43,11 +45,28 @@ error and may return `{ recovered: true, output }` after proving the outcome fro
 authoritative state. `{ recovered: false }` preserves the original error. Signet does
 not retry the operation or conceal idempotency-store failures.
 
+`confirm` runs after authorization and before idempotency. The application owns and
+renders the consent experience; Signet only sequences and observes it.
+
+`maxOutputBytes` checks the JSON-serialized result after execution or replay and before
+verification. Oversized output throws `OutputLimitError`. Mutating tools should pair
+this with durable idempotency because the application effect may already exist.
+
+## Inventory and observation
+
+`interface.tools()` returns metadata-only snapshots of the interface's current tools.
+`interface.observe(listener)` subscribes to registration and execution events and
+returns an unsubscribe function. Inputs, outputs, context, and stack traces are not
+captured implicitly.
+
 ## Registration
 
 A registration exposes `name`, `status`, `dispose()`, and
 `[Symbol.dispose]()`. Disposal is idempotent and unregisters the native tool through
 its registration signal.
+
+Tool names are unique per WebMCP model context, including across separate
+`createSignet()` calls.
 
 ## Errors
 

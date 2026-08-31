@@ -85,7 +85,10 @@ registration.dispose();
 - `expose(tool)` validates the definition and registers it through native WebMCP. It
   returns an idempotent `dispose()` handle. A failed registration remains retryable.
 - Execution order is: cancellation check, input validation, context, authorization,
-  idempotent execute/replay, optional recovery, verification, result.
+  optional confirmation, idempotent execute/replay, optional recovery, optional output
+  limit, verification, result.
+- Once `execute` resolves, cancellation has lost the race. Signet completes
+  verification and emits `completed_after_abort` when relevant.
 - `authorize({ input, context, signal })` runs before the handler and returns a boolean
   or `{ allowed, reason? }`. It runs before every idempotency lookup, including replay.
   Keep current identity, permission, tenant, and resource access here. Put mutable
@@ -94,12 +97,16 @@ registration.dispose();
 - `idempotency.store.execute(key, operation, { signal })` is application-supplied. The
   key must include principal, operation ID, and every intent-changing argument. Signet
   deliberately has no default production store.
+- `confirm({ input, context, signal })` delegates consent to application-owned UI and
+  runs before idempotency.
 - `execute(input, { context, signal })` is never automatically retried by Signet.
 - `recover({ input, context, error, signal })` runs only after the handler throws. Return
   `{ recovered: true, output }` only after authoritative proof. It does not conceal store
   failures.
 - `verify({ input, output, context, replayed, recovered, signal })` runs after execute,
   replay, or recovery. A false result throws `VerificationError`.
+- `maxOutputBytes` bounds the serialized result and throws `OutputLimitError` when
+  exceeded.
 - `observe(event)` receives metadata, not inputs or outputs. Observer failures do not
   alter registration or execution.
 - Unsupported browsers retain the human website. Use `unsupported: "throw"` only for

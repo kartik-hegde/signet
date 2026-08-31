@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { createSignet } from "../src/index.js";
-import { createWebMcpTestHarness } from "../src/testing.js";
+import {
+  MemoryIdempotencyStore,
+  checkIdempotencyStore,
+  createWebMcpTestHarness,
+} from "../src/testing.js";
 
 describe("createWebMcpTestHarness", () => {
   it("discovers, invokes, cancels, and disposes exposed tools", async () => {
@@ -54,5 +58,30 @@ describe("createWebMcpTestHarness", () => {
     harness.clear();
 
     expect(harness.tools()).toEqual([]);
+  });
+});
+
+describe("checkIdempotencyStore", () => {
+  it("accepts the reference store", async () => {
+    await expect(
+      checkIdempotencyStore(() => new MemoryIdempotencyStore()),
+    ).resolves.toEqual({
+      passed: [
+        "coalesces equal keys",
+        "runs distinct keys concurrently",
+        "evicts failures",
+        "honors pre-aborted calls",
+      ],
+    });
+  });
+
+  it("rejects a store that does not coalesce", async () => {
+    await expect(
+      checkIdempotencyStore(() => ({
+        async execute(_key, operation) {
+          return { value: await operation(), replayed: false };
+        },
+      })),
+    ).rejects.toThrow("coalesce concurrent equal keys");
   });
 });

@@ -16,8 +16,13 @@ check cancellation
   -> return the application's output unchanged
 ```
 
-Signet checks cancellation between stages and passes the identical `AbortSignal` into
-every hook. Cancellation stops work that has not begun. It does not prove that a remote
+Signet checks cancellation before the application effect and passes the native
+`AbortSignal` through context, authorization, keying, storage, and execution. Once the
+handler returns successfully, cancellation has lost the race: Signet finishes any
+configured verification with a non-cancelled finalization signal and returns the
+verified result. A `completed_after_abort` event makes that outcome visible.
+
+Cancellation stops work that has not begun. It does not prove that a remote
 side effect was undone.
 
 Authorization runs on every invocation before the idempotency lookup. Keep current

@@ -1,6 +1,12 @@
-import { AuthorizationError, VerificationError } from "./errors.js";
+import {
+  AuthorizationError,
+  ConfirmationError,
+  OutputLimitError,
+  VerificationError,
+} from "./errors.js";
 import type {
   AuthorizationDecision,
+  ConfirmationDecision,
   Execute,
   ExecuteOptions,
   GuardEvent,
@@ -37,6 +43,19 @@ function verificationFailureReason(
 
 function isAuthorized(decision: boolean | AuthorizationDecision): boolean {
   return decision === true || (decision !== false && decision.allowed);
+}
+
+function confirmationReason(
+  decision: boolean | ConfirmationDecision,
+): string | undefined {
+  if (decision === false || decision === true || decision.confirmed) {
+    return undefined;
+  }
+  return decision.reason;
+}
+
+function isConfirmed(decision: boolean | ConfirmationDecision): boolean {
+  return decision === true || (decision !== false && decision.confirmed);
 }
 
 function isVerified(decision: boolean | VerificationDecision): boolean {
@@ -89,6 +108,14 @@ export async function runGuarded<
     }
   };
 
+  let completedAfterAbort = false;
+  const observeLateAbort = (): void => {
+    if (executeOptions.signal.aborted && !completedAfterAbort) {
+      completedAfterAbort = true;
+      emit("completed_after_abort");
+    }
+  };
+
   emit("started");
 
   try {
@@ -118,6 +145,22 @@ export async function runGuarded<
       }
 
       emit("authorized");
+    }
+
+    if (options.confirm) {
+      emit("confirmation_requested");
+      const decision = await options.confirm({
+        input,
+        context,
+        signal: executeOptions.signal,
+      });
+
+      executeOptions.signal.throwIfAborted();
+      if (!isConfirmed(decision)) {
+        emit("declined");
+        throw new ConfirmationError(confirmationReason(decision));
+      }
+      emit("confirmed");
     }
 
     let output: Output;
@@ -180,19 +223,30 @@ export async function runGuarded<
       if (!recovered) emit("executed");
     }
 
-    executeOptions.signal.throwIfAborted();
+    observeLateAbort();
+
+    if (options.maxOutputBytes !== undefined) {
+      const serialized = JSON.stringify(output);
+      const actualBytes = new TextEncoder().encode(serialized).byteLength;
+      if (actualBytes > options.maxOutputBytes) {
+        throw new OutputLimitError(actualBytes, options.maxOutputBytes);
+      }
+      emit("output_validated");
+    }
 
     if (options.verify) {
+      // Once the application reports completion, cancellation has lost the race.
+      // Verification finalizes the observed outcome and must not be cancelled into
+      // an ordinary failure after the effect already exists.
+      const finalizationSignal = new AbortController().signal;
       const decision = await options.verify({
         input,
         output,
         context,
         replayed,
         recovered,
-        signal: executeOptions.signal,
+        signal: finalizationSignal,
       });
-
-      executeOptions.signal.throwIfAborted();
 
       if (!isVerified(decision)) {
         throw new VerificationError(verificationFailureReason(decision));
@@ -200,6 +254,8 @@ export async function runGuarded<
 
       emit("verified");
     }
+
+    observeLateAbort();
 
     emit("succeeded");
     return output;

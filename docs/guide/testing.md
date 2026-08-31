@@ -47,6 +47,18 @@ it("performs one effect for repeated input", async () => {
 });
 ```
 
+Run the same concurrency contract against a production adapter:
+
+```ts
+import { checkIdempotencyStore } from "@signet/webmcp/testing";
+
+await checkIdempotencyStore(() => new PostgresIdempotencyStore(pool));
+```
+
+The kit checks equal-key coalescing, distinct-key parallelism, failure eviction, and
+pre-aborted calls. See `recipes/postgres-idempotency.ts` for a copyable PostgreSQL
+adapter and its transaction-duration tradeoff.
+
 ## Test these invariants
 
 For every consequential tool:
@@ -75,6 +87,11 @@ agent:
 - unsupported browsers retain a usable human interface.
 
 Model-driven tests complement invariant tests. They do not replace them.
+
+`evaluateAgentTasks()` accepts saved prompts, expected tools, argument predicates, and
+authoritative result oracles. Supply the model runner yourself; Signet reports tool
+selection accuracy, argument accuracy, and completion rate without becoming an agent
+orchestrator.
 
 Run Signet's complete local suite with:
 

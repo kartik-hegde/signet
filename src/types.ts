@@ -14,6 +14,11 @@ export interface AuthorizationDecision {
   readonly reason?: string;
 }
 
+export interface ConfirmationDecision {
+  readonly confirmed: boolean;
+  readonly reason?: string;
+}
+
 export interface VerificationDecision {
   readonly verified: boolean;
   readonly reason?: string;
@@ -44,9 +49,14 @@ export type GuardStage =
   | "started"
   | "validated"
   | "authorized"
+  | "confirmation_requested"
+  | "confirmed"
+  | "declined"
   | "executed"
   | "replayed"
   | "recovered"
+  | "output_validated"
+  | "completed_after_abort"
   | "verified"
   | "succeeded"
   | "failed"
@@ -87,6 +97,13 @@ export interface GuardOptions<
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | AuthorizationDecision>;
 
+  /** Asks the application to obtain consent before any idempotency lookup or effect. */
+  readonly confirm?: (args: {
+    readonly input: Input;
+    readonly context: Context;
+    readonly signal: AbortSignal;
+  }) => MaybePromise<boolean | ConfirmationDecision>;
+
   /** Delegates atomic replay/concurrency behavior to an app-provided durable store. */
   readonly idempotency?: {
     readonly key: (args: {
@@ -114,6 +131,9 @@ export interface GuardOptions<
     readonly recovered: boolean;
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | VerificationDecision>;
+
+  /** Rejects serialized results larger than this byte count. */
+  readonly maxOutputBytes?: number;
 
   /** Receives metadata only. Observer failures never change operation behavior. */
   readonly observe?: GuardObserver;

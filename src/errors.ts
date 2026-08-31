@@ -1,6 +1,8 @@
 export type SignetErrorCode =
   | "authorization_denied"
+  | "confirmation_declined"
   | "invalid_input"
+  | "output_too_large"
   | "verification_failed"
   | (string & {});
 
@@ -27,13 +29,14 @@ export class ToolError extends SignetError {
   readonly details?: unknown;
 
   constructor(options: ToolErrorOptions) {
+    const retryable = options.retryable ?? false;
     super(
       options.code,
-      options.message,
+      `[${options.code}] ${options.message} (retryable: ${retryable ? "yes" : "no"})`,
       options.cause === undefined ? undefined : { cause: options.cause },
     );
     this.name = "ToolError";
-    this.retryable = options.retryable ?? false;
+    this.retryable = retryable;
     if (options.details !== undefined) this.details = options.details;
   }
 }
@@ -48,10 +51,49 @@ export class ValidationError extends SignetError {
   readonly issues: readonly ValidationIssue[];
 
   constructor(issues: readonly ValidationIssue[], options?: ErrorOptions) {
-    super("invalid_input", "The tool input is invalid.", options);
+    super("invalid_input", validationMessage(issues), options);
     this.name = "ValidationError";
     this.issues = issues;
   }
+}
+
+function validationMessage(issues: readonly ValidationIssue[]): string {
+  const actionable = actionableIssues(issues);
+  const visible = actionable.slice(0, 3);
+  const detail = visible
+    .map(({ path, message, keyword }) => {
+      const location = path.replace(/^#/, "") || "/";
+      return `${location}: ${keyword === "false" ? "is not allowed" : message}`;
+    })
+    .join("; ");
+  const remaining = actionable.length - visible.length;
+  const suffix =
+    remaining > 0
+      ? `; plus ${remaining} more issue${remaining === 1 ? "" : "s"}`
+      : "";
+  return `Invalid tool input — ${detail || "the input does not match the schema"}${suffix}.`.slice(
+    0,
+    300,
+  );
+}
+
+function actionableIssues(
+  issues: readonly ValidationIssue[],
+): readonly ValidationIssue[] {
+  const byPath = new Map<string, ValidationIssue>();
+  for (const issue of issues) {
+    if (["properties", "additionalProperties"].includes(issue.keyword)) {
+      continue;
+    }
+    const current = byPath.get(issue.path);
+    if (
+      !current ||
+      (current.keyword === "false" && issue.keyword !== "false")
+    ) {
+      byPath.set(issue.path, issue);
+    }
+  }
+  return byPath.size > 0 ? [...byPath.values()] : issues;
 }
 
 export class AuthorizationError extends SignetError {
@@ -64,6 +106,16 @@ export class AuthorizationError extends SignetError {
   }
 }
 
+export class ConfirmationError extends SignetError {
+  constructor(
+    reason = "The user declined this operation.",
+    options?: ErrorOptions,
+  ) {
+    super("confirmation_declined", reason, options);
+    this.name = "ConfirmationError";
+  }
+}
+
 export class VerificationError extends SignetError {
   constructor(
     reason = "The operation's result could not be verified.",
@@ -71,5 +123,20 @@ export class VerificationError extends SignetError {
   ) {
     super("verification_failed", reason, options);
     this.name = "VerificationError";
+  }
+}
+
+export class OutputLimitError extends SignetError {
+  readonly actualBytes: number;
+  readonly maxBytes: number;
+
+  constructor(actualBytes: number, maxBytes: number) {
+    super(
+      "output_too_large",
+      `[output_too_large] Tool output is ${actualBytes} bytes; the limit is ${maxBytes}. Return a smaller, task-focused result.`,
+    );
+    this.name = "OutputLimitError";
+    this.actualBytes = actualBytes;
+    this.maxBytes = maxBytes;
   }
 }
