@@ -19,7 +19,7 @@ features:
   - title: WebMCP first
     details: Keep native tool names, schemas, annotations, origins, and lifecycle visible instead of hiding the browser standard.
   - title: See what agents see
-    details: The planned inspector, invocation playground, and contract tests make discovery and tool behavior locally verifiable.
+    details: The reference Inspector and deterministic test harness make discovery, lifecycle, and tool behavior locally verifiable.
   - title: Harden progressively
     details: Public reads stay simple. Consequential actions can add authorization, replay control, verification, and observation.
 ---
@@ -35,6 +35,6 @@ existing function or endpoint
   -> optional production controls
 ```
 
-Signet is pre-release. The current package implements the optional execution-control
-slice and a native reference integration. Tool authoring, lifecycle-aware exposure,
-and developer inspection are the next milestones.
+The current package implements code-first tool exposure, runtime validation,
+lifecycle-aware registration, optional production controls, deterministic testing,
+and a native reference integration. Developer inspection is the next milestone.

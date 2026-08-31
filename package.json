@@ -1,7 +1,7 @@
 {
   "name": "@signet/webmcp",
   "version": "0.0.0",
-  "description": "WebMCP-first tooling for exposing application capabilities to AI agents.",
+  "description": "Make website capabilities reliable and agent-ready through WebMCP.",
   "type": "module",
   "sideEffects": false,
   "files": [
@@ -78,8 +78,13 @@
     "webmcp",
     "ai-agents",
     "typescript",
+    "json-schema",
+    "observability",
     "developer-tools",
     "idempotency",
     "authorization"
-  ]
+  ],
+  "dependencies": {
+    "@cfworker/json-schema": "^4.1.1"
+  }
 }

@@ -5,6 +5,9 @@ const testing = await import("@signet/webmcp/testing");
 const telemetry = await import("@signet/webmcp/opentelemetry");
 
 assert.equal(typeof core.guard, "function");
+assert.equal(typeof core.createSignet, "function");
+assert.equal(typeof core.ToolError, "function");
+assert.equal(typeof core.ValidationError, "function");
 assert.equal(typeof core.AuthorizationError, "function");
 assert.equal(typeof core.VerificationError, "function");
 assert.equal(typeof testing.MemoryIdempotencyStore, "function");

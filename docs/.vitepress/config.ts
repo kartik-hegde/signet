@@ -19,7 +19,7 @@ export default defineConfig({
     search: { provider: "local" },
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
-      { text: "Current API", link: "/reference/guard" },
+      { text: "API", link: "/reference/interface" },
       { text: "Checklist", link: "/production-checklist" },
       { text: "GitHub", link: "https://github.com/kartik-hegde/signet" },
     ],
@@ -48,6 +48,7 @@ export default defineConfig({
       {
         text: "API reference",
         items: [
+          { text: "Interface", link: "/reference/interface" },
           { text: "guard", link: "/reference/guard" },
           { text: "Errors", link: "/reference/errors" },
           { text: "OpenTelemetry", link: "/reference/opentelemetry" },

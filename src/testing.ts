@@ -3,6 +3,55 @@ import type {
   IdempotencyResult,
   IdempotencyStore,
 } from "./types.js";
+import type { ModelContextLike } from "./interface.js";
+
+type CapturedTool = Parameters<ModelContextLike["registerTool"]>[0];
+
+export interface WebMcpTestHarness {
+  readonly modelContext: ModelContextLike;
+  tools(): readonly CapturedTool[];
+  invoke(
+    name: string,
+    input: Record<string, unknown>,
+    options?: { readonly signal?: AbortSignal },
+  ): Promise<unknown>;
+  clear(): void;
+}
+
+/** A capture-only native boundary for deterministic tests. */
+export function createWebMcpTestHarness(): WebMcpTestHarness {
+  const tools = new Map<string, CapturedTool>();
+  const modelContext: ModelContextLike = {
+    registerTool(tool, options) {
+      if (tools.has(tool.name)) {
+        throw new Error(
+          `A WebMCP tool named "${tool.name}" is already registered.`,
+        );
+      }
+      options?.signal?.throwIfAborted();
+      tools.set(tool.name, tool);
+      options?.signal?.addEventListener(
+        "abort",
+        () => tools.delete(tool.name),
+        { once: true },
+      );
+      return Promise.resolve();
+    },
+  };
+
+  return {
+    modelContext,
+    tools: () => [...tools.values()],
+    async invoke(name, input, options = {}) {
+      const tool = tools.get(name);
+      if (!tool) throw new Error(`WebMCP tool is not registered: ${name}`);
+      return await tool.execute(input, {
+        signal: options.signal ?? new AbortController().signal,
+      });
+    },
+    clear: () => tools.clear(),
+  };
+}
 
 /**
  * Process-local idempotency for tests and demos. It is intentionally not a

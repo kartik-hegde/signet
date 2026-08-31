@@ -40,6 +40,12 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
       expect(accountResult.accounts[0]).to.include({ id: sender.sourceAccountId });
     });
 
+    cy.get('[data-testid="signet-inspector"]')
+      .should("contain.text", "WebMCP connected")
+      .and("contain.text", "search_payment_users")
+      .and("contain.text", "list_payment_accounts")
+      .and("contain.text", "send_payment");
+
     cy.logoutByXstate();
     cy.window().then((win) => {
       expect(win.__webMcpTest.getToolNames()).to.deep.equal([]);
@@ -86,12 +92,16 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
     cy.window().then((win) => {
       expect(win.__signetGuardEvents?.map((event) => event.stage)).to.deep.equal([
         "started",
+        "validated",
         "authorized",
         "executed",
         "verified",
         "succeeded",
       ]);
     });
+    cy.get('[data-testid="signet-inspector"]')
+      .should("contain.text", "send_payment")
+      .and("contain.text", "succeeded");
   });
 
   it("denies an unowned account in Signet and independently at the server", () => {

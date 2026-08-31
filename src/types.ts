@@ -33,13 +33,19 @@ export interface IdempotencyStore {
 }
 
 export type GuardStage =
+  | "registering"
+  | "registered"
+  | "unsupported"
+  | "registration_failed"
   | "started"
+  | "validated"
   | "authorized"
   | "executed"
   | "replayed"
   | "verified"
   | "succeeded"
-  | "failed";
+  | "failed"
+  | "unregistered";
 
 export interface GuardEvent {
   readonly invocationId: string;
@@ -59,6 +65,9 @@ export interface GuardOptions<
 > {
   /** A stable operation name used only for local observability. */
   readonly name?: string;
+
+  /** Validates invocation input before application context or policy is resolved. */
+  readonly validate?: (input: Input) => MaybePromise<void>;
 
   /** Resolves app-owned session or principal context. Signet never authenticates users. */
   readonly context?: (
