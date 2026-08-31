@@ -50,7 +50,8 @@ const cancelOrder: Execute<Record<string, unknown>, CancelledOrder> = guard(
       method: "POST",
       signal,
     });
-    if (!response.ok) throw new Error(`Cancellation failed: ${response.status}`);
+    if (!response.ok)
+      throw new Error(`Cancellation failed: ${response.status}`);
     return response.json() as Promise<CancelledOrder>;
   },
   {
@@ -72,7 +73,8 @@ await document.modelContext?.registerTool(
   {
     name: "cancel-order",
     title: "Cancel an order",
-    description: "Cancels one unfulfilled order owned by the signed-in customer.",
+    description:
+      "Cancels one unfulfilled order owned by the signed-in customer.",
     inputSchema: {
       type: "object",
       properties: { orderId: { type: "string" } },

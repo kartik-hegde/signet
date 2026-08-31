@@ -36,9 +36,9 @@ describe("openTelemetryObserver", () => {
       attributes: { "service.name": "storefront" },
     });
 
-    observe(event("started"));
-    observe(event("authorized"));
-    observe(event("succeeded"));
+    void observe(event("started"));
+    void observe(event("authorized"));
+    void observe(event("succeeded"));
 
     expect(tracer.startSpan).toHaveBeenCalledWith("webmcp cancel-order", {
       attributes: {
@@ -59,8 +59,8 @@ describe("openTelemetryObserver", () => {
     const observe = openTelemetryObserver(tracer);
     const failure = new Error("upstream failed");
 
-    observe(event("started"));
-    observe(event("failed", { error: failure }));
+    void observe(event("started"));
+    void observe(event("failed", { error: failure }));
 
     expect(span.recordException).toHaveBeenCalledWith(failure);
     expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatusCode.ERROR });
@@ -71,8 +71,8 @@ describe("openTelemetryObserver", () => {
     const { span, tracer } = harness();
     const observe = openTelemetryObserver(tracer);
 
-    observe(event("started"));
-    observe(event("failed", { error: "failed" }));
+    void observe(event("started"));
+    void observe(event("failed", { error: "failed" }));
 
     expect(span.recordException).not.toHaveBeenCalled();
     expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatusCode.ERROR });
@@ -93,7 +93,7 @@ describe("openTelemetryObserver", () => {
       spanName: ({ invocationId }) => `agent action ${invocationId}`,
     });
 
-    observe({
+    void observe({
       invocationId: "invocation-1",
       stage: "started",
       timestamp: 1,
@@ -112,7 +112,7 @@ describe("openTelemetryObserver", () => {
     const { tracer } = harness();
     const observe = openTelemetryObserver(tracer);
 
-    observe({
+    void observe({
       invocationId: "invocation-1",
       stage: "started",
       timestamp: 1,

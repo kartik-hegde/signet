@@ -23,7 +23,8 @@ const searchDomain: Execute<Record<string, unknown>, DomainResult> = guard(
       `/api/domains/${encodeURIComponent(input.domain)}`,
       { signal },
     );
-    if (!response.ok) throw new Error(`Domain search failed: ${response.status}`);
+    if (!response.ok)
+      throw new Error(`Domain search failed: ${response.status}`);
     return response.json() as Promise<DomainResult>;
   },
   {
@@ -44,7 +45,8 @@ await document.modelContext?.registerTool(
   {
     name: "search-domain",
     title: "Search domain availability",
-    description: "Checks whether one exact domain name is available to register.",
+    description:
+      "Checks whether one exact domain name is available to register.",
     inputSchema: {
       type: "object",
       properties: {

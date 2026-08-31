@@ -52,7 +52,11 @@ Browser-side authorization improves safety and avoids unnecessary mutations, but
 | [`backend/webmcp-routes.ts`](./backend/webmcp-routes.ts)                                       | Authenticated context, mutation, and authoritative verification endpoints      |
 | [`backend/database.ts`](./backend/database.ts)                                                 | Durable operation records and replay/conflict behavior in the fixture database |
 | [`cypress/support/webmcp.ts`](./cypress/support/webmcp.ts)                                     | Capture-only WebMCP implementation used by Cypress                             |
+| [`cypress/support/reference/paymentTask.ts`](./cypress/support/reference/paymentTask.ts)       | Shared task, seeded identities, and authoritative database oracle              |
+| [`cypress/support/reference/paymentDrivers.ts`](./cypress/support/reference/paymentDrivers.ts) | Traditional UI and WebMCP drivers plus comparable measurements                 |
+| [`cypress/tests/webmcp/payment-parity.spec.ts`](./cypress/tests/webmcp/payment-parity.spec.ts) | Same task and oracle through both interfaces                                   |
 | [`cypress/tests/webmcp/signet-payment.spec.ts`](./cypress/tests/webmcp/signet-payment.spec.ts) | End-to-end safety and state assertions                                         |
+| [`scripts/nativeWebMcpSmoke.mjs`](./scripts/nativeWebMcpSmoke.mjs)                             | Opt-in native Chrome discovery, execution, and state smoke test                |
 
 ## 1. Start with a normal WebMCP handler
 
@@ -218,14 +222,19 @@ Everything after that capture point is real:
 - payment and balance mutations; and
 - the JSON database.
 
-The six deterministic scenarios prove:
+The deterministic scenarios prove:
 
 1. tools exist only for a signed-in page;
 2. a payment changes both balances, creates a completed transaction, and navigates the UI;
 3. an unowned account is denied by Signet before the request and independently denied by the server;
-4. two identical calls in one page produce one server mutation;
+4. concurrent identical calls in one page produce one server mutation;
 5. retrying after a reload produces one durable effect; and
-6. reusing an operation ID for different arguments returns `409` and still produces one effect.
+6. reusing an operation ID for different arguments returns `409` and still produces one effect;
+7. an aborted invocation performs no request;
+8. a stale page tool cannot act after its server session expires;
+9. a mismatched authoritative read raises a verification failure after the real mutation;
+10. a temporary server failure creates no operation record and does not poison a safe retry; and
+11. another signed-in user cannot read the first user's authoritative operation.
 
 Cypress checks both the authenticated verification endpoint and the database end state. This avoids a false-positive test where a handler merely returns a plausible success object.
 
@@ -241,6 +250,45 @@ npm run test:reference
 The first command installs the vendored application's pinned dependencies. The second command builds Signet and the application, starts the React and Express servers, runs only the focused WebMCP Cypress spec, and stops the servers.
 
 No LLM credentials are required. Cypress invokes the registered tools deterministically so failures identify an integration regression rather than model variance.
+
+## Compare the React and WebMCP paths
+
+`payment-parity.spec.ts` treats the user goal as the unit under test: send the same payment from the same seeded sender to the same recipient. The React driver clicks and types through the existing human interface. The WebMCP driver calls the two discovery tools and the guarded mutation tool. Both finish at the same database oracle, which checks:
+
+- the exact sender debit and receiver credit;
+- one completed transaction with the expected parties, amount, and description; and
+- the expected presence or absence of a WebMCP operation record.
+
+The test writes `cypress/results/reference-comparison.json` with wall time, UI interactions or tool calls, relevant HTTP requests, and mutation requests. Timing from deterministic Cypress drivers is a directional engineering signal, not an LLM benchmark. A publishable agent comparison still needs repeated trials using the same model, prompt, starting state, and authoritative evaluator.
+
+The focused suite explicitly disables Cypress retries and reseeds the database in both `beforeEach` and `afterEach`. To look for order dependence and flaky state leakage, run the suite repeatedly (50 times by default):
+
+```sh
+npm run test:reference:repeat
+
+# Short local diagnostic
+REFERENCE_REPEAT=5 npm run test:reference:repeat
+```
+
+The repeat runner stops on the first failure and writes `cypress/results/reference-repeatability.json`.
+
+## Exercise native Chrome WebMCP
+
+The normal suite injects only the minimum capture object needed for deterministic tests. The separate native lane launches a clean Chrome profile with its WebMCP development features, does not install the capture object, discovers the real registrations with `document.modelContext.getTools()`, executes `send_payment` with `document.modelContext.executeTool()`, and checks the authenticated authoritative read plus exact database deltas:
+
+```sh
+# Report capability without failing when the local Chrome build lacks WebMCP
+npm run test:reference:native:probe
+
+# Require the native API and fail if it is unavailable
+npm run test:reference:native
+```
+
+WebMCP is currently an [experimental Chrome feature](https://developer.chrome.com/docs/ai/webmcp). Local development requires a sufficiently recent Chrome build; production evaluation can use the origin trial. Native execution proves the browser boundary and registration contract. Natural-language tool choice remains a separate probabilistic agent evaluation.
+
+The native lane intentionally does not run inside Cypress. Cypress sets `document.domain` in the application under test, while Chrome disables WebMCP for documents that opt out of origin isolation. A small direct Chrome DevTools Protocol harness keeps a real `http://localhost` origin and avoids that test-runner distortion.
+
+The native lane also caught a real compatibility issue hidden by the capture harness: the tested Chrome 151 build omitted the tool callback's execution-options argument, although the current `webmcp-types` package declares it as required. The registration adapter now forwards `options.signal` when the host supplies it and creates a non-aborted fallback signal otherwise. No Signet core code needed to change.
 
 The upstream application currently requires Node 22 or 24 because a legacy JWT dependency is incompatible with Node 26. These repository commands select an isolated Node 24 runtime through `npx`.
 

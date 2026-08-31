@@ -122,9 +122,9 @@ describe("guard", () => {
       },
     });
 
-    await expect(
-      guarded({}, { signal: controller.signal }),
-    ).rejects.toBe(cancelled);
+    await expect(guarded({}, { signal: controller.signal })).rejects.toBe(
+      cancelled,
+    );
     expect(execute).not.toHaveBeenCalled();
   });
 
@@ -203,9 +203,9 @@ describe("guard", () => {
       },
     });
 
-    await expect(
-      guarded({}, { signal: controller.signal }),
-    ).rejects.toBe(cancelled);
+    await expect(guarded({}, { signal: controller.signal })).rejects.toBe(
+      cancelled,
+    );
     expect(store.execute).not.toHaveBeenCalled();
   });
 
@@ -257,9 +257,9 @@ describe("guard", () => {
       },
     });
 
-    await expect(
-      guarded({}, { signal: controller.signal }),
-    ).rejects.toBe(cancelled);
+    await expect(guarded({}, { signal: controller.signal })).rejects.toBe(
+      cancelled,
+    );
     expect(events.map((event) => event.stage)).toEqual([
       "started",
       "executed",
@@ -284,9 +284,9 @@ describe("guard", () => {
       },
     );
 
-    await expect(guarded({ cardNumber: "not-observed" }, active())).rejects.toBe(
-      failure,
-    );
+    await expect(
+      guarded({ cardNumber: "not-observed" }, active()),
+    ).rejects.toBe(failure);
     expect(events.map((event) => event.stage)).toEqual(["started", "failed"]);
     expect(events[1]).toEqual(
       expect.objectContaining({
@@ -324,9 +324,9 @@ describe("guard", () => {
     controller.abort(new Error("cancelled"));
     const execute = vi.fn(async () => "done");
 
-    await expect(guard(execute)({}, { signal: controller.signal })).rejects.toThrow(
-      "cancelled",
-    );
+    await expect(
+      guard(execute)({}, { signal: controller.signal }),
+    ).rejects.toThrow("cancelled");
     expect(execute).not.toHaveBeenCalled();
   });
 
@@ -374,9 +374,9 @@ describe("MemoryIdempotencyStore", () => {
     await expect(
       store.execute("retryable", operation, active()),
     ).rejects.toThrow("temporary failure");
-    await expect(store.execute("retryable", operation, active())).resolves.toEqual(
-      { value: "complete", replayed: false },
-    );
+    await expect(
+      store.execute("retryable", operation, active()),
+    ).resolves.toEqual({ value: "complete", replayed: false });
     expect(operation).toHaveBeenCalledTimes(2);
   });
 
