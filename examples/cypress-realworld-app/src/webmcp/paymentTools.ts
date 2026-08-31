@@ -231,25 +231,11 @@ export function registerPaymentTools(
       journal: { store: operationJournal },
       execute: async (input, { operation, signal }) => {
         await operation?.write({ operationId: input.operationId });
-        let result: PaymentResponse;
-        try {
-          result = await requestJson<PaymentResponse>("/payments", {
-            method: "POST",
-            signal,
-            body: JSON.stringify(input),
-          });
-        } catch (error) {
-          // An HTTP response proves the server rejected the request. Network
-          // failures retain the journal entry because the outcome is ambiguous.
-          if (
-            error instanceof Error &&
-            "status" in error &&
-            typeof error.status === "number"
-          ) {
-            await operation?.remove();
-          }
-          throw error;
-        }
+        const result = await requestJson<PaymentResponse>("/payments", {
+          method: "POST",
+          signal,
+          body: JSON.stringify(input),
+        });
         onPaymentCreated(result.transaction.id);
         return result;
       },
@@ -264,6 +250,7 @@ export function registerPaymentTools(
             { signal },
           );
           if (!matchesPayment(authoritative, input, context)) {
+            await operation?.remove();
             return { recovered: false };
           }
 
@@ -272,7 +259,14 @@ export function registerPaymentTools(
             recovered: true,
             output: { ...authoritative, replayed: true },
           };
-        } catch {
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            "status" in error &&
+            error.status === 404
+          ) {
+            await operation?.remove();
+          }
           return { recovered: false };
         }
       },
