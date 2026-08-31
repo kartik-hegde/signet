@@ -49,7 +49,7 @@ export async function exposeCancelOrder(dependencies: CancelOrderDependencies) {
     ...(dependencies.observe ? { observe: dependencies.observe } : {}),
   });
 
-  return signet.expose<CancelOrderInput, Order>({
+  return await signet.expose<CancelOrderInput, Order>({
     name: "cancel_order",
     description: "Cancel one unshipped order for the signed-in account.",
     inputSchema: {
