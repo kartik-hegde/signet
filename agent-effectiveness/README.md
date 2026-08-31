@@ -22,6 +22,7 @@ retain UI access so fallback is measurable.
 - authoritative and safe task success;
 - end-to-end latency, including model and tool time;
 - UI fallback and WebMCP adoption;
+- full WebMCP completion, separated from partial tool use before UI fallback;
 - total UI actions, WebMCP calls, and failed calls;
 - input, cached-input, output, and reasoning tokens;
 - false-success and duplicate-effect counts.

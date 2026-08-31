@@ -9,6 +9,7 @@
   "scripts": {
     "bench:p0": "node scripts/run-p0.mjs",
     "bench:p1": "node agent-effectiveness/run.mjs",
+    "bench:p1:rescore": "node agent-effectiveness/run.mjs --rescore",
     "bench:p1:smoke": "P1_TRIALS=1 node agent-effectiveness/run.mjs",
     "bench:safety": "npm --prefix execution-safety run bench -- --no-history",
     "demo": "node demo/server.mjs",

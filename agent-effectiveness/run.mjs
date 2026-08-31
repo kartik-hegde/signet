@@ -35,13 +35,29 @@ const runStamp = new Date().toISOString().replace(/[:.]/g, "-");
 const rawDir = resolve(root, "results/raw/p1", runStamp);
 const publicDir = resolve(root, "results/p1");
 const chromePath = findChrome();
+const rescoreOnly = process.argv.includes("--rescore");
 let appProcess;
 let startedApp = false;
 
 if (!chromePath) throw new Error("P1 requires Google Chrome or Chromium.");
 linkSignetCheckout();
-mkdirSync(rawDir, { recursive: true });
 mkdirSync(publicDir, { recursive: true });
+
+if (rescoreOnly) {
+  const prior = JSON.parse(readFileSync(resolve(publicDir, "latest.json"), "utf8"));
+  const runs = prior.runs.map((run) => ({
+    ...run,
+    completedViaWebMcp: run.toolSequence.includes("send_payment"),
+  }));
+  const scorecard = buildScorecard(runs);
+  scorecard.provenance.sourceRunGeneratedAt = prior.generatedAt;
+  writeFileSync(resolve(publicDir, "latest.json"), `${JSON.stringify(scorecard, null, 2)}\n`);
+  writeFileSync(resolve(publicDir, "latest.md"), renderMarkdown(scorecard));
+  process.stdout.write(renderConsole(scorecard));
+  process.exit(0);
+}
+
+mkdirSync(rawDir, { recursive: true });
 
 try {
   if (!(await applicationReady())) {
@@ -187,6 +203,7 @@ async function runTrial(entry, label) {
       silentEffect: report.status === "failed" && oracle.effectCount > 0,
       agentReport: report,
       usedWebMcp: webMcpCalls.length > 0,
+      completedViaWebMcp: webMcpCalls.some(({ tool }) => tool === "send_payment"),
       uiFallback: entry.condition !== "ui_dom" && uiActions.length > 0,
       protocolViolation: commandExecutions.length > 0,
       runtimeEvidence: {
@@ -394,7 +411,8 @@ function buildScorecard(runs) {
 
 function aggregate(group) {
   const successful = group.filter(({ authoritativeSuccess }) => authoritativeSuccess);
-  const webRuns = group.filter(({ usedWebMcp }) => usedWebMcp);
+  const anyWebRuns = group.filter(({ usedWebMcp }) => usedWebMcp);
+  const webRuns = group.filter(({ completedViaWebMcp }) => completedViaWebMcp);
   const fallbackRuns = group.filter(({ uiFallback }) => uiFallback);
   return {
     runs: group.length,
@@ -409,8 +427,10 @@ function aggregate(group) {
       ? median(successful.map(({ durationMs }) => durationMs))
       : null,
     timeoutRate: round(group.filter(({ timedOut }) => timedOut).length / group.length),
-    webMcpAdoptionRate: round(webRuns.length / group.length),
-    webMcpAdoptions: webRuns.length,
+    webMcpAdoptionRate: round(anyWebRuns.length / group.length),
+    webMcpAdoptions: anyWebRuns.length,
+    webMcpCompletionRate: round(webRuns.length / group.length),
+    webMcpCompletions: webRuns.length,
     uiFallbackRate: round(group.filter(({ uiFallback }) => uiFallback).length / group.length),
     uiFallbacks: fallbackRuns.length,
     medianWebMcpPathDurationMs: webRuns.length
@@ -423,7 +443,7 @@ function aggregate(group) {
       ? median(fallbackRuns.map(({ durationMs }) => durationMs))
       : null,
     validWebMcpCallRate:
-      webRuns.length === 0
+      anyWebRuns.length === 0
         ? null
         : round(
             group.reduce((sum, run) => sum + run.actions.webMcp - run.actions.failedWebMcp, 0) /
@@ -443,9 +463,9 @@ function aggregate(group) {
       ({ runtimeEvidence }) => !runtimeEvidence.conditionVerified,
     ).length,
     guardedToolRunsVerified: group.filter(
-      ({ condition, usedWebMcp, runtimeEvidence }) =>
+      ({ condition, completedViaWebMcp, runtimeEvidence }) =>
         condition === "hybrid_signet" &&
-        usedWebMcp &&
+        completedViaWebMcp &&
         runtimeEvidence.guardStages.includes("succeeded"),
     ).length,
     unexpectedRawGuardRuns: group.filter(
@@ -513,7 +533,7 @@ function renderMarkdown(scorecard) {
   const rows = conditions
     .map((condition) => {
       const value = scorecard.aggregates[condition];
-      return `| ${condition} | ${value.authoritativeSuccesses}/${value.runs} | ${percent(value.safeSuccessRate)} | ${Math.round(value.medianDurationMs)} | ${Math.round(value.p90DurationMs)} | ${value.medianActions} | ${value.medianTotalTokens} | ${percent(value.webMcpAdoptionRate)} | ${percent(value.uiFallbackRate)} |`;
+      return `| ${condition} | ${value.authoritativeSuccesses}/${value.runs} | ${percent(value.safeSuccessRate)} | ${Math.round(value.medianDurationMs)} | ${Math.round(value.p90DurationMs)} | ${value.medianActions} | ${value.medianTotalTokens} | ${percent(value.webMcpAdoptionRate)} | ${percent(value.webMcpCompletionRate)} | ${percent(value.uiFallbackRate)} |`;
     })
     .join("\n");
   const raw = scorecard.comparisons.rawWebMcpVsUi;
@@ -528,8 +548,8 @@ Generated: ${scorecard.generatedAt}
 
 ## Result
 
-| Condition | Authoritative success | Safe success | Median ms | p90 ms | Median actions | Median tokens | WebMCP selected | UI fallback |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Condition | Authoritative success | Safe success | Median ms | p90 ms | Median actions | Median tokens | Any WebMCP | Completed via WebMCP | UI fallback |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 ${rows}
 
 - Raw WebMCP was **${raw.medianDurationRatio}x** the UI condition's median speed with **${raw.medianActionReductionPercent}%** fewer actions.
