@@ -16,19 +16,6 @@ export class IndeterminateError extends Error {
   }
 }
 
-/** Mirrors the shipped MemoryIdempotencyStore: failed work is removed so a later call retries. */
-export class OptimisticMemoryStore {
-  #operations = new Map();
-  async execute(key, operation, _options) {
-    const existing = this.#operations.get(key);
-    if (existing) return { value: await existing, replayed: true };
-    const pending = Promise.resolve().then(operation);
-    this.#operations.set(key, pending);
-    pending.catch(() => this.#operations.delete(key));
-    return { value: await pending, replayed: false };
-  }
-}
-
 /** Durable, conservative. Records the attempt before the effect and never silently retries it. */
 export class SqliteConservativeStore {
   constructor(db) { this.db = db; }
@@ -55,5 +42,114 @@ export class SqliteConservativeStore {
       .run(JSON.stringify(value), key);
 
     return { value, replayed: false };
+  }
+}
+
+const liveClaims = new WeakMap();
+
+function claimsFor(db) {
+  let claims = liveClaims.get(db);
+  if (!claims) {
+    claims = new Map();
+    liveClaims.set(db, claims);
+  }
+  return claims;
+}
+
+const deferred = () => {
+  let resolve;
+  const settled = new Promise((done) => { resolve = done; });
+  return { settled, resolve };
+};
+
+async function waitFor(promise, signal) {
+  signal.throwIfAborted();
+  return await Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+    }),
+  ]);
+}
+
+/** Server-side phased store used by the guarded durable benchmark arm. */
+export class SqlitePhasedStore {
+  #owned = new Set();
+  constructor(db) { this.db = db; }
+
+  async begin(key, options) {
+    options.signal.throwIfAborted();
+    const claims = claimsFor(this.db);
+    const live = claims.get(key);
+    if (live) {
+      await waitFor(live.settled, options.signal);
+      return await this.begin(key, options);
+    }
+
+    const row = this.db.prepare("SELECT state, result FROM idempotency WHERE key = ?").get(key);
+    if (row?.state === "completed") {
+      return { state: "completed", value: JSON.parse(row.result) };
+    }
+    if (!row) {
+      this.db
+        .prepare("INSERT INTO idempotency (key, state, result, created_at) VALUES (?, 'in_flight', NULL, ?)")
+        .run(key, Date.now());
+    }
+    claims.set(key, deferred());
+    this.#owned.add(key);
+    return { state: row ? "in_flight" : "fresh" };
+  }
+
+  async complete(key, value, options) {
+    options.signal.throwIfAborted();
+    this.#require(key);
+    this.db
+      .prepare("UPDATE idempotency SET state = 'completed', result = ? WHERE key = ?")
+      .run(JSON.stringify(value), key);
+    this.#settle(key);
+  }
+
+  async release(key, options) {
+    options.signal.throwIfAborted();
+    this.#require(key);
+    this.db.prepare("DELETE FROM idempotency WHERE key = ?").run(key);
+    this.#settle(key);
+  }
+
+  async abandon(key, options) {
+    options.signal.throwIfAborted();
+    this.#require(key);
+    this.#settle(key);
+  }
+
+  #require(key) {
+    if (!this.#owned.has(key)) throw new Error(`no live claim for ${key}`);
+  }
+
+  #settle(key) {
+    this.#owned.delete(key);
+    const claims = claimsFor(this.db);
+    const claim = claims.get(key);
+    claims.delete(key);
+    claim?.resolve();
+  }
+}
+
+export class SqliteOperationJournal {
+  constructor(db) { this.db = db; }
+  read(key, options) {
+    options.signal.throwIfAborted();
+    const row = this.db.prepare("SELECT entry FROM operation_journal WHERE key = ?").get(key);
+    return row ? JSON.parse(row.entry) : undefined;
+  }
+  write(key, entry, options) {
+    options.signal.throwIfAborted();
+    this.db
+      .prepare("INSERT OR REPLACE INTO operation_journal (key, entry) VALUES (?, ?)")
+      .run(key, JSON.stringify(entry));
+  }
+  remove(key, options) {
+    options.signal.throwIfAborted();
+    this.db.prepare("DELETE FROM operation_journal WHERE key = ?").run(key);
   }
 }

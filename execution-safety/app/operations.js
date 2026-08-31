@@ -20,6 +20,9 @@ export class SoldOutError extends Error {
 export class NotOwnerError extends Error {
   constructor() { super("the actor does not own this booking"); this.name = "NotOwnerError"; }
 }
+export class StalePreconditionError extends Error {
+  constructor() { super("the booking changed after it was inspected"); this.name = "StalePreconditionError"; }
+}
 
 export const operations = {
   /** Read. Present so the tool surface is not exclusively mutations. */
@@ -40,6 +43,7 @@ export const operations = {
     const bookingId = ctx.ids.next("b");
 
     await ctx.hooks.pause("bookTickets:beforeWrite");
+    await ctx.operation?.write({ bookingId });
 
     ctx.db.exec("BEGIN IMMEDIATE");
     try {
@@ -58,6 +62,7 @@ export const operations = {
       ctx.db.exec("COMMIT");
     } catch (error) {
       ctx.db.exec("ROLLBACK");
+      await ctx.operation?.remove();
       throw error;
     }
 
@@ -109,6 +114,7 @@ export const operations = {
       .get(input.bookingId);
     if (!booking) throw new NotFoundError("booking");
     if (booking.user_id !== ctx.actorId) throw new NotOwnerError();
+    if (booking.notes !== input.expectedNotes) throw new StalePreconditionError();
 
     await ctx.hooks.pause("updateBookingNotes:afterRead");
 

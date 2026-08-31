@@ -5,9 +5,9 @@ when an agent invokes a mutation and something goes wrong. This is the execution
 lane of the broader Signet benchmarks project; it does not measure agent task speed.
 
 Other agent benchmarks ask whether the agent can finish the task. This one assumes
-it can, and asks what it left behind. Every scenario injects a fault **after** the
-effect has already committed, because a failure before the effect is handled
-correctly by every layer and proves nothing.
+it can, and asks what it left behind. Scenarios cover faults after commit, page
+reloads, live duplicate callers, stale preconditions, invented arguments, and
+concurrent writes.
 
 It is not a Signet benchmark. Signet is one of the arms, and on the current
 scenarios it does not win everything.
@@ -21,14 +21,12 @@ npm run bench
 ```
 
 Roughly two seconds. It hashes the Signet source, rebuilds if needed, runs every
-scenario against every measurable arm, scores the result, and prints the change
-since the last run of a different build.
+scenario against every measurable arm, then prints pass/fail by scenario and raw KPI
+counters. There is deliberately no public composite score.
 
 ```
---arm=<key>        which arm the headline score tracks (default A3b_signet_durable)
 --signet=<path>    Signet repository root (default ../../signet, or SIGNET_DIR)
 --no-build         fail instead of rebuilding when the build is stale
---fail-under=<n>   exit non-zero below n, for CI
 --json             machine-readable record on stdout and nothing else
 --verbose          per-scenario counters and what the caller reported
 --no-history       do not append to results/history.jsonl
@@ -37,7 +35,7 @@ since the last run of a different build.
 
 ## Reading the output
 
-Three blocks come out. Here is a real run.
+Two blocks come out.
 
 ### Block one, pass or fail
 
@@ -58,21 +56,6 @@ Totals per KPI per arm. Violations count harm and should go down. Credits count
 disclosure and should go up, which is why they are listed separately and never
 turn a failure into a pass.
 
-### Block three, scores
-
-```
-arm                         overall   correctness   honesty   passed    median ms
-A1_raw                      51        68            0         1/3       3.1
-A3a_signet_memory           63.5      68            50        1/3       3.8
-A3b_signet_durable          85        80            100       1/3       7.7 <-
-
-SCORE 85   (A3b_signet_durable)
-```
-
-`overall` is the number to hill climb on. The arrow marks the subject arm, which
-`--arm` selects. `median ms` is the cost of the controls, reported beside the score
-and deliberately never folded into it.
-
 ## The arms
 
 | Arm | What it is |
@@ -80,14 +63,12 @@ and deliberately never folded into it.
 | `A0_dom` | An agent driving the DOM or screenshots. **Not measured yet.** Needs a model and a browser, and produces efficiency numbers that belong to the tool-calling interface rather than to any guard. |
 | `A1_raw` | The tool handler with no controls at all. The floor. |
 | `A2_handrolled` | One benchmark-authored control adapter using the same durable store and verifier as A3b. It is a directional baseline, not an independent implementer cohort. |
-| `A3a_signet_memory` | The Signet guard with the `MemoryIdempotencyStore` that Signet actually ships. |
-| `A3b_signet_durable` | The Signet guard with a conservative durable store that lives in `harness/stores.js`, **not in Signet**. |
+| `A3a_signet_memory` | The Signet guard with the explicitly test-only `MemoryIdempotencyStore`. It is expected to lose state on reload. |
+| `A3b_signet_durable` | The Signet guard with a phased SQLite adapter matching the shipped IndexedDB store contract. |
 
-The distinction between the last two rows matters and the labels now say so. A3b's
-score is what the guard achieves given a correct store. Signet does not currently
-distribute that store, so A3b describes what is possible rather than what a user
-gets today. When Signet ships a durable adapter, point A3b at it and the number
-will mean what the label implies.
+The distinction between the last two rows matters. Signet ships the conservative
+browser-profile adapter from `@signet/webmcp/stores`; SQLite remains a benchmark
+server adapter to exercise the same phased contract in Node.
 
 Arms that are not measured appear in the table as gaps rather than being quietly
 omitted.
@@ -98,6 +79,21 @@ omitted.
 on the way back. The caller cannot tell whether it worked, so it retries, which is
 what an agent does. The raw arm books twice. The interesting question is not whether
 a retry happens but whether the second one creates a second effect.
+
+**`retry-after-reload`.** The first page loses the response and cannot complete
+authoritative recovery. A fresh invocation retries the same intent. A durable
+in-flight claim must recover the existing booking; the test-only memory store loses
+the claim and duplicates it.
+
+**`concurrent-same-operation-key`.** Two live callers submit the exact same key.
+Only one effect may run; the second caller waits for and replays its result.
+
+**`stale-precondition`.** A notes update carries a value that no longer matches
+authoritative state. The application must reject it before writing, and the guard must
+not turn that proven pre-effect failure into an indeterminate outcome.
+
+**`invented-argument`.** The caller adds an undeclared administrative override.
+Every arm must reject it at the schema boundary before application code runs.
 
 **`retry-after-upstream-error-on-idempotent-operation`.** A cancellation commits and
 then returns a 502, and the caller retries. The operation is already idempotent at
@@ -122,6 +118,8 @@ Violations, all of which should be zero.
 | `silent_effect` | The caller told the user it failed and it actually happened. |
 | `lost_updates` | Someone's write vanished and nobody was told. |
 | `needless_indeterminate` | The caller said "I could not confirm" when the state was fine and unambiguous. A usability cost rather than damage, weighted accordingly. |
+| `stale_precondition_accepted` | A write proceeded even though the caller's observed precondition was stale. |
+| `invented_argument_accepted` | An undeclared argument crossed the tool schema boundary. |
 
 Credits, which should be high, and which are only ever earned on harm that already
 happened.
@@ -131,29 +129,13 @@ happened.
 | `indeterminate_disclosed` | An outcome that genuinely could not be confirmed reached the caller as uncertain, rather than as success or failure. |
 | `lost_update_disclosed` | A write that was silently overwritten was reported as uncertain rather than as success. |
 
-## How the score works
+## Why there is no headline score
 
-Two objectives, kept apart on purpose.
-
-**Correctness** is the share of the harm a scenario puts at risk that did not happen.
-The denominator is the risk each scenario declares in its `atRisk` field, so adding
-easy scenarios cannot inflate it.
-
-**Honesty** is, of the harm that did happen, how often the caller was told. Its
-denominator is the residual, so disclosure can never substitute for prevention. An
-arm that prevents nothing and admits everything scores zero on correctness, which is
-the number that leads.
-
-`overall` is 0.75 correctness plus 0.25 honesty.
-
-Violations carry severity weights, in `harness/score.js` and nowhere else. Durable
-wrong state is 1. A usability cost is 0.25. Flat counting was tried first and it
-ranked raw tools level with the guard, which is false, so the weights are load
-bearing and should only change deliberately.
-
-**100 is not currently reachable**, because `lost_updates` needs a version token in
-the operation's own signature and no arm has one. That is intentional. A permanently
-failing row is more useful than an abstraction that hides the problem.
+The report publishes scenario outcomes and individual KPI counters. A weighted
+composite can make one passing scenario sit beside a reassuring number and encourage
+readers to debate weights instead of inspecting failures. The internal scorer remains
+available to legacy aggregate reports, but `run.js` marks it `internal_only` and never
+prints it as evidence.
 
 ## Why the number came from the build you just edited
 
@@ -168,28 +150,20 @@ scores artifacts it cannot vouch for.
 its preflight just verified, before the arms are imported. Building one checkout and
 loading the guard from another was possible in an early draft and is not now.
 
-**The scoring model.** `harness/score.js` hashes itself into every history record,
-and runs are only compared against runs scored the same way. Otherwise editing a
-weight would read as progress in the library.
-
 Every record in `results/history.jsonl` carries the source hash, the commit and the
-build time, so a score points at a specific state of Signet rather than at a moment.
+build time, so scenario and KPI changes point at a specific state of Signet rather
+than at a moment.
 
 ## Hill climbing
 
 ```sh
 npm run bench                    # baseline
 # edit signet/src, or a store in harness/stores.js
-npm run bench                    # rebuild is automatic, the delta is printed
+npm run bench                    # rebuild is automatic; compare scenario/KPI rows
 ```
 
-The delta line compares against the most recent run that used the same scoring model
-and a different source hash, so re-running without changing anything does not print a
-misleading zero.
-
-Be aware the gradient is narrow. Three scenarios carry 6.25 points of weighted risk
-between them, so most good engineering is currently invisible to the score. Widening
-the suite is usually worth more than another feature.
+The suite now has seven scenarios. Add a scenario when an important failure mode is
+still invisible; do not tune a composite to reward the desired implementation.
 
 ## Extending it
 

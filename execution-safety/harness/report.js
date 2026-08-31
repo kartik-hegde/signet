@@ -6,7 +6,7 @@ const pad = (text, width) => String(text).padEnd(width);
 export function printReport({ results, scenarios }) {
   const armKeys = Object.keys(ARMS);
   const nameWidth = Math.max(...scenarios.map((s) => s.id.length)) + 2;
-  const colWidth = 26;
+  const colWidth = Math.max(26, ...armKeys.map((key) => ARMS[key].label.length + 2));
 
   console.log("\nPass or fail by scenario\n");
   console.log(pad("scenario", nameWidth) + armKeys.map((k) => pad(ARMS[k].label, colWidth)).join(""));

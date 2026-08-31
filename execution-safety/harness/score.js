@@ -48,6 +48,8 @@ export const SEVERITY = {
   silent_effect: 1,
   lost_updates: 1,
   needless_indeterminate: 0.25,
+  stale_precondition_accepted: 1,
+  invented_argument_accepted: 1,
 };
 
 /** Honesty is about admitting real harm, so a usability cost is not in its denominator. */

@@ -20,10 +20,8 @@ if (flag("help")) {
   console.log(`
 Usage: ./run.js [options]
 
-  --arm=<key>        which arm the headline score tracks (default A3b_signet_durable)
   --signet=<path>    Signet repository root (default ../../signet, or SIGNET_DIR)
   --no-build         fail instead of rebuilding when the build is stale
-  --fail-under=<n>   exit non-zero if the subject arm scores below n
   --json             print the machine-readable record and nothing else
   --no-history       do not append to results/history.jsonl
   --verbose          per-scenario counts and caller reports
@@ -55,13 +53,7 @@ const { ARMS } = await import("./harness/arms.js");
 const { runTrial } = await import("./harness/runner.js");
 const { printReport } = await import("./harness/report.js");
 const { scoreArm, SCORING_VERSION } = await import("./harness/score.js");
-const { readHistory, appendHistory, previousDistinct } = await import("./harness/history.js");
-
-const subject = option("arm", "A3b_signet_durable");
-if (!ARMS[subject]) {
-  console.error(`Unknown arm "${subject}". Known arms: ${Object.keys(ARMS).join(", ")}`);
-  process.exit(2);
-}
+const { appendHistory } = await import("./harness/history.js");
 
 const results = [];
 for (const scenario of scenarios) {
@@ -89,7 +81,7 @@ const record = {
   at: new Date().toISOString(),
   provenance,
   scoringVersion: SCORING_VERSION,
-  subject,
+  compositeStatus: "internal_only",
   scores,
   scenarios: scenarios.map((scenario) => scenario.id),
   ...(quiet
@@ -105,58 +97,10 @@ const record = {
     : {}),
 };
 
-const history = readHistory(benchDir);
-const previous = previousDistinct(history, provenance.srcHash, SCORING_VERSION);
 if (!flag("no-history")) appendHistory(benchDir, record);
 
 if (quiet) {
   console.log(JSON.stringify(record, null, 2));
 } else {
   printReport({ results, scenarios });
-  printScores({ scores, subject, previous });
-}
-
-const headline = scores.find((entry) => entry.arm === subject);
-const floor = Number(option("fail-under", NaN));
-if (!Number.isNaN(floor) && headline && headline.overall < floor) {
-  console.error(`\nScore ${headline.overall} is below --fail-under=${floor}\n`);
-  process.exit(1);
-}
-
-function printScores({ scores, subject, previous }) {
-  const pad = (text, width) => String(text).padEnd(width);
-  console.log("Scores. Higher is better, 100 is a clean sweep.\n");
-  console.log(
-    pad("arm", 28) + pad("overall", 10) + pad("correctness", 14) + pad("honesty", 10) +
-      pad("passed", 10) + "median ms",
-  );
-  console.log("-".repeat(84));
-  for (const entry of scores) {
-    const marker = entry.arm === subject ? " <-" : "";
-    console.log(
-      pad(entry.arm, 28) + pad(entry.overall, 10) + pad(entry.correctness, 14) +
-        pad(entry.honesty, 10) + pad(`${entry.scenariosPassed}/${entry.scenariosRun}`, 10) +
-        `${entry.medianInvocationMs ?? "-"}${marker}`,
-    );
-  }
-
-  const headline = scores.find((entry) => entry.arm === subject);
-  const before = previous?.scores?.find((entry) => entry.arm === subject);
-  console.log(`\nSCORE ${headline.overall}   (${subject})`);
-
-  if (!before) {
-    console.log("No earlier run with this scoring model and a different Signet source.\n");
-    return;
-  }
-  const delta = (now, then) => {
-    const change = Math.round((now - then) * 10) / 10;
-    if (change === 0) return "no change";
-    return `${change > 0 ? "+" : ""}${change}`;
-  };
-  console.log(
-    `since ${previous.provenance.srcHash} (${previous.at.slice(0, 16).replace("T", " ")}): ` +
-      `overall ${delta(headline.overall, before.overall)}, ` +
-      `correctness ${delta(headline.correctness, before.correctness)}, ` +
-      `honesty ${delta(headline.honesty, before.honesty)}\n`,
-  );
 }

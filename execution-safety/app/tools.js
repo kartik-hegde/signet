@@ -46,8 +46,12 @@ export const toolSurface = [
     description: "Replaces the notes on one booking owned by the signed-in user.",
     inputSchema: {
       type: "object",
-      properties: { bookingId: { type: "string" }, notes: { type: "string" } },
-      required: ["bookingId", "notes"],
+      properties: {
+        bookingId: { type: "string" },
+        expectedNotes: { type: "string" },
+        notes: { type: "string" },
+      },
+      required: ["bookingId", "expectedNotes", "notes"],
       additionalProperties: false,
     },
     operation: "updateBookingNotes",

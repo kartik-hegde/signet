@@ -27,7 +27,11 @@ export async function runCaller({ steps, invoke, maxRetries = 1 }) {
         break;
       } catch (error) {
         outcome = { step: step.tool, reported: "failure", error: error.name };
-        if (error instanceof IndeterminateError || error.code === "indeterminate") {
+        if (
+          error instanceof IndeterminateError ||
+          error.code === "indeterminate" ||
+          error.code === "outcome_unknown"
+        ) {
           outcome.reported = "unknown";
           break;
         }

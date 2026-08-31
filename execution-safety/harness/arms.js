@@ -8,7 +8,11 @@
 import { resolve, dirname, join } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { faultedHandler } from "./faults.js";
-import { OptimisticMemoryStore, SqliteConservativeStore } from "./stores.js";
+import {
+  SqliteConservativeStore,
+  SqliteOperationJournal,
+  SqlitePhasedStore,
+} from "./stores.js";
 import { buildHandrolled } from "./adapters/handrolled.js";
 import { buildWithSignet } from "./adapters/signet.js";
 
@@ -24,8 +28,12 @@ export const SIGNET_DIST = resolve(
 );
 
 let guard;
+let MemoryIdempotencyStore;
 try {
   ({ guard } = await import(pathToFileURL(SIGNET_DIST).href));
+  ({ MemoryIdempotencyStore } = await import(
+    pathToFileURL(resolve(dirname(SIGNET_DIST), "testing.js")).href
+  ));
 } catch (error) {
   throw new Error(
     `Could not load the Signet guard from "${SIGNET_DIST}".\n` +
@@ -67,21 +75,27 @@ export const ARMS = {
     build: buildHandrolledArm,
   },
   A3a_signet_memory: {
-    label: "A3a Signet, shipped store",
+    label: "A3a Signet, test-only memory",
     build: (a) => buildGuarded(a, "memory"),
   },
   A3b_signet_durable: {
-    label: "A3b Signet, harness store",
+    label: "A3b Signet, phased durable",
     build: (a) => buildGuarded(a, "durable"),
   },
 };
 
-function buildRaw({ execute, faults, ctx }) {
-  const handler = faultedHandler((input) => execute(input, ctx), faults);
-  return (input, options) => handler(input, options);
+function buildRaw({ execute, faults, ctx, validate }) {
+  const handler = faultedHandler(
+    (input, options) => execute(input, { ...ctx, operation: options?.operation }),
+    faults,
+  );
+  return (input, options) => {
+    validate(input);
+    return handler(input, options);
+  };
 }
 
-function buildHandrolledArm({ execute, faults, ctx, toolName }) {
+function buildHandrolledArm({ execute, faults, ctx, toolName, validate }) {
   const handler = faultedHandler((input) => execute(input, ctx), faults);
   const store = new SqliteConservativeStore(ctx.db);
   const verify = verifiers[toolName];
@@ -89,24 +103,56 @@ function buildHandrolledArm({ execute, faults, ctx, toolName }) {
     handler,
     store,
     key: (input) => stableKey(ctx.actorId, toolName, input),
+    validate,
     verify: verify
       ? ({ input, output }) => verify({ input, output, ctx })
       : undefined,
   });
 }
 
-function buildGuarded({ execute, faults, ctx, toolName }, storeKind) {
-  const handler = faultedHandler((input) => execute(input, ctx), faults);
+function buildGuarded({ execute, faults, ctx, toolName, validate }, storeKind) {
+  const handler = faultedHandler(
+    (input, options) => execute(input, { ...ctx, operation: options?.operation }),
+    faults,
+  );
   const store =
     storeKind === "durable"
-      ? new SqliteConservativeStore(ctx.db)
-      : new OptimisticMemoryStore();
+      ? new SqlitePhasedStore(ctx.db)
+      : new MemoryIdempotencyStore();
   const verify = verifiers[toolName];
+  const journal = new SqliteOperationJournal(ctx.db);
+
+  const recover =
+    toolName === "book-tickets"
+      ? async ({ operation }) => {
+          if (ctx.recoveryUnavailable) {
+            throw new Error("authoritative recovery is temporarily unavailable");
+          }
+          const correlation = await operation?.read();
+          if (!correlation?.bookingId) return { recovered: false };
+          const booking = ctx.db
+            .prepare("SELECT id, quantity, status FROM bookings WHERE id = ?")
+            .get(correlation.bookingId);
+          return booking
+            ? {
+                recovered: true,
+                output: {
+                  bookingId: booking.id,
+                  quantity: booking.quantity,
+                  status: booking.status,
+                },
+              }
+            : { recovered: false, outcome: "unknown" };
+        }
+      : undefined;
 
   return buildWithSignet({
     handler,
     store,
+    journal,
     key: (input) => stableKey(ctx.actorId, toolName, input),
+    validate,
+    recover,
     verify: verify
       ? ({ input, output }) => verify({ input, output, ctx })
       : undefined,

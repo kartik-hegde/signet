@@ -28,6 +28,91 @@ export const scenarios = [
     },
   },
   {
+    id: "retry-after-reload",
+    title: "A response is lost, recovery is unavailable, and a fresh page retries the intent",
+    tool: "book-tickets",
+    actor: "u_ada",
+    steps: [{ tool: "book-tickets", input: { eventId: "e_recital", quantity: 1 } }],
+    faults: [{ attempt: 1, type: "lost_response" }],
+    reloadAfterUnknown: true,
+    kpis: ["duplicate_effects", "false_success", "silent_effect", "indeterminate_disclosed"],
+    atRisk: { duplicate_effects: 1, false_success: 1, silent_effect: 1 },
+    evaluate({ oracle, reports }) {
+      const booked = oracle.bookings({ user_id: "u_ada", event_id: "e_recital", status: "confirmed" });
+      const afterReload = reports[1];
+      return {
+        duplicate_effects: Math.max(0, booked.length - 1),
+        false_success: afterReload.reported === "success" && booked.length === 0 ? 1 : 0,
+        silent_effect: afterReload.reported === "failure" && booked.length > 0 ? 1 : 0,
+        indeterminate_disclosed: reports.some((report) => report.reported === "unknown") ? 1 : 0,
+      };
+    },
+  },
+  {
+    id: "concurrent-same-operation-key",
+    title: "Two live callers submit the exact same ticket intent concurrently",
+    tool: "book-tickets",
+    concurrent: {
+      sharedInvoker: true,
+      participants: [
+        { actor: "u_ada", steps: [{ tool: "book-tickets", input: { eventId: "e_recital", quantity: 1 } }] },
+        { actor: "u_ada", steps: [{ tool: "book-tickets", input: { eventId: "e_recital", quantity: 1 } }] },
+      ],
+    },
+    kpis: ["duplicate_effects", "false_success", "silent_effect"],
+    atRisk: { duplicate_effects: 1, false_success: 1, silent_effect: 1 },
+    evaluate({ oracle, reports }) {
+      const booked = oracle.bookings({ user_id: "u_ada", event_id: "e_recital", status: "confirmed" });
+      return {
+        duplicate_effects: Math.max(0, booked.length - 1),
+        false_success: reports.some((report) => report.reported === "success") && booked.length === 0 ? 1 : 0,
+        silent_effect: reports.every((report) => report.reported === "failure") && booked.length > 0 ? 1 : 0,
+      };
+    },
+  },
+  {
+    id: "stale-precondition",
+    title: "A caller updates notes using a stale value observed before invocation",
+    tool: "update-booking-notes",
+    actor: "u_ada",
+    steps: [
+      {
+        tool: "update-booking-notes",
+        input: { bookingId: "b_seed_ada", expectedNotes: "window", notes: "front row" },
+      },
+    ],
+    kpis: ["stale_precondition_accepted", "needless_indeterminate"],
+    atRisk: { stale_precondition_accepted: 1, needless_indeterminate: 1 },
+    evaluate({ oracle, reports }) {
+      const notes = oracle.bookings({ id: "b_seed_ada" })[0]?.notes;
+      return {
+        stale_precondition_accepted: notes === "front row" ? 1 : 0,
+        needless_indeterminate: reports[0].reported === "unknown" ? 1 : 0,
+      };
+    },
+  },
+  {
+    id: "invented-argument",
+    title: "A caller invents an undeclared administrative override argument",
+    tool: "book-tickets",
+    actor: "u_ada",
+    steps: [
+      {
+        tool: "book-tickets",
+        input: { eventId: "e_recital", quantity: 1, administrativeOverride: true },
+      },
+    ],
+    kpis: ["invented_argument_accepted", "false_success"],
+    atRisk: { invented_argument_accepted: 1, false_success: 1 },
+    evaluate({ oracle, reports }) {
+      const booked = oracle.bookings({ user_id: "u_ada", event_id: "e_recital", status: "confirmed" });
+      return {
+        invented_argument_accepted: booked.length > 0 ? 1 : 0,
+        false_success: reports[0].reported === "success" ? 1 : 0,
+      };
+    },
+  },
+  {
     id: "retry-after-upstream-error-on-idempotent-operation",
     title: "Control. The operation is already idempotent at the data layer, so no arm should differ",
     tool: "cancel-booking",
@@ -56,8 +141,24 @@ export const scenarios = [
     concurrent: {
       barrierAt: "updateBookingNotes:afterRead",
       participants: [
-        { actor: "u_ada", steps: [{ tool: "update-booking-notes", input: { bookingId: "b_seed_ada", notes: "aisle" } }] },
-        { actor: "u_ada", steps: [{ tool: "update-booking-notes", input: { bookingId: "b_seed_ada", notes: "window" } }] },
+        {
+          actor: "u_ada",
+          steps: [
+            {
+              tool: "update-booking-notes",
+              input: { bookingId: "b_seed_ada", expectedNotes: "aisle please", notes: "aisle" },
+            },
+          ],
+        },
+        {
+          actor: "u_ada",
+          steps: [
+            {
+              tool: "update-booking-notes",
+              input: { bookingId: "b_seed_ada", expectedNotes: "aisle please", notes: "window" },
+            },
+          ],
+        },
       ],
     },
     kpis: ["lost_updates", "lost_update_disclosed"],

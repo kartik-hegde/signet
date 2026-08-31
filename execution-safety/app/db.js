@@ -29,6 +29,10 @@ CREATE TABLE idempotency (
   result     TEXT,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE operation_journal (
+  key        TEXT PRIMARY KEY,
+  entry      TEXT NOT NULL
+);
 `;
 
 const SEED = `

@@ -7,9 +7,10 @@ class VerificationError extends Error {
 }
 
 /** Minimal independently implemented controls for the build-versus-buy baseline. */
-export function buildHandrolled({ handler, store, key, verify }) {
+export function buildHandrolled({ handler, store, key, validate, verify }) {
   return async (input, options) => {
     options.signal.throwIfAborted();
+    validate?.(input);
     const result = await store.execute(
       key(input),
       () => handler(input, options),
