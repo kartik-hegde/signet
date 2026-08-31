@@ -81,6 +81,21 @@ declare namespace Cypress {
       options?: Partial<Loggable & Timeoutable>
     ): Chainable<any>;
 
+    /** Record one UI or WebMCP task run in the structured comparison report. */
+    task(
+      event: "reference:record-metric",
+      metric: {
+        task: string;
+        mode: "ui" | "webmcp";
+        durationMs: number;
+        interactionCount: number;
+        toolCalls: number;
+        httpRequests: number;
+        mutationRequests: number;
+      },
+      options?: Partial<Loggable & Timeoutable>
+    ): Chainable<null>;
+
     /**
      * Find a single entity via database query
      */

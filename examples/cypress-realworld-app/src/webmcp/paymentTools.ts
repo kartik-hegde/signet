@@ -95,10 +95,8 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
       { signal }
     );
 
-  const listAccounts = async (
-    _input: Record<string, never>,
-    { signal }: { signal: AbortSignal }
-  ) => requestJson<PaymentContext>("/context", { signal });
+  const listAccounts = async (_input: Record<string, never>, { signal }: { signal: AbortSignal }) =>
+    requestJson<PaymentContext>("/context", { signal });
 
   const sendPayment = guard<SendPaymentInput, PaymentResponse, PaymentContext>(
     async (input, { signal }) => {
@@ -162,6 +160,15 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
     }
   );
 
+  // Chrome's experimental implementation currently calls imperative tool
+  // handlers without the optional execution-options argument. Preserve a
+  // native AbortSignal when supplied while keeping the guarded handler usable
+  // in builds that omit it.
+  const executeSendPayment: WebMCP.ToolExecuteCallback = (input, options) =>
+    sendPayment(input as SendPaymentInput, {
+      signal: options?.signal ?? new AbortController().signal,
+    });
+
   const registrations = [
     modelContext.registerTool(
       {
@@ -208,7 +215,7 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
           required: ["operationId", "sourceAccountId", "receiverId", "amount", "description"],
           additionalProperties: false,
         },
-        execute: sendPayment as WebMCP.ToolExecuteCallback,
+        execute: executeSendPayment,
       },
       { signal: registration.signal }
     ),

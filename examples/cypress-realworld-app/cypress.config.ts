@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs";
 import _ from "lodash";
 import axios from "axios";
 import dotenv from "dotenv";
@@ -74,6 +75,55 @@ export default defineConfig({
     experimentalRunAllSpecs: true,
     setupNodeEvents(on, config) {
       const testDataApiEndpoint = `${config.expose.apiUrl}/testData`;
+      const referenceMetrics: Array<{
+        task: string;
+        mode: "ui" | "webmcp";
+        durationMs: number;
+        interactionCount: number;
+        toolCalls: number;
+        httpRequests: number;
+        mutationRequests: number;
+      }> = [];
+      const metricsPath = path.join(__dirname, "cypress/results/reference-comparison.json");
+
+      const writeReferenceMetrics = () => {
+        if (referenceMetrics.length === 0) return;
+
+        const latestUi = [...referenceMetrics].reverse().find(({ mode }) => mode === "ui");
+        const latestWebMcp = [...referenceMetrics].reverse().find(({ mode }) => mode === "webmcp");
+        const comparison =
+          latestUi && latestWebMcp
+            ? {
+                durationDeltaMs: Number((latestUi.durationMs - latestWebMcp.durationMs).toFixed(2)),
+                interactionReductionPercent: Number(
+                  (
+                    ((latestUi.interactionCount - latestWebMcp.interactionCount) /
+                      latestUi.interactionCount) *
+                    100
+                  ).toFixed(2)
+                ),
+                uiToWebMcpDurationRatio: Number(
+                  (latestUi.durationMs / latestWebMcp.durationMs).toFixed(2)
+                ),
+              }
+            : null;
+
+        fs.mkdirSync(path.dirname(metricsPath), { recursive: true });
+        fs.writeFileSync(
+          metricsPath,
+          `${JSON.stringify(
+            {
+              schemaVersion: 1,
+              generatedAt: new Date().toISOString(),
+              note: "Deterministic driver timings are directional diagnostics, not an LLM benchmark.",
+              runs: referenceMetrics,
+              comparison,
+            },
+            null,
+            2
+          )}\n`
+        );
+      };
 
       const queryDatabase = ({ entity, query }, callback) => {
         const fetchData = async (attrs) => {
@@ -89,6 +139,12 @@ export default defineConfig({
           // seed database with test data
           const { data } = await axios.post(`${testDataApiEndpoint}/seed`);
           return data;
+        },
+
+        "reference:record-metric"(metric) {
+          referenceMetrics.push(metric);
+          writeReferenceMetrics();
+          return null;
         },
 
         // fetch test data from a database (MySQL, PostgreSQL, etc...)
@@ -131,6 +187,8 @@ export default defineConfig({
           return { refreshToken, clientSecret };
         },
       });
+
+      on("after:run", writeReferenceMetrics);
 
       codeCoverageTask(on, config);
 

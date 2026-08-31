@@ -43,13 +43,13 @@ Do not create a second, agent-only backend path with weaker policy or validation
 
 ## Separate browser and backend responsibilities
 
-| Browser layer | Backend layer |
-|---|---|
-| Expose the native WebMCP tool | Authenticate every request |
-| Validate early for useful errors | Validate as the authority |
-| Avoid obviously unauthorized work | Enforce tenant and resource policy |
-| Pass a stable operation key | Persist duplicate suppression transactionally |
-| Show current state to the person | Commit and return authoritative state |
+| Browser layer                     | Backend layer                                 |
+| --------------------------------- | --------------------------------------------- |
+| Expose the native WebMCP tool     | Authenticate every request                    |
+| Validate early for useful errors  | Validate as the authority                     |
+| Avoid obviously unauthorized work | Enforce tenant and resource policy            |
+| Pass a stable operation key       | Persist duplicate suppression transactionally |
+| Show current state to the person  | Commit and return authoritative state         |
 
 ::: warning Browser code is not a security boundary
 Client authorization improves behavior and defense in depth. It cannot protect a

@@ -1,48 +1,32 @@
 /// <reference path="../../global.d.ts" />
 
-const sender = {
-  id: "uBmeaz5pX",
-  username: "Heath93",
-  sourceAccountId: "pgl34JtnfhX",
-};
-const receiver = { id: "WHjJ4qR2R2", displayName: "Lia Rosenbaum" };
-const otherUsersAccountId = "I8qfnpz9q4a";
+import {
+  executeTool,
+  paymentInput,
+  referencePaymentTask,
+  waitForPaymentTools,
+} from "../../support/reference/paymentTask";
 
-const payment = (operationId: string) => ({
-  operationId,
-  sourceAccountId: sender.sourceAccountId,
-  receiverId: receiver.id,
-  amount: 12.34,
-  description: `WebMCP regression ${operationId}`,
-});
+const { sender, receiver, otherUsersAccountId } = referencePaymentTask;
 
-const waitForTools = () =>
-  cy
-    .window()
-    .its("__webMcpTest")
-    .should("exist")
-    .invoke("getToolNames")
-    .should("deep.equal", ["list_payment_accounts", "search_payment_users", "send_payment"]);
-
-const executeTool = (name: string, input: Record<string, unknown>) =>
-  cy.window().then((win) => win.__webMcpTest.executeTool(name, input));
-
-describe("Signet WebMCP payment integration", () => {
+describe("Signet WebMCP payment integration", { retries: 0 }, () => {
   beforeEach(() => {
     cy.task("db:seed");
     cy.visitWithWebMcp("/signin");
     cy.login(sender.username, "s3cret");
-    waitForTools();
+    waitForPaymentTools();
+  });
+
+  afterEach(() => {
+    cy.task("db:seed");
   });
 
   it("publishes useful tools only for the signed-in page", () => {
-    executeTool("search_payment_users", { query: "Lia" })
-      .its("users")
-      .should("deep.include", {
-        id: receiver.id,
-        username: "Judah_Dietrich50",
-        displayName: receiver.displayName,
-      });
+    executeTool("search_payment_users", { query: "Lia" }).its("users").should("deep.include", {
+      id: receiver.id,
+      username: receiver.username,
+      displayName: receiver.displayName,
+    });
 
     executeTool("list_payment_accounts", {})
       .its("accounts.0")
@@ -55,7 +39,7 @@ describe("Signet WebMCP payment integration", () => {
   });
 
   it("makes one real payment and verifies authoritative state", () => {
-    const input = payment("signed-in-mutation");
+    const input = paymentInput("signed-in-mutation");
     let senderBalance = 0;
     let receiverBalance = 0;
 
@@ -73,7 +57,7 @@ describe("Signet WebMCP payment integration", () => {
         senderId: sender.id,
         receiverId: receiver.id,
         source: sender.sourceAccountId,
-        amount: 1234,
+        amount: referencePaymentTask.amountCents,
         status: "complete",
       });
     });
@@ -82,18 +66,17 @@ describe("Signet WebMCP payment integration", () => {
     cy.location("pathname").should("match", /^\/transaction\/[A-Za-z0-9_-]+$/);
 
     cy.database("find", "users", { id: sender.id }).then((user) => {
-      expect(user.balance).to.equal(senderBalance - 1234);
+      expect(user.balance).to.equal(senderBalance - referencePaymentTask.amountCents);
     });
     cy.database("find", "users", { id: receiver.id }).then((user) => {
-      expect(user.balance).to.equal(receiverBalance + 1234);
+      expect(user.balance).to.equal(receiverBalance + referencePaymentTask.amountCents);
     });
     cy.database("find", "agentOperations", { operationId: input.operationId })
       .its("transactionId")
       .should("be.a", "string");
 
     cy.window().then((win) => {
-      const stages = win.__signetGuardEvents?.map((event) => event.stage);
-      expect(stages).to.deep.equal([
+      expect(win.__signetGuardEvents?.map((event) => event.stage)).to.deep.equal([
         "started",
         "authorized",
         "executed",
@@ -104,7 +87,7 @@ describe("Signet WebMCP payment integration", () => {
   });
 
   it("denies an unowned account in Signet and independently at the server", () => {
-    const input = { ...payment("authorization-denial"), sourceAccountId: otherUsersAccountId };
+    const input = { ...paymentInput("authorization-denial"), sourceAccountId: otherUsersAccountId };
     let browserMutationAttempts = 0;
     cy.intercept("POST", "/webmcp/payments", (request) => {
       browserMutationAttempts += 1;
@@ -126,7 +109,9 @@ describe("Signet WebMCP payment integration", () => {
       url: `${Cypress.expose("apiUrl")}/webmcp/payments`,
       body: input,
       failOnStatusCode: false,
-    }).its("status").should("equal", 403);
+    })
+      .its("status")
+      .should("equal", 403);
 
     cy.database("filter", "agentOperations", { operationId: input.operationId }).should(
       "have.length",
@@ -134,16 +119,20 @@ describe("Signet WebMCP payment integration", () => {
     );
   });
 
-  it("replays a duplicate tool call without a second effect", () => {
-    const input = payment("signet-replay");
+  it("coalesces concurrent identical calls into one effect", () => {
+    const input = paymentInput("concurrent-replay");
     let serverCalls = 0;
     cy.intercept("POST", "/webmcp/payments", (request) => {
       serverCalls += 1;
       request.continue();
     });
 
-    executeTool("send_payment", input);
-    executeTool("send_payment", input);
+    cy.window().then((win) =>
+      Promise.all([
+        win.__webMcpTest.executeTool("send_payment", input),
+        win.__webMcpTest.executeTool("send_payment", input),
+      ])
+    );
 
     cy.then(() => expect(serverCalls).to.equal(1));
     cy.database("filter", "agentOperations", { operationId: input.operationId }).should(
@@ -160,11 +149,11 @@ describe("Signet WebMCP payment integration", () => {
   });
 
   it("preserves exactly-once behavior after the page-local Signet store is lost", () => {
-    const input = payment("server-replay-after-reload");
+    const input = paymentInput("server-replay-after-reload");
     executeTool("send_payment", input).its("replayed").should("equal", false);
 
     cy.visitWithWebMcp("/");
-    waitForTools();
+    waitForPaymentTools();
     executeTool("send_payment", input).its("replayed").should("equal", true);
 
     cy.database("filter", "agentOperations", { operationId: input.operationId }).should(
@@ -178,7 +167,7 @@ describe("Signet WebMCP payment integration", () => {
   });
 
   it("rejects reuse of an operation ID for a different payment", () => {
-    const input = payment("conflicting-retry");
+    const input = paymentInput("conflicting-retry");
     executeTool("send_payment", input);
 
     cy.window().then(async (win) => {
@@ -195,6 +184,146 @@ describe("Signet WebMCP payment integration", () => {
       1
     );
     cy.database("filter", "transactions", { description: input.description }).should(
+      "have.length",
+      1
+    );
+  });
+
+  it("honors an aborted invocation before any request or mutation", () => {
+    const input = paymentInput("cancelled-invocation");
+    let contextCalls = 0;
+    let mutationCalls = 0;
+    cy.intercept("GET", "/webmcp/context", (request) => {
+      contextCalls += 1;
+      request.continue();
+    });
+    cy.intercept("POST", "/webmcp/payments", (request) => {
+      mutationCalls += 1;
+      request.continue();
+    });
+
+    cy.window().then(async (win) => {
+      const controller = new win.AbortController();
+      controller.abort(new win.DOMException("Agent cancelled", "AbortError"));
+
+      try {
+        await win.__webMcpTest.executeTool("send_payment", input, controller.signal);
+        throw new Error("Expected the aborted invocation to reject.");
+      } catch (error: any) {
+        expect(error.name).to.equal("AbortError");
+      }
+    });
+    cy.then(() => {
+      expect(contextCalls).to.equal(0);
+      expect(mutationCalls).to.equal(0);
+    });
+    cy.database("filter", "agentOperations", { operationId: input.operationId }).should(
+      "have.length",
+      0
+    );
+  });
+
+  it("rejects a stale page tool after its server session expires", () => {
+    const input = paymentInput("expired-session");
+    let mutationCalls = 0;
+    cy.intercept("POST", "/webmcp/payments", (request) => {
+      mutationCalls += 1;
+      request.continue();
+    });
+
+    cy.request("POST", `${Cypress.expose("apiUrl")}/logout`);
+    cy.window().then(async (win) => {
+      try {
+        await win.__webMcpTest.executeTool("send_payment", input);
+        throw new Error("Expected the expired session to reject.");
+      } catch (error: any) {
+        expect(error.status).to.equal(401);
+      }
+    });
+
+    cy.then(() => expect(mutationCalls).to.equal(0));
+    cy.database("filter", "agentOperations", { operationId: input.operationId }).should(
+      "have.length",
+      0
+    );
+  });
+
+  it("surfaces failed authoritative verification after the real mutation", () => {
+    const input = paymentInput("verification-mismatch");
+    cy.intercept("GET", `/webmcp/payments/${input.operationId}`, (request) => {
+      request.continue((response) => {
+        response.body.transaction.amount += 1;
+      });
+    });
+
+    cy.window().then(async (win) => {
+      try {
+        await win.__webMcpTest.executeTool("send_payment", input);
+        throw new Error("Expected authoritative verification to fail.");
+      } catch (error: any) {
+        expect(error.code).to.equal("verification_failed");
+      }
+    });
+
+    cy.database("filter", "agentOperations", { operationId: input.operationId }).should(
+      "have.length",
+      1
+    );
+    cy.database("filter", "transactions", { description: input.description }).should(
+      "have.length",
+      1
+    );
+    cy.window().then((win) => {
+      expect(win.__signetGuardEvents?.map((event) => event.stage)).to.include("failed");
+    });
+  });
+
+  it("does not cache a server failure and allows a safe retry", () => {
+    const input = paymentInput("server-error-retry");
+    cy.intercept(
+      { method: "POST", url: "/webmcp/payments", times: 1 },
+      { statusCode: 503, body: { error: "Temporary payment service failure." } }
+    );
+
+    cy.window().then(async (win) => {
+      try {
+        await win.__webMcpTest.executeTool("send_payment", input);
+        throw new Error("Expected the temporary server failure.");
+      } catch (error: any) {
+        expect(error.status).to.equal(503);
+      }
+    });
+    cy.database("filter", "agentOperations", { operationId: input.operationId }).should(
+      "have.length",
+      0
+    );
+
+    executeTool("send_payment", input).its("replayed").should("equal", false);
+    cy.database("filter", "agentOperations", { operationId: input.operationId }).should(
+      "have.length",
+      1
+    );
+    cy.database("filter", "transactions", { description: input.description }).should(
+      "have.length",
+      1
+    );
+  });
+
+  it("does not expose an authoritative operation read to another user", () => {
+    const input = paymentInput("scoped-authoritative-read");
+    executeTool("send_payment", input);
+
+    cy.request("POST", `${Cypress.expose("apiUrl")}/logout`);
+    cy.loginByApi(receiver.username, "s3cret");
+    cy.request({
+      method: "GET",
+      url: `${Cypress.expose("apiUrl")}/webmcp/payments/${input.operationId}`,
+      failOnStatusCode: false,
+    })
+      .its("status")
+      .should("equal", 404);
+
+    cy.database("filter", "agentOperations", { operationId: input.operationId }).should(
       "have.length",
       1
     );

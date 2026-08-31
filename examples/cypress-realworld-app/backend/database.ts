@@ -90,7 +90,9 @@ const BANK_TRANSFER_TABLE = "banktransfers";
 const AGENT_OPERATION_TABLE = "agentOperations";
 
 const databaseFile = path.join(__dirname, "../data/database.json");
-const adapter = new FileSync<DbSchema>(databaseFile);
+const adapter = new FileSync<DbSchema>(databaseFile, {
+  serialize: (data) => `${JSON.stringify(data, null, 2)}\n`,
+});
 
 const db = low(adapter);
 

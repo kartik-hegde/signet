@@ -36,8 +36,7 @@ await document.modelContext?.registerTool({
     authorize: ({ input, context }) =>
       context.userId === ownerOf(input.orderId),
     idempotency: {
-      key: ({ input, context }) =>
-        `${context.userId}:${input.orderId}:cancel`,
+      key: ({ input, context }) => `${context.userId}:${input.orderId}:cancel`,
       store: durableStore,
     },
     verify: ({ output }) => output.state === "cancelled",
