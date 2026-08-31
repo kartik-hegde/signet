@@ -7,7 +7,7 @@
     "storefrontBase": "56f021d42196eaa78b997df010430d8ea7842e99",
     "storefrontIntegration": "ac059eb615a5d850df746522cb23ffaf32d883aa",
     "platform": "ab6315bd59c58b4815175df4c679107ff9695be4",
-    "signet": "cbf8913f2a2953ac47c594187d47176c554c0fc7"
+    "signet": "d217bf0a9560c1f4448cbf955b94243987a9f2df"
   },
   "registeredTools": [
     "inspect_checkout",

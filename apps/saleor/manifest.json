@@ -20,7 +20,7 @@
   },
   "signet": {
     "directory": "../signet",
-    "revision": "cbf8913f2a2953ac47c594187d47176c554c0fc7"
+    "revision": "d217bf0a9560c1f4448cbf955b94243987a9f2df"
   },
   "ports": {
     "storefront": 3000,
