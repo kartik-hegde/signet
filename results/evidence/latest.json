@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-31T18:02:29.983Z",
+  "status": "reference_evidence_report",
+  "sources": {
+    "agentEffectiveness": {
+      "generatedAt": "2026-08-31T18:02:29.570Z",
+      "benchmarkCommit": "827e553",
+      "signetCommit": "f4a72d4",
+      "status": "p1_real_agent_baseline"
+    },
+    "executionAndBuild": {
+      "generatedAt": "2026-08-31T18:02:29.838Z",
+      "benchmarkCommit": "827e553",
+      "signetCommit": "f4a72d4",
+      "status": "directional_single_implementation"
+    },
+    "testAgent": {
+      "generatedAt": "2026-08-31T18:02:22.835Z",
+      "benchmarkCommit": "827e553",
+      "signetCommit": "f4a72d4",
+      "status": "signet_test_agent"
+    }
+  },
+  "findings": {
+    "payment": {
+      "trialsPerCondition": 10,
+      "authoritativeSuccesses": {
+        "ui": 10,
+        "rawWebMcp": 10,
+        "signetWebMcp": 10
+      },
+      "webMcpCompletion": {
+        "raw": 5,
+        "signet": 9
+      },
+      "median": {
+        "ui": {
+          "durationMs": 9552.38,
+          "actions": 6,
+          "tokens": 108221
+        },
+        "rawHybrid": {
+          "durationMs": 9068.99,
+          "actions": 5,
+          "tokens": 88156.5
+        },
+        "signetHybrid": {
+          "durationMs": 7759.65,
+          "actions": 4,
+          "tokens": 60290.5
+        }
+      },
+      "selectedWebMcpPath": {
+        "runs": 14,
+        "durationMs": 6549.08,
+        "actions": 4,
+        "tokens": 60290.5
+      }
+    },
+    "recipientLookup": {
+      "trialsPerCondition": 10,
+      "authoritativeSuccesses": {
+        "ui": 0,
+        "rawWebMcp": 3,
+        "signetWebMcp": 5
+      },
+      "webMcpSelections": {
+        "raw": 3,
+        "signet": 5
+      },
+      "validWebMcpCallRate": {
+        "raw": 1,
+        "signet": 1
+      }
+    },
+    "executionSafety": {
+      "raw": {
+        "overall": 51,
+        "correctness": 68,
+        "honesty": 0,
+        "scenariosPassed": 1,
+        "scenariosRun": 3,
+        "medianInvocationMs": 0.4
+      },
+      "signetShippedStore": {
+        "overall": 63.5,
+        "correctness": 68,
+        "honesty": 50,
+        "scenariosPassed": 1,
+        "scenariosRun": 3,
+        "medianInvocationMs": 0.4
+      },
+      "signetDurableStore": {
+        "overall": 85,
+        "correctness": 80,
+        "honesty": 100,
+        "scenariosPassed": 1,
+        "scenariosRun": 3,
+        "medianInvocationMs": 0.4
+      },
+      "handrolledDurableStore": {
+        "overall": 85,
+        "correctness": 80,
+        "honesty": 100,
+        "scenariosPassed": 1,
+        "scenariosRun": 3,
+        "medianInvocationMs": 0.5
+      }
+    },
+    "implementation": {
+      "handrolledBespokeSloc": 28,
+      "signetAdapterSloc": 14
+    },
+    "testAgent": {
+      "task": "find-payment-recipient",
+      "passed": true,
+      "toolSequence": [
+        "search_payment_users"
+      ],
+      "lifecycle": [
+        "started",
+        "executed",
+        "succeeded"
+      ],
+      "durationMs": 4351.22,
+      "tokens": 20511
+    }
+  }
+}

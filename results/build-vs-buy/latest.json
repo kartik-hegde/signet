@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-31T18:02:29.838Z",
+  "status": "directional_single_implementation",
+  "note": "This is one benchmark-authored implementation, not an independent implementer study.",
+  "provenance": {
+    "benchmarkCommit": "827e553",
+    "signetCommit": "f4a72d4",
+    "safetyScoringVersion": "2c662d24"
+  },
+  "implementation": {
+    "handrolledBespokeSloc": 28,
+    "signetAdapterSloc": 14
+  },
+  "conformance": {
+    "raw": {
+      "arm": "A1_raw",
+      "overall": 51,
+      "correctness": 68,
+      "honesty": 0,
+      "scenariosPassed": 1,
+      "scenariosRun": 3,
+      "medianInvocationMs": 0.4,
+      "counters": {
+        "duplicate_effects": 1,
+        "false_success": 0,
+        "silent_effect": 0,
+        "lost_updates": 1,
+        "needless_indeterminate": 0,
+        "indeterminate_disclosed": 0,
+        "lost_update_disclosed": 0
+      }
+    },
+    "handrolled": {
+      "arm": "A2_handrolled",
+      "overall": 85,
+      "correctness": 80,
+      "honesty": 100,
+      "scenariosPassed": 1,
+      "scenariosRun": 3,
+      "medianInvocationMs": 0.5,
+      "counters": {
+        "duplicate_effects": 0,
+        "false_success": 0,
+        "silent_effect": 0,
+        "lost_updates": 1,
+        "needless_indeterminate": 1,
+        "indeterminate_disclosed": 1,
+        "lost_update_disclosed": 1
+      }
+    },
+    "signetShippedStore": {
+      "arm": "A3a_signet_memory",
+      "overall": 63.5,
+      "correctness": 68,
+      "honesty": 50,
+      "scenariosPassed": 1,
+      "scenariosRun": 3,
+      "medianInvocationMs": 0.4,
+      "counters": {
+        "duplicate_effects": 1,
+        "false_success": 0,
+        "silent_effect": 0,
+        "lost_updates": 1,
+        "needless_indeterminate": 0,
+        "indeterminate_disclosed": 0,
+        "lost_update_disclosed": 1
+      }
+    },
+    "signetWithDurableStore": {
+      "arm": "A3b_signet_durable",
+      "overall": 85,
+      "correctness": 80,
+      "honesty": 100,
+      "scenariosPassed": 1,
+      "scenariosRun": 3,
+      "medianInvocationMs": 0.4,
+      "counters": {
+        "duplicate_effects": 0,
+        "false_success": 0,
+        "silent_effect": 0,
+        "lost_updates": 1,
+        "needless_indeterminate": 1,
+        "indeterminate_disclosed": 1,
+        "lost_update_disclosed": 1
+      }
+    }
+  }
+}
