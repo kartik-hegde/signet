@@ -1,108 +1,218 @@
 # Signet
 
-Signet helps web products expose their capabilities as tools that AI agents can use.
-It starts with WebMCP: define a clear tool around application code you already own,
-make it available through the browser, and test the experience an agent actually sees.
+**Make your website agent-ready—in minutes.**
+
+Signet turns application functions you already own into reliable tools that browser
+agents can use through native WebMCP.
+
+You decide what agents should be able to do. Signet handles the boundary around those
+capabilities: registration, input validation, application context, expected errors,
+safe execution, testing, and observability.
+
+## Get started
+
+```sh
+npm install @signet/webmcp
+```
+
+Expose one existing function:
 
 ```ts
-const searchProducts: WebMCP.ToolExecuteCallback = async (
-  input,
-  { signal },
-) => {
-  const query = typeof input.query === "string" ? input.query.trim() : "";
-  if (!query) throw new TypeError("query must be a non-empty string");
+import { createSignet } from "@signet/webmcp";
 
-  const response = await fetch(`/api/products?q=${encodeURIComponent(query)}`, {
-    signal,
-  });
-  if (!response.ok) throw new Error(`Search failed: ${response.status}`);
-  return response.json();
-};
+const signet = createSignet();
 
-await document.modelContext?.registerTool({
+const registration = await signet.expose({
   name: "search_products",
-  title: "Search products",
-  description:
-    "Finds products matching a query and returns stable product IDs.",
+  description: "Find products matching a query and return stable product IDs.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        minLength: 1,
+        description: "Words from the product name.",
+      },
+    },
+    required: ["query"],
+    additionalProperties: false,
+  },
+  annotations: { readOnlyHint: true },
+  execute: async ({ query }: { query: string }, { signal }) => {
+    const response = await fetch(
+      `/api/products?q=${encodeURIComponent(query)}`,
+      { signal },
+    );
+    if (!response.ok) throw new Error(`Search failed: ${response.status}`);
+    return response.json();
+  },
+});
+```
+
+Four fields are required: `name`, `description`, `inputSchema`, and `execute`.
+
+Signet validates the definition, compiles its JSON Schema once, and registers it with
+`document.modelContext.registerTool()`. Invalid agent input never reaches your
+business logic. In browsers without WebMCP, your human website continues normally and
+the registration reports `unsupported`.
+
+Dispose the registration when the capability is no longer available:
+
+```ts
+registration.dispose();
+```
+
+See the complete [getting-started guide](./docs/guide/getting-started.md).
+
+## Add production behavior when needed
+
+Simple read tools can stay simple. Consequential tools can opt into application
+context, authorization, idempotency, verification, cancellation, and observation:
+
+```ts
+import { ToolError, createSignet } from "@signet/webmcp";
+
+const signet = createSignet({
+  context: async ({ signal }) => currentSession({ signal }),
+  observe: recordSignetEvent,
+});
+
+await signet.expose({
+  name: "cancel_order",
+  description: "Cancel one unshipped order belonging to the signed-in user.",
+  inputSchema: {
+    type: "object",
+    properties: { orderId: { type: "string", minLength: 1 } },
+    required: ["orderId"],
+    additionalProperties: false,
+  },
+
+  authorize: async ({ input, context }) => {
+    const order = await getOrder(input.orderId);
+    return order?.userId === context.userId;
+  },
+
+  idempotency: {
+    store: productionIdempotencyStore,
+    key: ({ input, context }) => `${context.userId}:${input.orderId}:cancel`,
+  },
+
+  execute: async ({ orderId }, { context, signal }) => {
+    const order = await getOrder(orderId);
+
+    if (order?.status === "shipped") {
+      throw new ToolError({
+        code: "order_already_shipped",
+        message: "Shipped orders cannot be cancelled.",
+        retryable: false,
+      });
+    }
+
+    return cancelOrder({
+      orderId,
+      userId: context.userId,
+      signal,
+    });
+  },
+
+  verify: async ({ input, context }) => {
+    const order = await getOrder(input.orderId);
+    return order?.userId === context.userId && order.status === "cancelled";
+  },
+});
+```
+
+The application still owns authentication, permissions, business logic, durable
+idempotency, and authoritative state. Signet is state-aware; it is not an application
+state store or agent orchestrator.
+
+Signet never retries operations automatically.
+
+## Test without a model or browser
+
+```ts
+import { createSignet } from "@signet/webmcp";
+import { createWebMcpTestHarness } from "@signet/webmcp/testing";
+
+const harness = createWebMcpTestHarness();
+const signet = createSignet({ modelContext: harness.modelContext });
+
+await signet.expose({
+  name: "search_products",
+  description: "Find products matching a query.",
   inputSchema: {
     type: "object",
     properties: { query: { type: "string", minLength: 1 } },
     required: ["query"],
     additionalProperties: false,
   },
-  annotations: { readOnlyHint: true },
-  execute: searchProducts,
+  execute: ({ query }: { query: string }) => searchProducts(query),
 });
+
+expect(harness.tools().map((tool) => tool.name)).toEqual(["search_products"]);
+
+await expect(
+  harness.invoke("search_products", { query: "boots" }),
+).resolves.toEqual(expectedProducts);
 ```
 
-That native registration is the foundation, not something Signet replaces. The Signet
-toolkit is being built around the rest of the developer loop: tool definition and
-runtime validation, lifecycle-aware exposure, local inspection and invocation,
-contract tests, and agent-use evaluation.
+The capture-only test boundary supports discovery, invocation, cancellation, and
+unregistration. It is not a production WebMCP polyfill. Test representative workflows
+through a supported native browser agent before shipping.
 
-## Direction and current status
+## What Signet provides
 
-Signet is pre-release. Today the repository contains the optional execution-control
-layer and a complete native WebMCP reference integration. The next implementation
-milestones add the authoring, exposure, and developer-tooling path described above.
+- **Code-first exposure:** readable TypeScript that maps directly to native WebMCP.
+- **Runtime validation:** JSON Schema validation before application code runs.
+- **State-aware lifecycle:** per-call application context and disposable registrations.
+- **Expected failures:** `ToolError`, validation, authorization, and verification
+  errors remain distinguishable.
+- **Reliable mutations:** app-provided idempotency plus authoritative postcondition
+  verification.
+- **Cancellation:** the native execution signal reaches every stage and your handler.
+- **Observability:** privacy-safe lifecycle events and optional OpenTelemetry spans.
+- **Deterministic testing:** inspect and invoke tools without a model or browser.
+- **Reference proof:** a signed-in payment application with real mutations, denials,
+  replay protection, verification, human-UI parity, native Chrome coverage, and a live
+  Inspector.
 
-The intended progression is:
+## Principles
 
-1. Turn an existing function or endpoint into a well-described, validated tool.
-2. Expose it through native WebMCP for the right page, user, and application state.
-3. Inspect exactly what an agent sees and invoke it locally.
-4. Test discovery, lifecycle, arguments, results, and authoritative outcomes.
-5. Add production controls only when the tool's consequences require them.
+- WebMCP is the first protocol; Signet does not hide or replace it.
+- Application code, identity, policy, data, and backend enforcement remain yours.
+- Inputs, outputs, context, and stack traces are not observed by default.
+- Observer failures never change registration or execution behavior.
+- Unsupported browsers retain the human experience.
+- Public abstractions must add validation, lifecycle, reliability, testing, or
+  observation—not merely rename native APIs.
+- A second protocol will justify a public adapter abstraction; anticipation alone will
+  not.
 
-WebMCP is the first vehicle. Signet does not patch unsupported browsers, invent a
-discovery protocol, or require application logic to move into a hosted runtime.
+## Current scope
 
-## Production controls when needed
+Signet is pre-release and WebMCP is experimental. The current package includes:
 
-For an authenticated read or consequential mutation, the current `guard()` API adds
-application-owned authorization, durable idempotency, outcome verification,
-cancellation propagation, and opt-in observation to an ordinary handler:
+- `createSignet().expose()`;
+- JSON Schema definition and invocation validation;
+- application context and disposable native registration;
+- `ToolError`, `ValidationError`, `AuthorizationError`, and
+  `VerificationError`;
+- authorization, idempotency, verification, cancellation, and lifecycle observation;
+- deterministic testing utilities;
+- optional OpenTelemetry mapping;
+- standalone and full-stack reference applications.
 
-```ts
-import { guard } from "@signet/webmcp";
+There is no hosted runtime, agent planner, automatic retry policy, production browser
+polyfill, Signet JSON format, or compiler.
 
-const cancelOrder = guard(cancelOrderHandler, {
-  name: "cancel_order",
-  context: () => currentSession(),
-  authorize: ({ input, context }) => context.userId === ownerOf(input.orderId),
-  idempotency: {
-    key: ({ input, context }) => `${context.userId}:${input.orderId}:cancel`,
-    store: durableStore,
-  },
-  verify: ({ output }) => output.state === "cancelled",
-});
-```
+## Explore
 
-Use the guarded handler as the native tool's `execute` callback. Public reads and
-simple low-risk tools do not need this layer.
-
-`MemoryIdempotencyStore` is available from `@signet/webmcp/testing` for tests and
-demos. It is not durable and must not be treated as a production guarantee. The
-optional `@signet/webmcp/opentelemetry` entry point converts lifecycle events into
-spans without configuring an exporter or collecting inputs and outputs.
-
-## Product principles
-
-- **Native-first:** WebMCP names, descriptions, JSON Schemas, annotations, origins,
-  and signals stay visible.
-- **Application-owned:** your functions, identity, policy, data, and backend remain the
-  source of truth.
-- **Useful before consequential:** lookup and read tools should be easy; production
-  middleware is progressive enhancement.
-- **Agent-tested:** success means an agent discovers the right tool, calls it with valid
-  arguments, and reaches the expected application outcome.
-- **No fake compatibility:** test drivers are labeled as such and native compatibility
-  is tested separately.
-- **Ejectable:** Signet should leave understandable application code behind.
-
-See [the current native example](./examples/native-webmcp.ts), the
-[reference application](./examples/cypress-realworld-app/SIGNET.md), and the
-[design contract](./docs/design.md).
+- [Getting started](./docs/guide/getting-started.md)
+- [Interface API](./docs/reference/interface.md)
+- [Production WebMCP](./docs/guide/production-webmcp.md)
+- [Testing](./docs/guide/testing.md)
+- [Reference payment application](./examples/cypress-realworld-app/SIGNET.md)
+- [Design contract](./docs/design.md)
 
 ## Development
 
@@ -111,8 +221,5 @@ npm install
 npm run validate
 ```
 
-`validate` runs linting, formatting checks, strict type checking, the coverage-gated
-test suite, a production build, package validation, and public-export smoke tests.
-
-Signet is experimental because WebMCP itself is evolving. The public surface will stay
-small until real integrations justify each abstraction.
+`validate` runs linting, formatting checks, strict type checking, coverage-gated
+tests, a production build, package validation, and public-export smoke tests.

@@ -22,6 +22,7 @@ import { SnackbarContext, SnackbarSchema, SnackbarEvents } from "../machines/sna
 import { useActor } from "@xstate/react";
 import UserOnboardingContainer from "./UserOnboardingContainer";
 import { registerPaymentTools } from "../webmcp/paymentTools";
+import SignetInspector from "../components/SignetInspector";
 
 export interface Props {
   isLoggedIn: boolean;
@@ -72,7 +73,8 @@ const PrivateRoutesContainer: React.FC<Props> = ({
   }, [authService, history]);
 
   return (
-    <MainLayout notificationsService={notificationsService} authService={authService}>
+    <>
+      <MainLayout notificationsService={notificationsService} authService={authService}>
       <UserOnboardingContainer
         authService={authService}
         bankAccountsService={bankAccountsService}
@@ -103,7 +105,9 @@ const PrivateRoutesContainer: React.FC<Props> = ({
           <TransactionDetailContainer authService={authService} />
         </PrivateRoute>
       </Switch>
-    </MainLayout>
+      </MainLayout>
+      <SignetInspector />
+    </>
   );
 };
 

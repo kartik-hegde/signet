@@ -3,6 +3,27 @@
 Signet introduces errors only for decisions it owns. Context, storage, handler, and
 verifier exceptions otherwise retain their original identity.
 
+## `ValidationError`
+
+Thrown before application logic when an invocation does not match the tool's JSON
+Schema. Its `code` is `invalid_input`; `issues` contains machine-readable paths,
+keywords, and messages.
+
+## `ToolError`
+
+Use `ToolError` for an expected business failure that an agent or UI can act on:
+
+```ts
+throw new ToolError({
+  code: "order_already_shipped",
+  message: "Shipped orders cannot be cancelled.",
+  retryable: false,
+  details: { orderId },
+});
+```
+
+`retryable` is descriptive. Signet never retries the operation automatically.
+
 ## `AuthorizationError`
 
 Thrown when `authorize` returns a denial.
@@ -27,6 +48,14 @@ error.code === "verification_failed";
 try {
   return await execute(input, { signal });
 } catch (error) {
+  if (error instanceof ValidationError) {
+    return showInvalidInput(error.issues);
+  }
+
+  if (error instanceof ToolError) {
+    return showExpectedFailure(error.code, error.message);
+  }
+
   if (error instanceof AuthorizationError) {
     return showPermissionMessage(error.message);
   }
