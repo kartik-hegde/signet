@@ -1,8 +1,10 @@
 export { guard } from "./guard.js";
 export { createSignet } from "./interface.js";
+export { WebStorageOperationJournal, type WebStorageLike } from "./journal.js";
 export {
   AuthorizationError,
   ConfirmationError,
+  OutcomeUnknownError,
   SignetError,
   ToolError,
   ValidationError,
@@ -19,6 +21,8 @@ export {
 export type {
   AuthorizationDecision,
   ConfirmationDecision,
+  ConfirmationHook,
+  ConfirmationPolicy,
   Execute,
   ExecuteOptions,
   GuardEvent,
@@ -28,6 +32,9 @@ export type {
   IdempotencyResult,
   IdempotencyStore,
   MaybePromise,
+  OperationHandle,
+  OperationJournal,
+  OperationJournalOptions,
   RecoveryDecision,
   VerificationDecision,
 } from "./types.js";

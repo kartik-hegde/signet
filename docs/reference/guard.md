@@ -17,7 +17,7 @@ execution `AbortSignal`.
 ```ts
 type Execute<Input extends Record<string, unknown>, Output> = (
   input: Input,
-  options: { signal: AbortSignal },
+  options: { signal: AbortSignal; operation?: OperationHandle },
 ) => Output | Promise<Output>;
 ```
 
@@ -62,6 +62,19 @@ confirm?: ({ input, context, signal }) =>
 Runs after authorization and before idempotency. A false decision throws
 `ConfirmationError`. The application owns the consent UI.
 
+To avoid prompting again for an already stored result:
+
+```ts
+confirm: {
+  mode: "effect-only",
+  request: ({ input, context, signal }) => review(input, context, signal),
+}
+```
+
+`effect-only` confirmation runs inside the store's new-operation callback. Replays and
+coalesced callers do not prompt or execute again. A function-valued `confirm` retains
+the original always-confirm behavior.
+
 ### `idempotency`
 
 ```ts
@@ -75,6 +88,23 @@ The key must not be empty. The store atomically executes or returns a prior resu
 reports whether it was replayed. Once a call starts the operation, it must persist and
 return successful owner work despite a late caller abort. A caller joining existing
 work may cancel its own wait.
+
+### `journal`
+
+```ts
+journal?: {
+  key?: ({ input, context, signal }) => string | Promise<string>;
+  store: OperationJournal;
+};
+```
+
+Creates an invocation-scoped `operation` handle for execution, recovery, and
+verification. The handle provides `key`, `read()`, `write(entry)`, and `remove()`.
+When `key` is omitted, the configured idempotency key is reused.
+
+Journal access uses a separate finalization signal so a correlation write after an
+irreversible effect is not discarded by late caller cancellation. Stores must provide
+their own bounded I/O behavior. See [Operation journals](../guide/operation-journal).
 
 ### `verify`
 
@@ -96,9 +126,10 @@ finalization.
 ### `recover`
 
 ```ts
-recover?: ({ input, context, error, signal }) =>
+recover?: ({ input, context, error, operation, signal }) =>
   | { recovered: true; output: Output }
   | { recovered: false }
+  | { recovered: false; outcome: "unknown"; reason?: string }
   | Promise<RecoveryDecision<Output>>;
 ```
 
@@ -106,7 +137,9 @@ Runs after the application handler throws. Use it to read authoritative state wh
 effect may have committed but its response was lost. A recovered output is cached by
 the configured idempotency store and proceeds through `verify`; returning
 `recovered: false` preserves the original error. Signet never retries automatically or
-conceals an idempotency-store failure.
+conceals an idempotency-store failure. Explicitly returning `outcome: "unknown"`, or
+throwing while authoritative recovery is running, produces `OutcomeUnknownError` and
+the terminal `outcome_unknown` lifecycle stage.
 
 ### `observe`
 
@@ -137,7 +170,7 @@ confirmation_requested|confirmed|declined when confirmation is configured
 executed|replayed|recovered
 output_validated|output_oversized|output_unmeasurable when a budget is configured
 verified         when verification is configured
-succeeded|failed
+succeeded|failed|outcome_unknown
 ```
 
 See the exported TypeScript declarations for the complete structural types.

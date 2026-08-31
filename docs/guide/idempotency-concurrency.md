@@ -51,6 +51,12 @@ preconditions that successful execution changes inside `execute`; placing
 `status === "open"` in `authorize` would reject a later replay before the store can
 return the original result.
 
+For consequential actions, `confirm: { mode: "effect-only", request }` places the
+application-owned confirmation inside the store's new-operation callback. Concurrent
+duplicates share one confirmation and one effect; later exact replays remain authorized
+but do not prompt again. A plain confirmation function keeps the conservative `always`
+behavior.
+
 This is the useful performance property: unrelated customer actions do not wait behind
 one another, while true duplicates converge on one effect.
 
@@ -84,5 +90,9 @@ persistent store repeatedly.
 
 Signet intentionally does not claim “exactly once.” A database and every downstream
 system would need compatible transaction semantics for that claim to be meaningful.
+
+Idempotency remembers the returned result. An [operation journal](./operation-journal)
+stores the smaller correlation data needed to determine what happened when a response
+is lost before that result can be persisted.
 
 Next: [verify the resulting state](./verification).

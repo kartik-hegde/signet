@@ -1,17 +1,22 @@
 import {
   AuthorizationError,
   ConfirmationError,
+  OutcomeUnknownError,
   VerificationError,
 } from "./errors.js";
 import type {
   AuthorizationDecision,
   ConfirmationDecision,
+  ConfirmationHook,
+  ConfirmationPolicy,
   Execute,
   ExecuteOptions,
   GuardEvent,
   GuardOptions,
   GuardStage,
   MaybePromise,
+  OperationHandle,
+  OperationJournal,
   RecoveryDecision,
   VerificationDecision,
 } from "./types.js";
@@ -55,6 +60,35 @@ function confirmationReason(
 
 function isConfirmed(decision: boolean | ConfirmationDecision): boolean {
   return decision === true || (decision !== false && decision.confirmed);
+}
+
+function confirmationPolicy<Input extends Record<string, unknown>, Context>(
+  policy: ConfirmationPolicy<Input, Context> | undefined,
+): {
+  mode: "always" | "effect-only";
+  request?: ConfirmationHook<Input, Context>;
+} {
+  if (!policy) return { mode: "always" };
+  if (typeof policy === "function") {
+    return { mode: "always", request: policy };
+  }
+  return { mode: policy.mode, request: policy.request };
+}
+
+function createOperationHandle(
+  key: string,
+  store: OperationJournal,
+): OperationHandle {
+  // Correlation writes often happen after an irreversible effect. They are
+  // finalization work and must not inherit a caller cancellation that lost the race.
+  const options = { signal: new AbortController().signal };
+  return {
+    key,
+    read: async <Entry>() => await store.read<Entry>(key, options),
+    write: async <Entry>(entry: Entry) =>
+      await store.write(key, entry, options),
+    remove: async () => await store.remove(key, options),
+  };
 }
 
 function isVerified(decision: boolean | VerificationDecision): boolean {
@@ -146,9 +180,11 @@ export async function runGuarded<
       emit("authorized");
     }
 
-    if (options.confirm) {
+    const confirmation = confirmationPolicy(options.confirm);
+    const confirm = async (): Promise<void> => {
+      if (!confirmation.request) return;
       emit("confirmation_requested");
-      const decision = await options.confirm({
+      const decision = await confirmation.request({
         input,
         context,
         signal: executeOptions.signal,
@@ -160,11 +196,47 @@ export async function runGuarded<
         throw new ConfirmationError(confirmationReason(decision));
       }
       emit("confirmed");
+    };
+
+    if (confirmation.mode === "always") {
+      await confirm();
     }
 
     let output: Output;
     let replayed = false;
     let recovered = false;
+    let idempotencyKey: string | undefined;
+
+    if (options.idempotency) {
+      idempotencyKey = await options.idempotency.key({
+        input,
+        context,
+        signal: executeOptions.signal,
+      });
+      executeOptions.signal.throwIfAborted();
+
+      if (typeof idempotencyKey !== "string" || idempotencyKey.length === 0) {
+        throw new TypeError("The idempotency key must not be empty.");
+      }
+    }
+
+    let operation: OperationHandle | undefined;
+    if (options.journal) {
+      const journalKey = options.journal.key
+        ? await options.journal.key({
+            input,
+            context,
+            signal: executeOptions.signal,
+          })
+        : idempotencyKey;
+      executeOptions.signal.throwIfAborted();
+      if (typeof journalKey !== "string" || journalKey.length === 0) {
+        throw new TypeError(
+          "The operation journal needs a non-empty key or an idempotency key.",
+        );
+      }
+      operation = createOperationHandle(journalKey, options.journal.store);
+    }
 
     const recoverFrom = async (
       error: unknown,
@@ -172,25 +244,47 @@ export async function runGuarded<
       executeOptions.signal.throwIfAborted();
       if (!options.recover) return { recovered: false };
 
-      const decision = await options.recover({
-        input,
-        context,
-        error,
-        signal: executeOptions.signal,
-      });
+      let decision: RecoveryDecision<Output>;
+      try {
+        decision = await options.recover({
+          input,
+          context,
+          error,
+          ...(operation === undefined ? {} : { operation }),
+          signal: executeOptions.signal,
+        });
+      } catch (recoveryError) {
+        if (executeOptions.signal.aborted) {
+          throw executeOptions.signal.reason;
+        }
+        throw new OutcomeUnknownError(
+          "Authoritative recovery failed after the operation returned an error.",
+          { cause: new AggregateError([error, recoveryError]) },
+        );
+      }
       executeOptions.signal.throwIfAborted();
 
       if (decision.recovered && !recovered) {
         recovered = true;
         emit("recovered");
       }
+      if (!decision.recovered && decision.outcome === "unknown") {
+        throw new OutcomeUnknownError(decision.reason, { cause: error });
+      }
       return decision;
     };
 
     const executeOrRecover = async (): Promise<Output> => {
+      if (confirmation.mode === "effect-only") {
+        await confirm();
+      }
       try {
         executeOptions.signal.throwIfAborted();
-        return await execute(input, { ...executeOptions, context });
+        return await execute(input, {
+          context,
+          ...(operation === undefined ? {} : { operation }),
+          signal: executeOptions.signal,
+        });
       } catch (error) {
         const decision = await recoverFrom(error);
         if (decision.recovered) return decision.output;
@@ -199,19 +293,8 @@ export async function runGuarded<
     };
 
     if (options.idempotency) {
-      const key = await options.idempotency.key({
-        input,
-        context,
-        signal: executeOptions.signal,
-      });
-      executeOptions.signal.throwIfAborted();
-
-      if (typeof key !== "string" || key.length === 0) {
-        throw new TypeError("The idempotency key must not be empty.");
-      }
-
       const result = await options.idempotency.store.execute(
-        key,
+        idempotencyKey!,
         executeOrRecover,
         executeOptions,
       );
@@ -268,6 +351,7 @@ export async function runGuarded<
           context,
           replayed,
           recovered,
+          ...(operation === undefined ? {} : { operation }),
           signal: finalizationSignal,
         }),
       );
@@ -296,7 +380,10 @@ export async function runGuarded<
     emit("succeeded");
     return output;
   } catch (error) {
-    emit("failed", error);
+    emit(
+      error instanceof OutcomeUnknownError ? "outcome_unknown" : "failed",
+      error,
+    );
     throw error;
   }
 }
@@ -349,7 +436,12 @@ export function guard<
       input,
       executeOptions,
       (guardedInput, guardedOptions) =>
-        execute(guardedInput, { signal: guardedOptions.signal }),
+        execute(guardedInput, {
+          ...(guardedOptions.operation === undefined
+            ? {}
+            : { operation: guardedOptions.operation }),
+          signal: guardedOptions.signal,
+        }),
       options,
     );
 }

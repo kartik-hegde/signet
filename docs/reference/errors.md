@@ -51,6 +51,21 @@ error.name === "VerificationError";
 error.code === "verification_failed";
 ```
 
+## `OutcomeUnknownError`
+
+Thrown when an operation may have committed but authoritative recovery cannot prove
+success or non-execution. Its code is `outcome_unknown`, `retryable` is `false`, and
+its `cause` retains the execution or recovery failure.
+
+```ts
+error.name === "OutcomeUnknownError";
+error.code === "outcome_unknown";
+error.retryable === false;
+```
+
+Do not retry with a new operation key. Reconcile the original intent using the same
+key or route it to application review.
+
 ## Handle by code or class
 
 ```ts
@@ -71,6 +86,10 @@ try {
 
   if (error instanceof VerificationError) {
     return showUncertainOutcome(error.message);
+  }
+
+  if (error instanceof OutcomeUnknownError) {
+    return showReconciliationRequired(error.message);
   }
 
   throw error;

@@ -103,15 +103,22 @@ await signet.expose({
   // keep mutable order eligibility inside execute.
   authorize: ({ context }) => context.scopes.includes("orders:cancel"),
 
-  // Your application renders the review UI; Signet orders and observes the gate.
-  confirm: ({ input }) => confirmCancellation(input.orderId),
+  // Prompt only when a new effect will run. Exact replays remain authorized but
+  // return their durable result without asking the user to approve it again.
+  confirm: {
+    mode: "effect-only",
+    request: ({ input }) => confirmCancellation(input.orderId),
+  },
 
   idempotency: {
     store: productionIdempotencyStore,
     key: ({ input, context }) => `${context.userId}:${input.orderId}:cancel`,
   },
 
-  execute: async ({ orderId }, { context, signal }) => {
+  // Reuse the idempotency key for a small, durable correlation record.
+  journal: { store: productionOperationJournal },
+
+  execute: async ({ orderId }, { context, operation, signal }) => {
     const order = await getOrder(orderId);
 
     if (order?.status === "shipped") {
@@ -122,18 +129,29 @@ await signet.expose({
       });
     }
 
-    return cancelOrder({
+    const cancelled = await cancelOrder({
       orderId,
       userId: context.userId,
       signal,
     });
+    await operation?.write({ orderId: cancelled.id });
+    return cancelled;
   },
 
-  recover: async ({ input, context }) => {
+  recover: async ({ input, context, operation }) => {
+    const correlation = await operation?.read<{ orderId: string }>();
     const order = await getOrder(input.orderId);
-    return order?.userId === context.userId && order.status === "cancelled"
-      ? { recovered: true, output: order }
-      : { recovered: false };
+    if (order?.userId === context.userId && order.status === "cancelled") {
+      return correlation?.orderId === order.id
+        ? { recovered: true, output: order }
+        : {
+            recovered: false,
+            outcome: "unknown",
+            reason:
+              "The order is cancelled but its operation record is missing.",
+          };
+    }
+    return { recovered: false };
   },
 
   // Warn when a response is too broad for the intended agent task.
@@ -160,7 +178,9 @@ eligibility that success changesâ€”for example, whether an order is still openâ€
 `recover` is for ambiguous failures such as a response lost after commit. It may report
 success only after reading authoritative application state. Recovered results still run
 through `verify` and, when idempotency is configured, become the stored result for later
-replays.
+replays. Return `outcome: "unknown"` when the effect may have happened but authoritative
+reconciliation cannot prove either result; Signet raises `OutcomeUnknownError` and tells
+the caller not to retry under a new key.
 
 ## Test without a model or browser
 

@@ -26,6 +26,7 @@ Use this before shipping an authenticated or state-changing WebMCP tool.
 - [ ] Preserve the `AbortSignal` through cancellable work.
 - [ ] Do not assume cancellation proves that no effect occurred.
 - [ ] Use existing application review or confirmation UX for consequential actions.
+- [ ] Decide whether confirmation applies to every invocation or only a new effect.
 - [ ] Set and test a task-focused output byte budget.
 
 ## Concurrency and operations
@@ -33,6 +34,7 @@ Use this before shipping an authenticated or state-changing WebMCP tool.
 - [ ] Prove identical concurrent keys produce one effect.
 - [ ] Prove different keys can execute concurrently.
 - [ ] Define retention and recovery behavior for idempotency records.
+- [ ] Persist the minimum correlation data needed to reconcile a lost response.
 - [ ] Keep inputs and outputs out of default telemetry.
 - [ ] Decide how support and users see indeterminate outcomes.
 
@@ -41,6 +43,8 @@ Use this before shipping an authenticated or state-changing WebMCP tool.
 - [ ] Denied callers cannot reach the handler.
 - [ ] Context and policy failures fail closed.
 - [ ] Execution and replay both run verification.
+- [ ] Exact replay does not create a second effect or unwanted confirmation prompt.
+- [ ] Ambiguous recovery produces `outcome_unknown`, never a blind retry.
 - [ ] Application errors preserve their identity.
 - [ ] Telemetry failure cannot break the operation.
 - [ ] Native discovery, invocation, visible state, and cleanup work in each target agent.

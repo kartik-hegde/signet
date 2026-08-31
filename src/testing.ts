@@ -2,6 +2,8 @@ import type {
   ExecuteOptions,
   IdempotencyResult,
   IdempotencyStore,
+  OperationJournal,
+  OperationJournalOptions,
 } from "./types.js";
 import type { ModelContextLike } from "./interface.js";
 import type { MaybePromise } from "./types.js";
@@ -88,6 +90,37 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
 
   clear(): void {
     this.#operations.clear();
+  }
+}
+
+/** Process-local operation correlation journal for tests and demos. */
+export class MemoryOperationJournal implements OperationJournal {
+  readonly #entries = new Map<string, unknown>();
+
+  read<Entry>(
+    key: string,
+    options: OperationJournalOptions,
+  ): Entry | undefined {
+    options.signal.throwIfAborted();
+    return this.#entries.get(key) as Entry | undefined;
+  }
+
+  write<Entry>(
+    key: string,
+    entry: Entry,
+    options: OperationJournalOptions,
+  ): void {
+    options.signal.throwIfAborted();
+    this.#entries.set(key, entry);
+  }
+
+  remove(key: string, options: OperationJournalOptions): void {
+    options.signal.throwIfAborted();
+    this.#entries.delete(key);
+  }
+
+  clear(): void {
+    this.#entries.clear();
   }
 }
 

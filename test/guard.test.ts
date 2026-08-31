@@ -3,11 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 import {
   AuthorizationError,
   ConfirmationError,
+  OutcomeUnknownError,
   VerificationError,
   guard,
   type GuardEvent,
 } from "../src/index.js";
-import { MemoryIdempotencyStore } from "../src/testing.js";
+import {
+  MemoryIdempotencyStore,
+  MemoryOperationJournal,
+} from "../src/testing.js";
 
 const active = (): { signal: AbortSignal } => ({
   signal: new AbortController().signal,
@@ -176,6 +180,69 @@ describe("guard", () => {
     expect(key).not.toHaveBeenCalled();
   });
 
+  it("confirms only a new effect when configured for effect-only consent", async () => {
+    const confirm = vi.fn(() => true);
+    const execute = vi.fn(async () => ({ state: "complete" as const }));
+    const events: GuardEvent[] = [];
+    const guarded = guard(execute, {
+      confirm: { mode: "effect-only", request: confirm },
+      idempotency: {
+        key: () => "place-order-1",
+        store: new MemoryIdempotencyStore(),
+      },
+      observe: (event) => {
+        events.push(event);
+      },
+    });
+
+    const first = await guarded({}, active());
+    const replay = await guarded({}, active());
+
+    expect(replay).toEqual(first);
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(execute).toHaveBeenCalledOnce();
+    expect(events.map(({ stage }) => stage)).toEqual([
+      "started",
+      "confirmation_requested",
+      "confirmed",
+      "executed",
+      "succeeded",
+      "started",
+      "replayed",
+      "succeeded",
+    ]);
+  });
+
+  it("coalesces concurrent effect-only confirmation behind the store", async () => {
+    const store = new MemoryIdempotencyStore();
+    let approve: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      approve = resolve;
+    });
+    const confirm = vi.fn(async () => {
+      await gate;
+      return true;
+    });
+    const execute = vi.fn(async () => "done");
+    const guarded = guard(execute, {
+      confirm: { mode: "effect-only", request: confirm },
+      idempotency: { key: () => "same-effect", store },
+    });
+
+    const first = guarded({}, active());
+    const second = guarded({}, active());
+    await Promise.resolve();
+    await Promise.resolve();
+    approve?.();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      "done",
+      "done",
+    ]);
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(execute).toHaveBeenCalledOnce();
+  });
+
   it("uses a stable default confirmation-decline message", async () => {
     const guarded = guard(async () => "done", { confirm: () => false });
     await expect(guarded({}, active())).rejects.toBeInstanceOf(
@@ -306,6 +373,115 @@ describe("guard", () => {
     await expect(guarded({}, active())).rejects.toBe(failure);
     expect(recover).toHaveBeenCalledWith(
       expect.objectContaining({ error: failure }),
+    );
+  });
+
+  it("surfaces an explicitly unknown outcome as its own terminal state", async () => {
+    const failure = new Error("response lost");
+    const events: GuardEvent[] = [];
+    const guarded = guard(
+      async () => {
+        throw failure;
+      },
+      {
+        recover: () => ({
+          recovered: false,
+          outcome: "unknown",
+          reason: "The provider accepted the request but has no lookup key.",
+        }),
+        observe: (event) => {
+          events.push(event);
+        },
+      },
+    );
+
+    await expect(guarded({}, active())).rejects.toEqual(
+      expect.objectContaining({
+        name: "OutcomeUnknownError",
+        code: "outcome_unknown",
+        retryable: false,
+        cause: failure,
+      }),
+    );
+    expect(events.map(({ stage }) => stage)).toEqual([
+      "started",
+      "outcome_unknown",
+    ]);
+  });
+
+  it("treats a failed authoritative recovery read as unknown", async () => {
+    const guarded = guard(
+      async () => {
+        throw new Error("response lost");
+      },
+      {
+        recover: async () => {
+          throw new Error("database unavailable");
+        },
+      },
+    );
+
+    await expect(guarded({}, active())).rejects.toBeInstanceOf(
+      OutcomeUnknownError,
+    );
+  });
+
+  it("shares a scoped operation journal across execution and recovery", async () => {
+    const journal = new MemoryOperationJournal();
+    const guarded = guard(
+      async (_input, { operation }) => {
+        expect(operation?.key).toBe("checkout-1:operation-1");
+        await operation?.write({ orderId: "order-1" });
+        throw new Error("response lost after commit");
+      },
+      {
+        journal: {
+          key: () => "checkout-1:operation-1",
+          store: journal,
+        },
+        recover: async ({ operation }) => {
+          const entry = await operation?.read<{ orderId: string }>();
+          return entry
+            ? { recovered: true, output: entry }
+            : { recovered: false, outcome: "unknown" };
+        },
+      },
+    );
+
+    await expect(guarded({}, active())).resolves.toEqual({
+      orderId: "order-1",
+    });
+  });
+
+  it("reuses the idempotency key for a journal when no journal key is given", async () => {
+    const journal = new MemoryOperationJournal();
+    const guarded = guard(
+      async (_input, { operation }) => {
+        await operation?.write({ state: "recorded" });
+        return operation?.key;
+      },
+      {
+        idempotency: {
+          key: () => "shared-key",
+          store: new MemoryIdempotencyStore(),
+        },
+        journal: { store: journal },
+      },
+    );
+
+    await expect(guarded({}, active())).resolves.toBe("shared-key");
+    expect(journal.read("shared-key", active())).toEqual({
+      state: "recorded",
+    });
+  });
+
+  it("requires a journal key when idempotency is not configured", async () => {
+    const guarded = guard(async () => "done", {
+      journal: { store: new MemoryOperationJournal() },
+    });
+
+    await expect(guarded({}, active())).rejects.toThrow(
+      "journal needs a non-empty key",
     );
   });
 

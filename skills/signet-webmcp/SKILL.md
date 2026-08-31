@@ -61,9 +61,23 @@ const registration = await signet.expose({
         ":",
       ),
   },
-  execute: ({ orderId, reason }, { context, signal }) =>
-    cancelOrder({ orderId, reason }, { accountId: context.accountId, signal }),
-  recover: async ({ input, context, signal }) => {
+  confirm: {
+    mode: "effect-only",
+    request: ({ input }) => confirmCancellation(input.orderId),
+  },
+  journal: { store: operationJournal },
+  execute: async ({ orderId, reason }, { context, operation, signal }) => {
+    const order = await cancelOrder(
+      { orderId, reason },
+      { accountId: context.accountId, signal },
+    );
+    await operation?.write({ orderId: order.id });
+    return order;
+  },
+  recover: async ({ input, context, operation, signal }) => {
+    if (!(await operation?.read())) {
+      return { recovered: false, outcome: "unknown" };
+    }
     const order = await getOrder(input.orderId, { signal });
     return matchesRequestedCancellation(order, input, context)
       ? { recovered: true, output: order }
@@ -85,8 +99,8 @@ registration.dispose();
 - `expose(tool)` validates the definition and registers it through native WebMCP. It
   returns an idempotent `dispose()` handle. A failed registration remains retryable.
 - Execution order is: cancellation check, input validation, context, authorization,
-  optional confirmation, idempotent execute/replay, optional recovery, optional output
-  limit, verification, result.
+  optional always-confirmation, idempotency lookup, optional effect-only confirmation
+  and execute, optional recovery, output limit, verification, result.
 - Once `execute` resolves, cancellation has lost the race. Signet completes
   verification and emits `completed_after_abort` when relevant.
 - `authorize({ input, context, signal })` runs before the handler and returns a boolean
@@ -97,13 +111,16 @@ registration.dispose();
 - `idempotency.store.execute(key, operation, { signal })` is application-supplied. The
   key must include principal, operation ID, and every intent-changing argument. Signet
   deliberately has no default production store.
-- `confirm({ input, context, signal })` delegates consent to application-owned UI and
-  runs before idempotency.
-- `execute(input, { context, signal })` is never automatically retried by Signet.
-- `recover({ input, context, error, signal })` runs only after the handler throws. Return
-  `{ recovered: true, output }` only after authoritative proof. It does not conceal store
-  failures.
-- `verify({ input, output, context, replayed, recovered, signal })` runs after execute,
+- A function-valued `confirm` runs on every call before idempotency. Use
+  `{ mode: "effect-only", request }` to prompt only when the store will run a new effect.
+- `journal: { store, key? }` supplies a scoped `operation` handle to execute, recover,
+  and verify. It reuses the idempotency key when `key` is omitted. The app owns storage.
+- `execute(input, { context, operation?, signal })` is never automatically retried by Signet.
+- `recover({ input, context, error, operation?, signal })` runs only after the handler throws. Return
+  `{ recovered: true, output }` only after authoritative proof. Return
+  `{ recovered: false, outcome: "unknown", reason? }` when neither success nor
+  non-execution can be proved. It does not conceal store failures.
+- `verify({ input, output, context, replayed, recovered, operation?, signal })` runs after execute,
   replay, or recovery. A false result throws `VerificationError`. Its post-execution
   finalization signal is independent of caller cancellation, so network verification
   should apply an application-owned timeout.
@@ -133,6 +150,8 @@ its `modelContext` to `createSignet`, and invoke the tool with
 - concurrent equal intent causes one effect;
 - different intent does not collapse;
 - failed pre-effect work remains retryable;
+- effect-only confirmation does not prompt again on replay;
+- ambiguous post-effect failure becomes `OutcomeUnknownError`;
 - verification runs after execution and replay;
 - aborted work causes no effect;
 - observer failure does not affect behavior;

@@ -1,7 +1,34 @@
 export type MaybePromise<T> = T | Promise<T>;
 
+export interface OperationJournalOptions {
+  readonly signal: AbortSignal;
+}
+
+/** App-provided durable storage for post-effect correlation data. */
+export interface OperationJournal {
+  read<Entry>(
+    key: string,
+    options: OperationJournalOptions,
+  ): MaybePromise<Entry | undefined>;
+  write<Entry>(
+    key: string,
+    entry: Entry,
+    options: OperationJournalOptions,
+  ): MaybePromise<void>;
+  remove(key: string, options: OperationJournalOptions): MaybePromise<void>;
+}
+
+/** Invocation-scoped access to one operation's journal entry. */
+export interface OperationHandle {
+  readonly key: string;
+  read<Entry>(): Promise<Entry | undefined>;
+  write<Entry>(entry: Entry): Promise<void>;
+  remove(): Promise<void>;
+}
+
 export interface ExecuteOptions {
   readonly signal: AbortSignal;
+  readonly operation?: OperationHandle;
 }
 
 export type Execute<Input extends Record<string, unknown>, Output> = (
@@ -19,6 +46,23 @@ export interface ConfirmationDecision {
   readonly reason?: string;
 }
 
+export type ConfirmationHook<
+  Input extends Record<string, unknown>,
+  Context,
+> = (args: {
+  readonly input: Input;
+  readonly context: Context;
+  readonly signal: AbortSignal;
+}) => MaybePromise<boolean | ConfirmationDecision>;
+
+export type ConfirmationPolicy<Input extends Record<string, unknown>, Context> =
+  | ConfirmationHook<Input, Context>
+  | {
+      /** `effect-only` skips a second prompt when durable state is replayed. */
+      readonly mode: "always" | "effect-only";
+      readonly request: ConfirmationHook<Input, Context>;
+    };
+
 export interface VerificationDecision {
   readonly verified: boolean;
   readonly reason?: string;
@@ -26,7 +70,16 @@ export interface VerificationDecision {
 
 export type RecoveryDecision<Output> =
   | { readonly recovered: true; readonly output: Output }
-  | { readonly recovered: false };
+  | {
+      readonly recovered: false;
+      /** Explicitly distinguish an ambiguous effect from an ordinary failure. */
+      readonly outcome?: "not-recovered";
+    }
+  | {
+      readonly recovered: false;
+      readonly outcome: "unknown";
+      readonly reason?: string;
+    };
 
 export interface IdempotencyResult<Output> {
   readonly value: Output;
@@ -60,6 +113,7 @@ export type GuardStage =
   | "executed"
   | "replayed"
   | "recovered"
+  | "outcome_unknown"
   | "output_validated"
   | "output_oversized"
   | "output_unmeasurable"
@@ -104,12 +158,8 @@ export interface GuardOptions<
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | AuthorizationDecision>;
 
-  /** Asks the application to obtain consent before any idempotency lookup or effect. */
-  readonly confirm?: (args: {
-    readonly input: Input;
-    readonly context: Context;
-    readonly signal: AbortSignal;
-  }) => MaybePromise<boolean | ConfirmationDecision>;
+  /** Obtains app-owned consent always, or only when a new effect will run. */
+  readonly confirm?: ConfirmationPolicy<Input, Context>;
 
   /** Delegates atomic replay/concurrency behavior to an app-provided durable store. */
   readonly idempotency?: {
@@ -121,11 +171,22 @@ export interface GuardOptions<
     readonly store: IdempotencyStore;
   };
 
+  /** Gives execute/recover/verify a scoped durable correlation journal. */
+  readonly journal?: {
+    readonly key?: (args: {
+      readonly input: Input;
+      readonly context: Context;
+      readonly signal: AbortSignal;
+    }) => MaybePromise<string>;
+    readonly store: OperationJournal;
+  };
+
   /** Reconciles an execution error against authoritative application state. */
   readonly recover?: (args: {
     readonly input: Input;
     readonly context: Context;
     readonly error: unknown;
+    readonly operation?: OperationHandle;
     readonly signal: AbortSignal;
   }) => MaybePromise<RecoveryDecision<Output>>;
 
@@ -136,6 +197,7 @@ export interface GuardOptions<
     readonly context: Context;
     readonly replayed: boolean;
     readonly recovered: boolean;
+    readonly operation?: OperationHandle;
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | VerificationDecision>;
 

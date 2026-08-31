@@ -70,4 +70,23 @@ recover: async ({ input, context, signal }) => {
 
 This is reconciliation, not retry. Signet calls the handler at most once. A recovered
 output still passes through `verify`, and an idempotency store retains it for later
-replays. Return `recovered: false` unless the requested outcome is proven.
+replays. Return `recovered: false` when authoritative state proves no success.
+
+When the effect may have happened but reconciliation cannot establish the result,
+return an explicit unknown outcome:
+
+```ts
+return {
+  recovered: false,
+  outcome: "unknown",
+  reason:
+    "The payment provider accepted the request, but the order lookup failed.",
+};
+```
+
+Signet throws `OutcomeUnknownError` with code `outcome_unknown`. It is non-retryable:
+the caller should reconcile using the same operation key rather than risk a second
+effect. A thrown recovery hook is treated the same way because recovery itself failed.
+
+Use an [operation journal](./operation-journal) when recovery needs a durable provider
+reference or created resource ID that is only known after the effect begins.

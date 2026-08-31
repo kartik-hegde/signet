@@ -43,6 +43,7 @@ export default defineConfig({
             link: "/guide/idempotency-concurrency",
           },
           { text: "Outcome verification", link: "/guide/verification" },
+          { text: "Operation journals", link: "/guide/operation-journal" },
           { text: "Testing", link: "/guide/testing" },
           { text: "Developer tooling", link: "/guide/developer-tooling" },
           { text: "Performance", link: "/guide/performance" },
@@ -56,6 +57,10 @@ export default defineConfig({
           { text: "Errors", link: "/reference/errors" },
           { text: "OpenTelemetry", link: "/reference/opentelemetry" },
         ],
+      },
+      {
+        text: "Case studies",
+        items: [{ text: "Saleor checkout", link: "/case-studies/saleor" }],
       },
       {
         text: "Project",

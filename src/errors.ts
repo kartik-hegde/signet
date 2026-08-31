@@ -3,6 +3,7 @@ export type SignetErrorCode =
   | "confirmation_declined"
   | "invalid_input"
   | "verification_failed"
+  | "outcome_unknown"
   | (string & {});
 
 export class SignetError extends Error {
@@ -123,5 +124,22 @@ export class VerificationError extends SignetError {
   ) {
     super("verification_failed", reason, options);
     this.name = "VerificationError";
+  }
+}
+
+/** The effect may exist, but authoritative recovery could not prove either state. */
+export class OutcomeUnknownError extends SignetError {
+  readonly retryable = false;
+
+  constructor(
+    reason = "The operation may have completed, but its outcome could not be determined.",
+    options?: ErrorOptions,
+  ) {
+    super(
+      "outcome_unknown",
+      `[outcome_unknown] ${reason} Do not retry with a new operation key.`,
+      options,
+    );
+    this.name = "OutcomeUnknownError";
   }
 }

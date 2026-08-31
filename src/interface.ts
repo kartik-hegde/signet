@@ -2,11 +2,13 @@ import { runGuarded } from "./guard.js";
 import { compileInputValidator } from "./validation.js";
 import type {
   AuthorizationDecision,
-  ConfirmationDecision,
+  ConfirmationPolicy,
   GuardEvent,
   GuardObserver,
   IdempotencyStore,
   MaybePromise,
+  OperationHandle,
+  OperationJournal,
   RecoveryDecision,
   VerificationDecision,
 } from "./types.js";
@@ -60,6 +62,7 @@ export interface SignetTool<
     input: Input,
     options: {
       readonly context: Context;
+      readonly operation?: OperationHandle;
       readonly signal: AbortSignal;
     },
   ) => MaybePromise<Output>;
@@ -68,11 +71,7 @@ export interface SignetTool<
     readonly context: Context;
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | AuthorizationDecision>;
-  readonly confirm?: (args: {
-    readonly input: Input;
-    readonly context: Context;
-    readonly signal: AbortSignal;
-  }) => MaybePromise<boolean | ConfirmationDecision>;
+  readonly confirm?: ConfirmationPolicy<Input, Context>;
   readonly idempotency?: {
     readonly key: (args: {
       readonly input: Input;
@@ -81,10 +80,19 @@ export interface SignetTool<
     }) => MaybePromise<string>;
     readonly store: IdempotencyStore;
   };
+  readonly journal?: {
+    readonly key?: (args: {
+      readonly input: Input;
+      readonly context: Context;
+      readonly signal: AbortSignal;
+    }) => MaybePromise<string>;
+    readonly store: OperationJournal;
+  };
   readonly recover?: (args: {
     readonly input: Input;
     readonly context: Context;
     readonly error: unknown;
+    readonly operation?: OperationHandle;
     readonly signal: AbortSignal;
   }) => MaybePromise<RecoveryDecision<Output>>;
   readonly outputBudgetBytes?: number;
@@ -95,6 +103,7 @@ export interface SignetTool<
     readonly context: Context;
     readonly replayed: boolean;
     readonly recovered: boolean;
+    readonly operation?: OperationHandle;
     readonly signal: AbortSignal;
   }) => MaybePromise<boolean | VerificationDecision>;
 }
@@ -343,6 +352,7 @@ export function createSignet<Context = undefined>(
             ...(tool.authorize ? { authorize: tool.authorize } : {}),
             ...(tool.confirm ? { confirm: tool.confirm } : {}),
             ...(tool.idempotency ? { idempotency: tool.idempotency } : {}),
+            ...(tool.journal ? { journal: tool.journal } : {}),
             ...(tool.recover ? { recover: tool.recover } : {}),
             ...(tool.outputBudgetBytes === undefined
               ? {}

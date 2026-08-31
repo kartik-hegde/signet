@@ -21,6 +21,9 @@ frozen.
 |  12 | Done     | Agent-selection evaluations    | Saved-task harness separately scores selection, arguments, and authoritative completion.                                                                              |
 |  13 | Deferred | Adapters beyond React          | Add only after real Vue or Svelte integrations prove the binding shape.                                                                                               |
 |  14 | Backlog  | Scaffold command               | Revisit after real integrations show what can be generated without hiding application intent.                                                                         |
+|  15 | Done     | Explicit unknown outcomes      | Failed reconciliation produces a non-retryable `outcome_unknown` result instead of collapsing into ordinary failure.                                                  |
+|  16 | Done     | Replay-aware confirmation      | Consequential tools can prompt only when a new effect will run; authorization and verification still run on replay.                                                   |
+|  17 | Done     | Operation journal              | Execute and recovery share a scoped durable correlation record, with browser and test adapters included.                                                              |
 
 ## Next proof points
 

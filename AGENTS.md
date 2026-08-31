@@ -31,9 +31,29 @@ const registration = await signet.expose({
     key: ({ input, context }) =>
       `${context.accountId}:${input.operationId}:${input.orderId}:cancel`,
   },
-  execute: ({ orderId }, { context, signal }) =>
-    cancelOrder({ orderId, accountId: context.accountId, signal }),
-  recover: async ({ input, context, signal }) => {
+  confirm: {
+    mode: "effect-only",
+    request: ({ input }) => confirmCancellation(input.orderId),
+  },
+  journal: { store: operationJournal }, // reuses the idempotency key
+  execute: async ({ orderId }, { context, operation, signal }) => {
+    const result = await cancelOrder({
+      orderId,
+      accountId: context.accountId,
+      signal,
+    });
+    await operation?.write({ orderId: result.id });
+    return result;
+  },
+  recover: async ({ input, context, operation, signal }) => {
+    const correlation = await operation?.read<{ orderId: string }>();
+    if (!correlation) {
+      return {
+        recovered: false,
+        outcome: "unknown",
+        reason: "Cancellation may have committed without a correlation ID.",
+      };
+    }
     const order = await getOrder(input.orderId, { signal });
     return order?.accountId === context.accountId &&
       order.status === "cancelled"
@@ -66,8 +86,8 @@ hooks only when the workflow needs them.
   read-only tools with `annotations: { readOnlyHint: true }`; there is no top-level
   `readOnly` option.
 - Execution order is: abort check, input validation, context, authorization, optional
-  confirmation, idempotent execute/replay, optional authoritative recovery, optional
-  output limit, verification, result.
+  always-confirmation, idempotency lookup, optional effect-only confirmation and
+  execute, optional authoritative recovery, output limit, verification, result.
 - Cancellation is honored through execution. Once the handler returns successfully,
   Signet finishes verification and returns the real outcome; late cancellation emits
   `completed_after_abort` instead of converting success into `AbortError`.
@@ -83,14 +103,24 @@ hooks only when the workflow needs them.
   joining existing work may cancel their own wait. Include principal, operation ID,
   and every intent-changing argument in the key. Signet intentionally ships no
   durable production store. Use `checkIdempotencyStore()` to verify an adapter.
-- `confirm({ input, context, signal })` lets the application obtain consent after
-  authorization and before any idempotency lookup. Signet does not render the UI.
-- `execute(input, { context, signal })` runs at most once per store operation. Signet
-  never retries it automatically.
-- `recover({ input, context, error, signal })` runs only after the handler throws. It
+- A function-valued `confirm` obtains consent on every invocation before idempotency,
+  preserving the original behavior. Use
+  `confirm: { mode: "effect-only", request }` to prompt only inside a new store
+  operation; replay then returns without a second prompt. Signet does not render UI.
+- `journal: { store, key? }` gives execute, recover, and verify an `operation` handle
+  with `key`, `read()`, `write()`, and `remove()`. Without `key`, it reuses the
+  idempotency key. Journal methods use a finalization signal because correlation writes
+  commonly follow an irreversible effect. The application still owns durable storage.
+- `execute(input, { context, operation?, signal })` runs at most once per store
+  operation. Signet never retries it automatically.
+- `recover({ input, context, error, operation?, signal })` runs only after the handler throws. It
   may return `{ recovered: true, output }` only after authoritative proof; otherwise
-  return `{ recovered: false }`. It never conceals idempotency-store failures.
-- `verify({ input, output, context, replayed, recovered, signal })` runs after execute,
+  return `{ recovered: false }` for an ordinary failure. Return
+  `{ recovered: false, outcome: "unknown", reason? }` when an effect may exist but
+  neither success nor non-execution can be proven; Signet throws `OutcomeUnknownError`
+  and emits `outcome_unknown`. A thrown recovery read is also outcome-unknown. Recovery
+  never conceals idempotency-store failures.
+- `verify({ input, output, context, replayed, recovered, operation?, signal })` runs after execute,
   replay, or recovery. False throws `VerificationError`. After execution, its fresh
   finalization signal is not cancelled by the caller. Set `verifyTimeoutMs` to bound
   verification; the supplied signal then aborts at that deadline.
@@ -99,7 +129,7 @@ hooks only when the workflow needs them.
 - `observe(event)` receives metadata only. Stages include `registering`, `registered`,
   `registration_failed`, `unregistered`, `started`, `validated`, `authorized`,
   `confirmation_requested`, `confirmed`, `declined`, `executed`, `replayed`,
-  `recovered`, `output_validated`, `output_oversized`, `output_unmeasurable`,
+  `recovered`, `outcome_unknown`, `output_validated`, `output_oversized`, `output_unmeasurable`,
   `completed_after_abort`, `verified`, `succeeded`, and `failed`. Observer failure never
   changes application behavior.
 - `tools()` returns current metadata-only inventory; `observe(listener)` adds a

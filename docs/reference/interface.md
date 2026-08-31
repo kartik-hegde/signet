@@ -37,21 +37,29 @@ Optional Signet controls:
 - `authorize`;
 - `confirm`;
 - `idempotency`;
+- `journal`;
 - `recover`;
 - `verify`;
 - `verifyTimeoutMs`;
 - `outputBudgetBytes`.
 
-The execution callback receives the validated input plus application `context` and
-the native WebMCP `AbortSignal`.
+The execution callback receives the validated input plus application `context`, an
+optional scoped `operation` journal handle, and the native WebMCP `AbortSignal`.
 
 `recover` runs only after the application handler throws. It receives the original
 error and may return `{ recovered: true, output }` after proving the outcome from
-authoritative state. `{ recovered: false }` preserves the original error. Signet does
-not retry the operation or conceal idempotency-store failures.
+authoritative state. `{ recovered: false }` preserves the original error. An explicit
+`{ recovered: false, outcome: "unknown" }` throws `OutcomeUnknownError`; a recovery
+read that throws does the same. Signet does not retry the operation or conceal
+idempotency-store failures.
 
-`confirm` runs after authorization and before idempotency. The application owns and
-renders the consent experience; Signet only sequences and observes it.
+A function-valued `confirm` runs after authorization and before idempotency. The
+`{ mode: "effect-only", request }` form runs only when the store starts a new effect,
+so replay does not ask twice. The application owns and renders the consent experience.
+
+`journal` connects an app-provided `OperationJournal` to the invocation. Its handle is
+available to execute, recover, and verify. A missing journal key reuses the idempotency
+key; without either key the definition fails before any effect.
 
 `outputBudgetBytes` measures the JSON-serialized result after execution or replay and
 before verification. Oversized or unmeasurable output emits a lifecycle diagnostic and
