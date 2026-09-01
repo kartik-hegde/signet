@@ -10,6 +10,11 @@ agent interface evolves.
 Complete the [first agent call](../tutorials/first-agent-call) before this tutorial if
 you have not yet inspected and invoked a native WebMCP tool in Chrome.
 
+This codelab tours a finished reference application, so it presents implementation
+before the retained Case. In your own application, follow the
+[User Jobs to Be Done workflow](./user-jobs-workflow): define the user outcome,
+criteria, and oracle first, then derive the tools.
+
 ## Before you start
 
 For the deterministic and native-browser lanes, you need:

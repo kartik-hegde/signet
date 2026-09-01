@@ -4,6 +4,11 @@ The tutorials move from one browser-local function to a production-shaped operat
 Each one ends with observable evidence: a registered native tool, an execution trace,
 and—when the tool changes data—an authoritative application result.
 
+Starting from your own application? Use the
+[User Jobs to Be Done workflow](../guide/user-jobs-workflow) to choose one outcome,
+time-box its capability sketch, define the Case and oracle, and only then implement the
+minimum tool surface. The codelabs below provide runnable examples for each proof lane.
+
 | Codelab                                                   | What you build or run                           | What it teaches                                                                                                  | Time          |
 | --------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------- |
 | [1. First agent call](./first-agent-call)                 | A React page with `get_greeting`                | Registration, Chrome discovery, manual invocation, and an agent bridge                                           | 15 minutes    |

@@ -53,4 +53,5 @@ Signet is not a new protocol, a production browser polyfill, a remote tool catal
 or a hosted replacement for your application. Native WebMCP remains visible, and your
 identity, policy, data, handlers, and backend stay authoritative.
 
-Next: [expose a native tool](./getting-started).
+Next: choose an outcome and define its proof with the
+[User Jobs to Be Done workflow](./user-jobs-workflow).

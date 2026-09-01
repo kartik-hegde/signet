@@ -31,6 +31,10 @@ export default defineConfig({
         text: "Start",
         items: [
           { text: "Why Signet", link: "/guide/why-signet" },
+          {
+            text: "User jobs workflow",
+            link: "/guide/user-jobs-workflow",
+          },
           { text: "Getting started", link: "/guide/getting-started" },
           { text: "Core concepts", link: "/guide/core-concepts" },
           { text: "Production WebMCP", link: "/guide/production-webmcp" },
