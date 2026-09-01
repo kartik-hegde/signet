@@ -7,6 +7,7 @@
     "node": ">=22.5"
   },
   "scripts": {
+    "test:eval": "node --test eval/test/*.test.mjs",
     "bench:p0": "node scripts/run-p0.mjs",
     "bench:p1": "npx --yes --package=node@24 node agent-effectiveness/run.mjs",
     "bench:p1:rescore": "npx --yes --package=node@24 node agent-effectiveness/run.mjs --rescore",
