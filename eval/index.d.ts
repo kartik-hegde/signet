@@ -140,3 +140,103 @@ export function createEvidence(input: {
   readonly redaction?: TrialEvidence["redaction"];
 }): TrialEvidence;
 export function validateEvidence(value: unknown): TrialEvidence;
+
+export interface EvaluationCondition {
+  readonly id: string;
+  readonly description?: string;
+  readonly parameters?: Readonly<Record<string, unknown>>;
+}
+
+export interface TrialContext {
+  readonly id: string;
+  readonly trialId: string;
+  readonly index: number;
+  readonly caseDefinition: SignetCase;
+  readonly condition: EvaluationCondition;
+  readonly outputDir?: string;
+  readonly signal: AbortSignal;
+  readonly artifacts: Record<string, unknown>[];
+  emit(type: string, detail?: Record<string, unknown>): void;
+}
+
+export interface ApplicationAdapter {
+  readonly id: string;
+  readonly version?: string;
+  prepare?(context: Record<string, unknown>): Promise<void>;
+  reset(context: TrialContext): Promise<void>;
+  entrypoint(context: TrialContext): Promise<string> | string;
+  cleanup?(context: Record<string, unknown>): Promise<void>;
+}
+
+export interface BrowserAdapter<Session = unknown> {
+  readonly id: string;
+  readonly version?: string;
+  open(context: TrialContext & { readonly url: string }): Promise<Session>;
+  inventory(context: TrialContext & { readonly session: Session }): Promise<Record<string, unknown>[]>;
+  close?(context: TrialContext & { readonly session: Session }): Promise<void>;
+}
+
+export interface AgentAdapter<Session = unknown> {
+  readonly id: string;
+  readonly version?: string;
+  readonly provider?: string;
+  readonly model?: string;
+  run(context: TrialContext & {
+    readonly session: Session;
+    readonly inventory: readonly Record<string, unknown>[];
+  }): Promise<Record<string, unknown>>;
+}
+
+export interface FaultAdapter<Session = unknown> {
+  readonly id: string;
+  readonly version?: string;
+  arm(context: TrialContext & { readonly session: Session }): Promise<void>;
+  disarm(context: TrialContext & { readonly session: Session }): Promise<void>;
+}
+
+export interface OracleGrade {
+  readonly authoritativeSuccess: boolean;
+  readonly safeSuccess: boolean;
+  readonly forbiddenEffects: readonly string[];
+  readonly components?: Readonly<Record<string, unknown>>;
+}
+
+export interface OracleAdapter {
+  readonly id: string;
+  readonly version?: string;
+  snapshot(context: TrialContext & { readonly phase: string }): Promise<unknown>;
+  grade(context: TrialContext & {
+    readonly before: unknown;
+    readonly after: unknown;
+    readonly agent: Readonly<Record<string, unknown>>;
+    readonly inventory: readonly Record<string, unknown>[];
+    readonly events: readonly Record<string, unknown>[];
+  }): Promise<OracleGrade>;
+}
+
+export interface EvaluationDefinition {
+  readonly suite: SignetSuite;
+  readonly conditions?: readonly EvaluationCondition[];
+  readonly adapters: {
+    readonly application: ApplicationAdapter;
+    readonly browser: BrowserAdapter;
+    readonly agent: AgentAdapter;
+    readonly oracle: OracleAdapter;
+    readonly faults?: readonly FaultAdapter[];
+  };
+}
+
+export function defineEvaluation(definition: EvaluationDefinition): EvaluationDefinition & {
+  readonly conditions: readonly EvaluationCondition[];
+};
+export function validateAdapter(kind: string, adapter: unknown): object;
+export function classifyFailure(error: unknown, timedOut?: boolean): TrialEvidence["failure"];
+export function runTrial(input: {
+  readonly caseDefinition: SignetCase;
+  readonly condition: EvaluationCondition;
+  readonly index: number;
+  readonly adapters: EvaluationDefinition["adapters"];
+  readonly outputDir?: string;
+  readonly provenance?: Record<string, unknown>;
+  readonly trialId?: string;
+}): Promise<TrialEvidence>;

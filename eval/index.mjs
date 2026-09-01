@@ -12,3 +12,5 @@ export {
   hashCase,
   validateEvidence,
 } from "./evidence.mjs";
+export { defineEvaluation, validateAdapter } from "./adapters.mjs";
+export { classifyFailure, runTrial } from "./runner.mjs";
