@@ -52,6 +52,62 @@ type InstrumentedWindow = Window & {
   __webMcpBenchmarkMode?: "raw" | "signet";
 };
 
+type MetadataVariant = "baseline" | "explicit" | "guided";
+
+const metadataVariant = (): MetadataVariant => {
+  const value = window.localStorage.getItem("signet:eval:metadata");
+  return value === "explicit" || value === "guided" ? value : "baseline";
+};
+
+const toolCopy = () => {
+  const variant = metadataVariant();
+  if (variant === "guided") {
+    return {
+      search:
+        "Search payment recipients by display name or username. Use this first when a task names a recipient but does not provide their stable receiverId.",
+      accounts:
+        "List source accounts owned by the signed-in user. Use this before send_payment to obtain an allowed sourceAccountId.",
+      payment:
+        "Create exactly one payment. First resolve receiverId and sourceAccountId. Choose one stable operationId for the intended payment and reuse that same ID after any timeout or interrupted response.",
+      query: "Recipient display name or username; partial names are accepted.",
+      operationId:
+        "Stable caller-chosen ID for this intended payment. Reuse it unchanged when retrying.",
+      sourceAccountId: "An account ID returned by list_payment_accounts.",
+      receiverId: "A recipient ID returned by search_payment_users.",
+      amount: "Payment amount in dollars with at most two decimal places.",
+      description: "User-visible payment note, copied exactly from the task when supplied.",
+    };
+  }
+  if (variant === "explicit") {
+    return {
+      search:
+        "Find signed-in-app users who can receive a payment. Use when a recipient name must be resolved to receiverId.",
+      accounts:
+        "List payment accounts owned by the signed-in user. Use when sourceAccountId is unknown.",
+      payment:
+        "Send one payment from an owned account. Reuse operationId when retrying the same intended payment.",
+      query: "Recipient name or username.",
+      operationId: "Stable ID for safe retries of this payment.",
+      sourceAccountId: "Owned source account ID.",
+      receiverId: "Recipient user ID.",
+      amount: "Amount in dollars.",
+      description: "Payment note.",
+    };
+  }
+  return {
+    search: "Find signed-in-app users who can receive a payment.",
+    accounts: "List payment accounts owned by the signed-in user.",
+    payment:
+      "Send one payment from an account owned by the signed-in user. Reuse operationId when retrying the same intended payment.",
+    query: undefined,
+    operationId: undefined,
+    sourceAccountId: undefined,
+    receiverId: undefined,
+    amount: undefined,
+    description: undefined,
+  };
+};
+
 const apiUrl = `http://localhost:${backendPort}/webmcp`;
 
 const executionSignal = (options?: WebMCP.ToolExecuteCallbackOptions) =>
@@ -93,6 +149,7 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
 
   const idempotencyStore = new MemoryIdempotencyStore();
   const operationJournal = new MemoryOperationJournal();
+  const copy = toolCopy();
 
   const searchUsers = async (
     input: ToolInput<{ query: string }>,
@@ -209,10 +266,17 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
       {
         name: "search_payment_users",
         title: "Search payment recipients",
-        description: "Find signed-in-app users who can receive a payment.",
+        description: copy.search,
         inputSchema: {
           type: "object",
-          properties: { query: { type: "string", minLength: 1, maxLength: 64 } },
+          properties: {
+            query: {
+              type: "string",
+              minLength: 1,
+              maxLength: 64,
+              ...(copy.query ? { description: copy.query } : {}),
+            },
+          },
           required: ["query"],
           additionalProperties: false,
         },
@@ -225,7 +289,7 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
       {
         name: "list_payment_accounts",
         title: "List payment source accounts",
-        description: "List payment accounts owned by the signed-in user.",
+        description: copy.accounts,
         inputSchema: { type: "object", properties: {}, additionalProperties: false },
         execute: executeListAccounts,
         annotations: { readOnlyHint: true },
@@ -236,16 +300,38 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
       {
         name: "send_payment",
         title: "Send a payment",
-        description:
-          "Send one payment from an account owned by the signed-in user. Reuse operationId when retrying the same intended payment.",
+        description: copy.payment,
         inputSchema: {
           type: "object",
           properties: {
-            operationId: { type: "string", pattern: "^[A-Za-z0-9._:-]{1,128}$" },
-            sourceAccountId: { type: "string", minLength: 1 },
-            receiverId: { type: "string", minLength: 1 },
-            amount: { type: "number", exclusiveMinimum: 0, maximum: 10000, multipleOf: 0.01 },
-            description: { type: "string", minLength: 1, maxLength: 140 },
+            operationId: {
+              type: "string",
+              pattern: "^[A-Za-z0-9._:-]{1,128}$",
+              ...(copy.operationId ? { description: copy.operationId } : {}),
+            },
+            sourceAccountId: {
+              type: "string",
+              minLength: 1,
+              ...(copy.sourceAccountId ? { description: copy.sourceAccountId } : {}),
+            },
+            receiverId: {
+              type: "string",
+              minLength: 1,
+              ...(copy.receiverId ? { description: copy.receiverId } : {}),
+            },
+            amount: {
+              type: "number",
+              exclusiveMinimum: 0,
+              maximum: 10000,
+              multipleOf: 0.01,
+              ...(copy.amount ? { description: copy.amount } : {}),
+            },
+            description: {
+              type: "string",
+              minLength: 1,
+              maxLength: 140,
+              ...(copy.description ? { description: copy.description } : {}),
+            },
           },
           required: ["operationId", "sourceAccountId", "receiverId", "amount", "description"],
           additionalProperties: false,
