@@ -35,6 +35,7 @@ export type {
   OperationHandle,
   OperationJournal,
   OperationJournalOptions,
+  ProofSealState,
   RecoveryDecision,
   VerificationDecision,
 } from "./types.js";

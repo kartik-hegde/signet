@@ -5,8 +5,11 @@ import {
   ConfirmationError,
   OutcomeUnknownError,
   VerificationError,
+  WebStorageOperationJournal,
   guard,
+  type ExecuteOptions,
   type GuardEvent,
+  type OperationHandle,
 } from "../src/index.js";
 import {
   MemoryIdempotencyStore,
@@ -156,6 +159,7 @@ describe("guard", () => {
       "confirmation_requested",
       "confirmed",
       "executed",
+      "sealed",
       "succeeded",
     ]);
   });
@@ -210,6 +214,7 @@ describe("guard", () => {
       "confirmation_requested",
       "confirmed",
       "executed",
+      "sealed",
       "succeeded",
       "started",
       "replayed",
@@ -356,6 +361,7 @@ describe("guard", () => {
       "started",
       "recovered",
       "verified",
+      "sealed",
       "succeeded",
       "started",
       "replayed",
@@ -452,6 +458,101 @@ describe("guard", () => {
     });
   });
 
+  it("records the explicit Proof Seal effect lifecycle", async () => {
+    const events: GuardEvent[] = [];
+    const guarded = guard(
+      async (_input, { operation }) => {
+        expect(await operation?.state()).toBeUndefined();
+        await operation?.beginEffect({ orderId: "order-1" });
+        expect(await operation?.state()).toEqual({
+          phase: "effect_started",
+          correlation: { orderId: "order-1" },
+        });
+        await operation?.recordEffect({ orderId: "order-1", receipt: "r-1" });
+        expect(await operation?.state()).toEqual({
+          phase: "effect_observed",
+          correlation: { orderId: "order-1", receipt: "r-1" },
+        });
+        return await operation?.read();
+      },
+      {
+        journal: {
+          key: () => "operation-1",
+          store: new MemoryOperationJournal(),
+        },
+        observe: (event) => {
+          events.push(event);
+        },
+      },
+    );
+
+    await expect(guarded({}, active())).resolves.toEqual({
+      orderId: "order-1",
+      receipt: "r-1",
+    });
+    expect(events.map(({ stage }) => stage)).toEqual([
+      "started",
+      "effect_started",
+      "effect_observed",
+      "executed",
+      "succeeded",
+    ]);
+  });
+
+  it("rejects recording an effect before its boundary is durable", async () => {
+    const guarded = guard(
+      async (_input, { operation }) => {
+        await operation?.recordEffect({ orderId: "order-1" });
+        return "unreachable";
+      },
+      {
+        journal: {
+          key: () => "operation-1",
+          store: new MemoryOperationJournal(),
+        },
+      },
+    );
+
+    await expect(guarded({}, active())).rejects.toThrow(
+      "cannot record an effect before beginEffect",
+    );
+  });
+
+  it("preserves an undefined Proof Seal correlation", async () => {
+    const entries = new Map<string, string>();
+    const journal = new WebStorageOperationJournal({
+      getItem: (key) => entries.get(key) ?? null,
+      setItem: (key, value) => {
+        entries.set(key, value);
+      },
+      removeItem: (key) => {
+        entries.delete(key);
+      },
+    });
+    const guarded = guard(
+      async (_input, { operation }) => {
+        await operation?.beginEffect(undefined);
+        expect(await operation?.state()).toEqual({
+          phase: "effect_started",
+          correlation: undefined,
+        });
+        await operation?.recordEffect(undefined);
+        return await operation?.state();
+      },
+      {
+        journal: {
+          key: () => "operation-1",
+          store: journal,
+        },
+      },
+    );
+
+    await expect(guarded({}, active())).resolves.toEqual({
+      phase: "effect_observed",
+      correlation: undefined,
+    });
+  });
+
   it("reuses the idempotency key for a journal when no journal key is given", async () => {
     const journal = new MemoryOperationJournal();
     const guarded = guard(
@@ -537,6 +638,35 @@ describe("guard", () => {
     expect(confirm).not.toHaveBeenCalled();
     expect(recover).toHaveBeenCalledOnce();
     expect(journal.read("operation-1", active())).toBeUndefined();
+  });
+
+  it("reclaims abandoned work that never crossed the effect boundary", async () => {
+    const store = new MemoryIdempotencyStore();
+    const journal = new MemoryOperationJournal();
+    await store.begin("operation-1", active());
+    await store.abandon("operation-1", active());
+    const recover = vi.fn(() => ({ recovered: false as const }));
+    const execute = vi.fn(async (_input, { operation }) => {
+      await operation?.beginEffect({ orderId: "order-1" });
+      await operation?.recordEffect({ orderId: "order-1" });
+      return { orderId: "order-1" };
+    });
+    const guarded = guard(execute, {
+      idempotency: { key: () => "operation-1", store },
+      journal: { store: journal },
+      recover,
+      verify: () => true,
+    });
+
+    await expect(guarded({}, active())).resolves.toEqual({
+      orderId: "order-1",
+    });
+    expect(execute).toHaveBeenCalledOnce();
+    expect(recover).not.toHaveBeenCalled();
+    await expect(guarded({}, active())).resolves.toEqual({
+      orderId: "order-1",
+    });
+    expect(execute).toHaveBeenCalledOnce();
   });
 
   it("keeps a journaled unknown outcome recoverable on a later invocation", async () => {
@@ -754,6 +884,95 @@ describe("guard", () => {
     );
   });
 
+  it("seals an idempotent result only after verification", async () => {
+    const order: string[] = [];
+    const inner = new MemoryIdempotencyStore();
+    const store = {
+      begin: inner.begin.bind(inner),
+      async complete<Output>(
+        key: string,
+        value: Output,
+        options: ExecuteOptions,
+      ) {
+        order.push("complete");
+        await inner.complete(key, value, options);
+      },
+      release: inner.release.bind(inner),
+      abandon: inner.abandon.bind(inner),
+    };
+    const guarded = guard(
+      async (_input, { operation }) => {
+        await operation?.beginEffect({ orderId: "order-1" });
+        order.push("execute");
+        await operation?.recordEffect({ orderId: "order-1" });
+        return { orderId: "order-1" };
+      },
+      {
+        idempotency: { key: () => "operation-1", store },
+        journal: { store: new MemoryOperationJournal() },
+        verify: () => {
+          order.push("verify");
+          return true;
+        },
+      },
+    );
+
+    await expect(guarded({}, active())).resolves.toEqual({
+      orderId: "order-1",
+    });
+    expect(order).toEqual(["execute", "verify", "complete"]);
+  });
+
+  it("keeps an unverified effect recoverable instead of completing it", async () => {
+    const store = new MemoryIdempotencyStore();
+    const journal = new MemoryOperationJournal();
+    const execute = vi.fn(async (_input, { operation }) => {
+      await operation?.beginEffect({ orderId: "order-1" });
+      await operation?.recordEffect({ orderId: "order-1" });
+      return { orderId: "order-1" };
+    });
+    const recover = vi.fn(
+      async ({ operation }: { operation?: OperationHandle }) => {
+        const correlation = await operation?.read<{ orderId: string }>();
+        return correlation
+          ? { recovered: true as const, output: correlation }
+          : { recovered: false as const, outcome: "unknown" as const };
+      },
+    );
+    const verify = vi.fn().mockReturnValueOnce(false).mockReturnValue(true);
+    const events: GuardEvent[] = [];
+    const guarded = guard(execute, {
+      idempotency: { key: () => "operation-1", store },
+      journal: { store: journal },
+      recover,
+      verify,
+      observe: (event) => {
+        events.push(event);
+      },
+    });
+
+    await expect(guarded({}, active())).rejects.toBeInstanceOf(
+      VerificationError,
+    );
+    await expect(guarded({}, active())).resolves.toEqual({
+      orderId: "order-1",
+    });
+    await expect(guarded({}, active())).resolves.toEqual({
+      orderId: "order-1",
+    });
+    expect(execute).toHaveBeenCalledOnce();
+    expect(recover).toHaveBeenCalledOnce();
+    expect(events.map(({ stage }) => stage)).toEqual(
+      expect.arrayContaining([
+        "effect_started",
+        "effect_observed",
+        "recovered",
+        "verified",
+        "sealed",
+      ]),
+    );
+  });
+
   it("uses a stable default message for boolean verification failure", async () => {
     const guarded = guard(async () => ({ state: "pending" }), {
       verify: () => false,
@@ -834,6 +1053,7 @@ describe("guard", () => {
       "started",
       "executed",
       "completed_after_abort",
+      "sealed",
       "succeeded",
     ]);
   });

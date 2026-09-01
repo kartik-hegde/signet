@@ -4,7 +4,13 @@ export interface OperationJournalOptions {
   readonly signal: AbortSignal;
 }
 
-/** App-provided durable storage for post-effect correlation data. */
+/** Durable effect evidence managed by Signet's Proof Seal protocol. */
+export interface ProofSealState<Entry = unknown> {
+  readonly phase: "effect_started" | "effect_observed";
+  readonly correlation: Entry;
+}
+
+/** App-provided durable storage for Proof Seal state and correlation data. */
 export interface OperationJournal {
   read<Entry>(
     key: string,
@@ -21,7 +27,15 @@ export interface OperationJournal {
 /** Invocation-scoped access to one operation's journal entry. */
 export interface OperationHandle {
   readonly key: string;
+  /** Reads the latest application correlation, regardless of Proof Seal phase. */
   read<Entry>(): Promise<Entry | undefined>;
+  /** Reads the explicit durable effect phase and its latest correlation. */
+  state<Entry>(): Promise<ProofSealState<Entry> | undefined>;
+  /** Durably marks the boundary immediately before an irreversible effect. */
+  beginEffect<Entry>(correlation: Entry): Promise<void>;
+  /** Records the correlation observed after the effect returns. */
+  recordEffect<Entry>(correlation: Entry): Promise<void>;
+  /** @deprecated Use beginEffect() and recordEffect() for explicit effect evidence. */
   write<Entry>(entry: Entry): Promise<void>;
   remove(): Promise<void>;
 }
@@ -121,6 +135,8 @@ export type GuardStage =
   | "confirmation_requested"
   | "confirmed"
   | "declined"
+  | "effect_started"
+  | "effect_observed"
   | "executed"
   | "replayed"
   | "recovered"
@@ -130,6 +146,7 @@ export type GuardStage =
   | "output_unmeasurable"
   | "completed_after_abort"
   | "verified"
+  | "sealed"
   | "succeeded"
   | "failed"
   | "unregistered";

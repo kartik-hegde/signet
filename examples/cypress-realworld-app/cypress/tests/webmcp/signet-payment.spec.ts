@@ -94,8 +94,10 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
         "started",
         "validated",
         "authorized",
+        "effect_started",
         "executed",
         "verified",
+        "sealed",
         "succeeded",
       ]);
     });
@@ -131,8 +133,10 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
         "started",
         "validated",
         "authorized",
+        "effect_started",
         "recovered",
         "verified",
+        "sealed",
         "succeeded",
       ]);
     });
