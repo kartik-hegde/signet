@@ -30,12 +30,21 @@ npm run eval -- --case find-payment-recipient --condition signet-baseline,signet
 
 # Inspect the run count without starting Chrome or an agent
 npm run eval -- --dry-run
+
+# Gate the next run against reviewed evidence
+npm run eval -- --trials 5 --against .signet/baselines/payments.report.json
 ```
 
 Application, browser, agent, fault, and oracle adapters live outside the core runner.
 This makes the format and local runner reusable while keeping the database oracle
 authoritative. Outputs are written under `evidence/eval/<timestamp>/`; model-backed runs
 may consume paid provider capacity, so CI uses deterministic contract tests instead.
+
+`signet check candidate/report.json --against baseline/report.json` performs the same
+comparison on completed runs. It checks every Case and condition independently, rejects
+new forbidden effects and invalid comparisons, and writes `check.json` plus review-ready
+`check.md`. Safe-success tolerance and duration/token budgets are explicit command-line
+policy rather than hidden scoring rules.
 
 The current audit and ordered next steps are in
 [`methodology/benchmark-roadmap.md`](./methodology/benchmark-roadmap.md). The main
@@ -45,15 +54,15 @@ hill-climbing—not only WebMCP efficiency and execution safety.
 
 ## Repository layout
 
-| Path                                             | Purpose                                                                 | Status         |
-| ------------------------------------------------ | ----------------------------------------------------------------------- | -------------- |
-| [`demo/`](./demo/)                               | Customer-ready speed race and fault-injection story                     | Runnable       |
-| [`execution-safety/`](./execution-safety/)       | Deterministic post-commit failure and concurrency suite                 | Runnable v0    |
-| [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies                                   | Runnable P1    |
-| [`build-vs-buy/`](./build-vs-buy/)               | Raw, hand-rolled, and Signet implementation baseline                    | Runnable       |
-| [`integrations/`](./integrations/)               | External-app manifests, patches, task definitions, reset hooks, and oracles | Saleor + Cal.diy |
-| [`methodology/`](./methodology/)                 | Benchmark contract, coverage audit, ordered roadmap, and publication rules | Audit + roadmap |
-| [`../evidence/`](../evidence/)                   | Reviewed summaries and benchmark cards; raw/private traces stay ignored | Published evidence |
+| Path                                             | Purpose                                                                     | Status             |
+| ------------------------------------------------ | --------------------------------------------------------------------------- | ------------------ |
+| [`demo/`](./demo/)                               | Customer-ready speed race and fault-injection story                         | Runnable           |
+| [`execution-safety/`](./execution-safety/)       | Deterministic post-commit failure and concurrency suite                     | Runnable v0        |
+| [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies                                       | Runnable P1        |
+| [`build-vs-buy/`](./build-vs-buy/)               | Raw, hand-rolled, and Signet implementation baseline                        | Runnable           |
+| [`integrations/`](./integrations/)               | External-app manifests, patches, task definitions, reset hooks, and oracles | Saleor + Cal.diy   |
+| [`methodology/`](./methodology/)                 | Benchmark contract, coverage audit, ordered roadmap, and publication rules  | Audit + roadmap    |
+| [`../evidence/`](../evidence/)                   | Reviewed summaries and benchmark cards; raw/private traces stay ignored     | Published evidence |
 
 ## Run the current safety lane
 

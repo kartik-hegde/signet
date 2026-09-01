@@ -20,3 +20,10 @@ export {
   renderMarkdownReport,
   writeReport,
 } from "./report.mjs";
+export {
+  CHANGE_CHECK_SCHEMA_VERSION,
+  ChangeCheckRegressionError,
+  buildChangeCheck,
+  renderChangeCheckMarkdown,
+  writeChangeCheck,
+} from "./change-check.mjs";

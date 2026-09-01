@@ -1,14 +1,30 @@
 #!/usr/bin/env node
 
-import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { runTrial, writeReport } from "./index.mjs";
+import {
+  ChangeCheckRegressionError,
+  runTrial,
+  writeChangeCheck,
+  writeReport,
+} from "./index.mjs";
 
 const DEFAULT_CONFIG = "fixtures/cypress-realworld-app/eval/index.mjs";
 
 export async function main(argv = process.argv.slice(2)) {
+  if (argv[0] === "check") return checkMain(argv.slice(1));
+  return evalMain(argv);
+}
+
+export async function evalMain(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   if (options.help) {
     process.stdout.write(helpText());
@@ -94,13 +110,49 @@ export async function main(argv = process.argv.slice(2)) {
     `\nWrote ${evidence.length} Trial Evidence files, report.json, and report.md to ${outputDir}\n`,
   );
   if (cleanupError) throw cleanupError;
+  let changeCheck;
+  if (options.against) {
+    const result = writeChangeCheck({
+      baseline: readReport(options.against),
+      candidate: reportResult.report,
+      outputDir,
+      policy: policyFromOptions(options),
+    });
+    changeCheck = result.check;
+    publishStepSummary(result.markdownPath);
+    printChangeCheck(result.check, result.markdownPath);
+    if (result.check.status === "fail")
+      throw new ChangeCheckRegressionError(result.check);
+  }
   return {
     evaluation,
     evidence,
     outputDir,
     options,
     report: reportResult.report,
+    changeCheck,
   };
+}
+
+export async function checkMain(argv) {
+  const options = parseCheckArgs(argv);
+  if (options.help) {
+    process.stdout.write(checkHelpText());
+    return;
+  }
+  const candidatePath = resolve(options.candidate);
+  const outputDir = resolve(options.output ?? dirname(candidatePath));
+  const result = writeChangeCheck({
+    baseline: readReport(options.against),
+    candidate: readReport(candidatePath),
+    outputDir,
+    policy: policyFromOptions(options),
+  });
+  publishStepSummary(result.markdownPath);
+  printChangeCheck(result.check, result.markdownPath);
+  if (result.check.status === "fail")
+    throw new ChangeCheckRegressionError(result.check);
+  return { ...result, options };
 }
 
 export function parseArgs(argv) {
@@ -120,12 +172,48 @@ export function parseArgs(argv) {
         throw new Error(`Missing value for --${rawKey}.`);
       if (key === "trials") options.trials = positiveInteger(value, "trials");
       else if (["cases", "conditions"].includes(key)) options[key] = csv(value);
-      else if (["output", "config", "baseline"].includes(key))
+      else if (["output", "config", "baseline", "against"].includes(key))
         options[key] = value;
+      else if (key === "max-safe-regression")
+        options.maxSafeRegression = proportion(value, rawKey);
+      else if (key === "max-duration-ratio")
+        options.maxDurationRatio = positiveNumber(value, rawKey);
+      else if (key === "max-token-ratio")
+        options.maxTokenRatio = positiveNumber(value, rawKey);
       else throw new Error(`Unknown option: --${rawKey}`);
     } else if (!options.config) options.config = argument;
     else throw new Error(`Unexpected argument: ${argument}`);
   }
+  return options;
+}
+
+export function parseCheckArgs(argv) {
+  const values = [...argv];
+  const options = {};
+  while (values.length > 0) {
+    const argument = values.shift();
+    if (argument === "--help" || argument === "-h") options.help = true;
+    else if (argument.startsWith("--")) {
+      const [key, inline] = argument.slice(2).split(/=(.*)/s);
+      const value = inline ?? values.shift();
+      if (value === undefined || value.startsWith("--"))
+        throw new Error(`Missing value for --${key}.`);
+      if (["against", "output"].includes(key)) options[key] = value;
+      else if (key === "max-safe-regression")
+        options.maxSafeRegression = proportion(value, key);
+      else if (key === "max-duration-ratio")
+        options.maxDurationRatio = positiveNumber(value, key);
+      else if (key === "max-token-ratio")
+        options.maxTokenRatio = positiveNumber(value, key);
+      else throw new Error(`Unknown option: --${key}`);
+    } else if (!options.candidate) options.candidate = argument;
+    else throw new Error(`Unexpected argument: ${argument}`);
+  }
+  if (options.help) return options;
+  if (!options.candidate)
+    throw new Error("signet check requires a candidate report.json path.");
+  if (!options.against)
+    throw new Error("signet check requires --against <baseline-report.json>.");
   return options;
 }
 
@@ -213,6 +301,55 @@ function positiveInteger(value, label) {
   return parsed;
 }
 
+function proportion(value, label) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1)
+    throw new Error(`${label} must be a number from 0 to 1.`);
+  return parsed;
+}
+
+function positiveNumber(value, label) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0)
+    throw new Error(`${label} must be a positive number.`);
+  return parsed;
+}
+
+function policyFromOptions(options) {
+  return {
+    maxSafeRegression: options.maxSafeRegression,
+    maxDurationRatio: options.maxDurationRatio,
+    maxTokenRatio: options.maxTokenRatio,
+  };
+}
+
+function readReport(path) {
+  try {
+    return JSON.parse(readFileSync(resolve(path), "utf8"));
+  } catch (error) {
+    throw new Error(
+      `Could not read evaluation report ${path}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+function printChangeCheck(check, markdownPath) {
+  const details = check.regressions.length
+    ? `\n${check.regressions.map(({ message }) => `  - ${message}`).join("\n")}`
+    : "";
+  process.stdout.write(
+    `\nCHANGE CHECK ${check.status.toUpperCase()} · ${check.summary.regressions} regressions · ${check.summary.improvedCells} improved cells${details}\nWrote check.json and check.md next to the candidate report (${markdownPath})\n`,
+  );
+}
+
+function publishStepSummary(markdownPath) {
+  if (!process.env.GITHUB_STEP_SUMMARY) return;
+  appendFileSync(
+    process.env.GITHUB_STEP_SUMMARY,
+    `\n${readFileSync(markdownPath, "utf8")}\n`,
+  );
+}
+
 function helpText() {
   return `Usage: signet eval [evaluation.mjs] [options]
 
@@ -224,8 +361,28 @@ Options:
   --condition id[,id]        Select conditions
   --output directory         Output directory
   --baseline condition       Baseline used for comparison deltas
+  --against report.json      Compare this run with a saved report and fail on regression
+  --max-safe-regression 0    Allowed safe-success drop, 0–1 (default: 0)
+  --max-duration-ratio n     Optional median-duration budget versus baseline
+  --max-token-ratio n        Optional median-token budget versus baseline
   --list                     List the selected matrix without running it
   --dry-run                  Alias for listing the selected matrix
+  -h, --help                 Show this help
+`;
+}
+
+function checkHelpText() {
+  return `Usage: signet check candidate-report.json --against baseline-report.json [options]
+
+Compare two evaluation reports per Case and condition. Writes check.json and check.md,
+and exits unsuccessfully when a configured regression is found.
+
+Options:
+  --against report.json      Baseline report (required)
+  --output directory         Output directory (default: candidate directory)
+  --max-safe-regression 0    Allowed safe-success drop, 0–1 (default: 0)
+  --max-duration-ratio n     Optional median-duration budget versus baseline
+  --max-token-ratio n        Optional median-token budget versus baseline
   -h, --help                 Show this help
 `;
 }
@@ -242,7 +399,7 @@ export function isEntrypoint(argv1 = process.argv[1]) {
 if (isEntrypoint()) {
   main().catch((error) => {
     process.stderr.write(
-      `signet eval: ${error instanceof Error ? error.message : String(error)}\n`,
+      `signet: ${error instanceof Error ? error.message : String(error)}\n`,
     );
     process.exitCode = 1;
   });

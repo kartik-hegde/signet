@@ -5,7 +5,12 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { buildSchedule, isEntrypoint, parseArgs } from "../cli.mjs";
+import {
+  buildSchedule,
+  isEntrypoint,
+  parseArgs,
+  parseCheckArgs,
+} from "../cli.mjs";
 
 test("parseArgs supports the signet eval command shape", () => {
   assert.deepEqual(
@@ -44,6 +49,26 @@ test("buildSchedule counterbalances condition order", () => {
 test("parseArgs rejects ambiguous or invalid options", () => {
   assert.throws(() => parseArgs(["eval", "--trials", "0"]), /positive integer/);
   assert.throws(() => parseArgs(["eval", "--unknown", "x"]), /Unknown option/);
+});
+
+test("parseCheckArgs captures a baseline and explicit regression budgets", () => {
+  assert.deepEqual(
+    parseCheckArgs([
+      "candidate/report.json",
+      "--against",
+      "main/report.json",
+      "--max-safe-regression=0.2",
+      "--max-duration-ratio",
+      "1.5",
+    ]),
+    {
+      candidate: "candidate/report.json",
+      against: "main/report.json",
+      maxSafeRegression: 0.2,
+      maxDurationRatio: 1.5,
+    },
+  );
+  assert.throws(() => parseCheckArgs(["candidate.json"]), /requires --against/);
 });
 
 test("the CLI recognizes npm's symlinked bin entrypoint", () => {

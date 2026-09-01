@@ -299,3 +299,71 @@ export function writeReport(input: {
   readonly jsonPath: string;
   readonly markdownPath: string;
 };
+
+export interface ChangeCheckPolicy {
+  readonly maxSafeRegression?: number;
+  readonly maxDurationRatio?: number | null;
+  readonly maxTokenRatio?: number | null;
+  readonly requireAtLeastBaselineTrials?: boolean;
+  readonly requireSameCaseDefinitions?: boolean;
+  readonly disallowNewEnvironmentErrors?: boolean;
+}
+
+export interface ChangeCheckIssue {
+  readonly code: string;
+  readonly severity: "error";
+  readonly caseId?: string;
+  readonly condition?: string;
+  readonly message: string;
+}
+
+export interface ChangeCheckCell {
+  readonly caseId: string;
+  readonly condition: string;
+  readonly status: "added" | "improved" | "missing" | "regressed" | "unchanged";
+  readonly baseline: Readonly<Record<string, unknown>> | null;
+  readonly candidate: Readonly<Record<string, unknown>> | null;
+  readonly deltas: Readonly<Record<string, number | null>> | null;
+  readonly issues: readonly ChangeCheckIssue[];
+}
+
+export interface ChangeCheck {
+  readonly schemaVersion: 1;
+  readonly generatedAt: string;
+  readonly suite: string;
+  readonly status: "pass" | "fail";
+  readonly grading: "authoritative application oracle";
+  readonly baseline: Readonly<Record<string, unknown>>;
+  readonly candidate: Readonly<Record<string, unknown>>;
+  readonly policy: Required<ChangeCheckPolicy>;
+  readonly summary: {
+    readonly matchedCells: number;
+    readonly addedCells: number;
+    readonly missingCells: number;
+    readonly improvedCells: number;
+    readonly regressions: number;
+  };
+  readonly regressions: readonly ChangeCheckIssue[];
+  readonly cells: readonly ChangeCheckCell[];
+}
+
+export const CHANGE_CHECK_SCHEMA_VERSION: 1;
+export class ChangeCheckRegressionError extends Error {
+  readonly check: ChangeCheck;
+}
+export function buildChangeCheck(input: {
+  readonly baseline: EvaluationReport;
+  readonly candidate: EvaluationReport;
+  readonly policy?: ChangeCheckPolicy;
+}): ChangeCheck;
+export function renderChangeCheckMarkdown(check: ChangeCheck): string;
+export function writeChangeCheck(input: {
+  readonly baseline: EvaluationReport;
+  readonly candidate: EvaluationReport;
+  readonly outputDir: string;
+  readonly policy?: ChangeCheckPolicy;
+}): {
+  readonly check: ChangeCheck;
+  readonly jsonPath: string;
+  readonly markdownPath: string;
+};
