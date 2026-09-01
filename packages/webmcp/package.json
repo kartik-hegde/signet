@@ -1,0 +1,120 @@
+{
+  "name": "@signet/webmcp",
+  "version": "0.0.0",
+  "description": "Make website capabilities reliable and agent-ready through WebMCP.",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "recipes",
+    "skills",
+    "AGENTS.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    },
+    "./stores": {
+      "types": "./dist/stores.d.ts",
+      "import": "./dist/stores.js"
+    },
+    "./opentelemetry": {
+      "types": "./dist/opentelemetry.d.ts",
+      "import": "./dist/opentelemetry.js"
+    },
+    "./inspector": {
+      "types": "./dist/inspector.d.ts",
+      "import": "./dist/inspector.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && node scripts/bundle-declarations.mjs",
+    "check": "npm run typecheck && npm test",
+    "coverage": "vitest run --coverage",
+    "docs:build": "vitepress build ../../docs",
+    "docs:dev": "vitepress dev ../../docs",
+    "docs:preview": "vitepress preview ../../docs",
+    "tutorial:build": "npm run build && vite build ../../fixtures/hello-world",
+    "tutorial:dev": "npm run build && vite ../../fixtures/hello-world --port 4173",
+    "tutorial:test": "npm run build && vitest run --root ../.. fixtures/hello-world/src/greeting.test.ts",
+    "format:check": "prettier --check . --ignore-unknown --ignore-path ../../.gitignore",
+    "lint": "npm run build && npm run lint:source",
+    "lint:source": "eslint 'src/**/*.ts' 'test/**/*.ts' 'recipes/**/*.ts' '../../fixtures/hello-world/src/**/*.{ts,tsx}' examples-native-webmcp.ts",
+    "package:check": "publint --strict",
+    "smoke": "node test/package-smoke.mjs",
+    "test": "vitest run",
+    "test:reference": "npm run build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd ../../fixtures/cypress-realworld-app build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd ../../fixtures/cypress-realworld-app start-server-and-test start:webmcp:ci 'http://localhost:3000|http://localhost:3001' test:webmcp",
+    "test:reference:install": "npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd ../../fixtures/cypress-realworld-app install --frozen-lockfile",
+    "test:reference:repeat": "npm run build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd ../../fixtures/cypress-realworld-app build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd ../../fixtures/cypress-realworld-app start-server-and-test start:webmcp:ci 'http://localhost:3000|http://localhost:3001' test:webmcp:repeat",
+    "test:reference:native:probe": "npm run build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd ../../fixtures/cypress-realworld-app build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd ../../fixtures/cypress-realworld-app start-server-and-test start:webmcp:ci 'http://localhost:3000|http://localhost:3001' test:webmcp:native:probe",
+    "test:reference:native": "npm run build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd ../../fixtures/cypress-realworld-app build && npx --yes --package=node@24 --package=yarn@1.22.22 yarn --cwd ../../fixtures/cypress-realworld-app start-server-and-test start:webmcp:ci 'http://localhost:3000|http://localhost:3001' test:webmcp:native",
+    "test:watch": "vitest",
+    "typecheck": "npm run build && tsc --noEmit",
+    "validate": "npm run build && npm run lint:source && npm run format:check && tsc --noEmit && npm run coverage && npm run package:check && npm run smoke"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": ">=1.9.0 <2",
+    "react": ">=18 <20"
+  },
+  "peerDependenciesMeta": {
+    "@opentelemetry/api": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@opentelemetry/api": "^1.9.0",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitest/coverage-v8": "^4.1.11",
+    "eslint": "^10.9.1",
+    "fake-indexeddb": "^6.2.5",
+    "prettier": "^3.9.6",
+    "publint": "^0.3.24",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "rollup": "^4.63.1",
+    "rollup-plugin-dts": "^6.5.1",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.68.0",
+    "vitepress": "2.0.0-alpha.19",
+    "vitest": "^4.1.11",
+    "webmcp-types": "^0.1.5"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kartik-hegde/signet.git"
+  },
+  "keywords": [
+    "webmcp",
+    "ai-agents",
+    "typescript",
+    "json-schema",
+    "observability",
+    "developer-tools",
+    "idempotency",
+    "authorization"
+  ],
+  "dependencies": {
+    "@cfworker/json-schema": "^4.1.1"
+  }
+}

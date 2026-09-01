@@ -1,0 +1,42 @@
+name: Nightly deterministic benchmarks
+
+on:
+  schedule:
+    - cron: "23 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-deterministic
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:eval
+      - run: npm run test:reference:install
+      - run: npm run bench:safety:artifact
+      - run: node benchmarks/build-vs-buy/run.mjs --safety=.artifacts/safety.json --output=.artifacts/build-vs-buy
+      - run: node tooling/run-p0.mjs --safety=.artifacts/safety.json --output=.artifacts/p0
+      - run: npm run test:reference:repeat
+      - run: npm run evidence:validate
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-evidence-${{ github.run_id }}
+          if-no-files-found: error
+          path: |
+            .artifacts/
+            fixtures/cypress-realworld-app/cypress/results/
+            fixtures/cypress-realworld-app/cypress/screenshots/
+            fixtures/cypress-realworld-app/cypress/videos/

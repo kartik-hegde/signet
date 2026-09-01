@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://signet.dev/schemas/evidence/v1.json",
+  "title": "Signet Trial Evidence",
+  "description": "Portable evidence from one independently graded agent-interface trial.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "evidenceId",
+    "generatedAt",
+    "case",
+    "trial",
+    "provenance",
+    "inventory",
+    "events",
+    "agent",
+    "oracle",
+    "artifacts",
+    "redaction"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "evidenceId": { "type": "string", "minLength": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "case": { "$ref": "#/$defs/caseReference" },
+    "trial": { "$ref": "#/$defs/trial" },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "inventory": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/tool" }
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "agent": { "$ref": "#/$defs/agent" },
+    "oracle": { "$ref": "#/$defs/oracle" },
+    "failure": { "$ref": "#/$defs/failure" },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "redaction": { "$ref": "#/$defs/redaction" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "caseReference": {
+      "type": "object",
+      "required": ["id", "definitionHash", "intent", "kind"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "definitionHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "intent": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": [
+            "read",
+            "mutation",
+            "multi_step",
+            "consequential",
+            "recovery",
+            "negative"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "trial": {
+      "type": "object",
+      "required": [
+        "id",
+        "index",
+        "condition",
+        "startedAt",
+        "durationMs",
+        "status"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "index": { "type": "integer", "minimum": 1 },
+        "condition": { "type": "string", "minLength": 1 },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "durationMs": { "type": "number", "minimum": 0 },
+        "status": {
+          "enum": ["completed", "failed", "timed_out", "environment_error"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["application", "browser", "agent", "oracle"],
+      "properties": {
+        "benchmarkRevision": { "type": "string" },
+        "signetRevision": { "type": "string" },
+        "application": { "$ref": "#/$defs/component" },
+        "browser": { "$ref": "#/$defs/component" },
+        "agent": { "$ref": "#/$defs/component" },
+        "oracle": { "$ref": "#/$defs/component" },
+        "dirty": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "component": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" },
+        "revision": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "tool": {
+      "type": "object",
+      "required": ["name", "description", "inputSchema"],
+      "properties": {
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "inputSchema": { "type": "object" },
+        "annotations": { "type": "object" },
+        "origin": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "event": {
+      "type": "object",
+      "required": ["sequence", "atMs", "type"],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 0 },
+        "atMs": { "type": "number", "minimum": 0 },
+        "type": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "agent": {
+      "type": "object",
+      "required": ["provider", "model", "timedOut", "usage"],
+      "properties": {
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "finalText": { "type": "string" },
+        "exitCode": { "type": ["integer", "null"] },
+        "timedOut": { "type": "boolean" },
+        "protocolViolations": { "type": "integer", "minimum": 0 },
+        "usage": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "oracle": {
+      "type": "object",
+      "required": ["adapter", "grade"],
+      "properties": {
+        "adapter": { "type": "string" },
+        "before": true,
+        "after": true,
+        "grade": {
+          "type": "object",
+          "required": [
+            "authoritativeSuccess",
+            "safeSuccess",
+            "forbiddenEffects"
+          ],
+          "properties": {
+            "authoritativeSuccess": { "type": "boolean" },
+            "safeSuccess": { "type": "boolean" },
+            "forbiddenEffects": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "components": { "type": "object", "additionalProperties": true }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "failure": {
+      "type": "object",
+      "required": ["category", "message"],
+      "properties": {
+        "category": {
+          "enum": [
+            "environment",
+            "registration",
+            "selection",
+            "arguments",
+            "application",
+            "execution_control",
+            "verification",
+            "oracle",
+            "agent_provider"
+          ]
+        },
+        "message": { "type": "string" },
+        "stage": { "type": "string" },
+        "retryable": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": { "type": "string" },
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "mediaType": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "redaction": {
+      "type": "object",
+      "required": ["policy", "version", "containsSensitiveData"],
+      "properties": {
+        "policy": { "type": "string" },
+        "version": { "type": "integer", "minimum": 1 },
+        "containsSensitiveData": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

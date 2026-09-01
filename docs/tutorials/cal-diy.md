@@ -25,15 +25,15 @@ inspect_event -> list_available_slots -> book_event
 The mutation requires the event ID and duration observed earlier. That turns stale page
 state into an explicit authorization failure rather than a surprising booking.
 
-## 1. Prepare the sibling checkouts
+## 1. Prepare the external checkout
 
-The benchmark expects these repositories next to one another:
+The benchmark keeps external applications outside Git history:
 
 ```text
-workspace/
-  cal-diy-signet/
-  signet/
-  signet-benchmarks/
+signet/
+  .external/
+    cal-diy-signet/
+  benchmarks/integrations/cal-diy/
 ```
 
 Use the Cal.diy integration branch `feat/signet-webmcp-demo` at commit `f2b1fc9`.
@@ -52,7 +52,7 @@ setting the override below.
 
 ## 2. Configure the booking URL
 
-From `signet-benchmarks`, set the local booking page when it differs from the default:
+From the Signet repository root, set the local booking page when it differs from the default:
 
 ```sh
 export CAL_DIY_BOOKING_URL="http://localhost:3000/your-user/your-event"

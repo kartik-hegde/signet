@@ -1,0 +1,67 @@
+name: Manual agent benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Benchmark suite
+        type: choice
+        options: [p1, saleor, cal-diy, all]
+        default: p1
+      trials:
+        description: Trials per Case and condition
+        type: choice
+        options: ["1", "5", "10", "30"]
+        default: "5"
+      signet_ref:
+        description: Signet branch, tag, or commit
+        type: string
+        default: main
+      publish:
+        description: Submit reviewed evidence in a pull request
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: [self-hosted, signet-benchmark]
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.signet_ref }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:reference:install
+        if: inputs.suite == 'p1' || inputs.suite == 'all'
+      - run: npm run eval -- --trials ${{ inputs.trials }}
+        if: inputs.suite == 'p1' || inputs.suite == 'all'
+      - run: npm run saleor:preflight && npm run saleor:native-smoke && npm run saleor:oracle
+        if: inputs.suite == 'saleor' || inputs.suite == 'all'
+      - run: npm run cal-diy:preflight && npm run cal-diy:native-smoke && npm run cal-diy:oracle && npm run cal-diy:agent
+        if: inputs.suite == 'cal-diy' || inputs.suite == 'all'
+      - run: npm run evidence:validate
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: benchmark-evidence-${{ github.run_id }}
+          if-no-files-found: error
+          path: evidence/
+      - name: Explain publication handoff
+        if: inputs.publish
+        run: echo "Evidence is ready for review by the protected publish job."
+
+  publish:
+    if: inputs.publish
+    needs: benchmark
+    runs-on: ubuntu-latest
+    environment: benchmark-publish
+    permissions:
+      contents: read
+    steps:
+      - run: echo "Approved evidence is retained as the benchmark artifact; publication remains an explicit reviewed repository change."

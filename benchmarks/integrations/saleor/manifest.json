@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "saleor-storefront",
+  "name": "Saleor Storefront + Saleor Core",
+  "sourceLayout": "external-checkouts",
+  "storefront": {
+    "directory": ".external/saleor-storefront-signet",
+    "upstream": "https://github.com/saleor/storefront.git",
+    "revision": "56f021d42196eaa78b997df010430d8ea7842e99",
+    "integrationRevision": "d82ff357c6f2e561898dc6533dd539e05287926c",
+    "patches": [
+      "patches/0001-feat-add-Signet-guarded-Saleor-checkout-tools.patch",
+      "patches/0002-test-harden-Signet-checkout-integration.patch",
+      "patches/0003-fix-keep-repeatable-checkout-setters-retryable.patch"
+    ],
+    "license": "FSL-1.1-ALv2"
+  },
+  "platform": {
+    "directory": ".external/saleor-platform-signet",
+    "upstream": "https://github.com/saleor/saleor-platform.git",
+    "revision": "ab6315bd59c58b4815175df4c679107ff9695be4",
+    "license": "BSD-3-Clause",
+    "saleorImage": "3.23"
+  },
+  "signet": {
+    "directory": ".",
+    "revision": "workspace"
+  },
+  "ports": {
+    "storefront": 3000,
+    "graphql": 8000,
+    "dashboard": 9000
+  },
+  "health": {
+    "storefront": "http://localhost:3000/en/default-channel",
+    "graphql": "http://localhost:8000/graphql/",
+    "dashboard": "http://localhost:9000"
+  },
+  "oracle": "scripts/oracle.mjs",
+  "tasks": "tasks.json"
+}
