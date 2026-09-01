@@ -70,8 +70,5 @@ test("evidence and external integration changes stay isolated", () => {
     classifyFiles(["tooling/materialize-fixture.mjs"]).integrations,
     true,
   );
-  assert.equal(
-    classifyFiles(["tooling/validate-evidence.mjs"]).evidence,
-    true,
-  );
+  assert.equal(classifyFiles(["tooling/validate-evidence.mjs"]).evidence, true);
 });
