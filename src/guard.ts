@@ -14,9 +14,11 @@ import type {
   GuardEvent,
   GuardOptions,
   GuardStage,
+  IdempotencyBeginResult,
   MaybePromise,
   OperationHandle,
   OperationJournal,
+  ProofSealState,
   RecoveryDecision,
   VerificationDecision,
 } from "./types.js";
@@ -78,17 +80,111 @@ function confirmationPolicy<Input extends Record<string, unknown>, Context>(
 function createOperationHandle(
   key: string,
   store: OperationJournal,
+  emit: (stage: GuardStage) => void,
 ): OperationHandle {
   // Correlation writes often happen after an irreversible effect. They are
   // finalization work and must not inherit a caller cancellation that lost the race.
   const options = { signal: new AbortController().signal };
+  const readState = async <Entry>(): Promise<
+    ProofSealState<Entry> | undefined
+  > => decodeProofSealState(await store.read(key, options));
   return {
     key,
-    read: async <Entry>() => await store.read<Entry>(key, options),
-    write: async <Entry>(entry: Entry) =>
-      await store.write(key, entry, options),
+    read: async <Entry>() => (await readState<Entry>())?.correlation,
+    state: readState,
+    beginEffect: async <Entry>(correlation: Entry) => {
+      if ((await readState()) !== undefined) {
+        throw new TypeError(
+          "Proof Seal effect has already started for this operation.",
+        );
+      }
+      await store.write(
+        key,
+        encodeProofSealState("effect_started", correlation),
+        options,
+      );
+      emit("effect_started");
+    },
+    recordEffect: async <Entry>(correlation: Entry) => {
+      const current = await readState();
+      if (current === undefined) {
+        throw new TypeError(
+          "Proof Seal cannot record an effect before beginEffect().",
+        );
+      }
+      if (current.phase === "effect_observed") {
+        throw new TypeError(
+          "Proof Seal effect has already been recorded for this operation.",
+        );
+      }
+      await store.write(
+        key,
+        encodeProofSealState("effect_observed", correlation),
+        options,
+      );
+      emit("effect_observed");
+    },
+    // Legacy writes remain safe: the first write crosses the effect boundary and
+    // later writes only refine correlation without weakening the recorded phase.
+    write: async <Entry>(correlation: Entry) => {
+      const current = await readState();
+      const phase = current?.phase ?? "effect_started";
+      await store.write(key, encodeProofSealState(phase, correlation), options);
+      if (current === undefined) emit("effect_started");
+    },
     remove: async () => await store.remove(key, options),
   };
+}
+
+const proofSealMarker = "signet.proof-seal/v1";
+
+type StoredProofSealState = {
+  readonly __signet: typeof proofSealMarker;
+  readonly phase: ProofSealState["phase"];
+  readonly correlation:
+    | { readonly hasValue: false }
+    | { readonly hasValue: true; readonly value: unknown };
+};
+
+function encodeProofSealState<Entry>(
+  phase: ProofSealState["phase"],
+  correlation: Entry,
+): StoredProofSealState {
+  return {
+    __signet: proofSealMarker,
+    phase,
+    correlation:
+      correlation === undefined
+        ? { hasValue: false }
+        : { hasValue: true, value: correlation },
+  };
+}
+
+function decodeProofSealState<Entry>(
+  value: unknown,
+): ProofSealState<Entry> | undefined {
+  if (value === undefined) return undefined;
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "__signet" in value &&
+    value.__signet === proofSealMarker &&
+    "phase" in value &&
+    (value.phase === "effect_started" || value.phase === "effect_observed") &&
+    "correlation" in value &&
+    typeof value.correlation === "object" &&
+    value.correlation !== null &&
+    "hasValue" in value.correlation &&
+    typeof value.correlation.hasValue === "boolean"
+  ) {
+    return {
+      phase: value.phase,
+      correlation: (value.correlation.hasValue && "value" in value.correlation
+        ? value.correlation.value
+        : undefined) as Entry,
+    };
+  }
+  return { phase: "effect_started", correlation: value as Entry };
 }
 
 function isVerified(decision: boolean | VerificationDecision): boolean {
@@ -142,6 +238,8 @@ export async function runGuarded<
   };
 
   let completedAfterAbort = false;
+  let abandonPendingClaim: (() => Promise<void>) | undefined;
+  let sealPendingResult: (() => Promise<void>) | undefined;
   const observeLateAbort = (): void => {
     if (executeOptions.signal.aborted && !completedAfterAbort) {
       completedAfterAbort = true;
@@ -235,7 +333,11 @@ export async function runGuarded<
           "The operation journal needs a non-empty key or an idempotency key.",
         );
       }
-      operation = createOperationHandle(journalKey, options.journal.store);
+      operation = createOperationHandle(
+        journalKey,
+        options.journal.store,
+        emit,
+      );
     }
 
     const recoverFrom = async (
@@ -295,7 +397,25 @@ export async function runGuarded<
       const settlementOptions = {
         signal: new AbortController().signal,
       };
-      const begun = await store.begin<Output>(key, executeOptions);
+      const beginClaim = async (): Promise<IdempotencyBeginResult<Output>> => {
+        const result = await store.begin<Output>(key, executeOptions);
+        abandonPendingClaim =
+          result.state === "completed"
+            ? undefined
+            : async () => await store.abandon(key, settlementOptions);
+        return result;
+      };
+      let begun = await beginClaim();
+
+      // A prior owner can disappear while awaiting confirmation or doing other
+      // pre-effect work. An empty Proof Seal journal proves that retry is safe.
+      while (begun.state === "in_flight" && operation) {
+        const priorState = await operation.state();
+        if (priorState !== undefined) break;
+        await store.release(key, settlementOptions);
+        abandonPendingClaim = undefined;
+        begun = await beginClaim();
+      }
 
       if (begun.state === "completed") {
         output = begun.value;
@@ -309,7 +429,6 @@ export async function runGuarded<
           }
         }
       } else {
-        let settled = false;
         const complete = async (value: Output): Promise<void> => {
           try {
             await store.complete(key, value, settlementOptions);
@@ -319,7 +438,7 @@ export async function runGuarded<
               { cause: error },
             );
           }
-          settled = true;
+          abandonPendingClaim = undefined;
           if (operation) {
             try {
               await operation.remove();
@@ -327,84 +446,75 @@ export async function runGuarded<
               // The durable result is authoritative; stale correlation data is safe.
             }
           }
+          emit("sealed");
         };
 
-        try {
-          if (begun.state === "in_flight") {
-            const interrupted = new Error(
-              "A previous attempt left this operation in flight.",
+        if (begun.state === "in_flight") {
+          const interrupted = new Error(
+            "A previous attempt left this operation in flight.",
+          );
+          interrupted.name = "InterruptedOperationError";
+          const decision = await recoverFrom(interrupted);
+          if (!decision.recovered) {
+            throw new OutcomeUnknownError(
+              decision.outcome === "unknown"
+                ? decision.reason
+                : "A previous attempt may have produced an effect, but recovery could not prove its outcome.",
+              { cause: interrupted },
             );
-            interrupted.name = "InterruptedOperationError";
-            const decision = await recoverFrom(interrupted);
-            if (!decision.recovered) {
+          }
+          output = decision.output;
+          sealPendingResult = async () => await complete(output);
+        } else {
+          try {
+            if (confirmation.mode === "effect-only") await confirm();
+            executeOptions.signal.throwIfAborted();
+          } catch (error) {
+            await store.release(key, settlementOptions);
+            abandonPendingClaim = undefined;
+            throw error;
+          }
+
+          try {
+            output = await execute(input, {
+              context,
+              ...(operation === undefined ? {} : { operation }),
+              signal: executeOptions.signal,
+            });
+          } catch (error) {
+            const decision = await recoverFrom(error);
+            if (decision.recovered) {
+              output = decision.output;
+            } else if (decision.outcome === "unknown") {
+              throw new OutcomeUnknownError(decision.reason, {
+                cause: error,
+              });
+            } else {
+              if (operation) {
+                let state: ProofSealState | undefined;
+                try {
+                  state = await operation.state();
+                } catch (journalError) {
+                  throw new OutcomeUnknownError(
+                    "The operation failed, and its journal could not prove whether the effect started.",
+                    { cause: new AggregateError([error, journalError]) },
+                  );
+                }
+                if (state === undefined) {
+                  await store.release(key, settlementOptions);
+                  abandonPendingClaim = undefined;
+                  throw error;
+                }
+              }
               throw new OutcomeUnknownError(
-                decision.outcome === "unknown"
-                  ? decision.reason
-                  : "A previous attempt may have produced an effect, but recovery could not prove its outcome.",
-                { cause: interrupted },
+                "The effect may have started, but recovery could not prove its outcome.",
+                { cause: error },
               );
             }
-            output = decision.output;
-            await complete(output);
-          } else {
-            try {
-              if (confirmation.mode === "effect-only") await confirm();
-              executeOptions.signal.throwIfAborted();
-            } catch (error) {
-              await store.release(key, settlementOptions);
-              settled = true;
-              throw error;
-            }
-
-            try {
-              output = await execute(input, {
-                context,
-                ...(operation === undefined ? {} : { operation }),
-                signal: executeOptions.signal,
-              });
-            } catch (error) {
-              const decision = await recoverFrom(error);
-              if (decision.recovered) {
-                output = decision.output;
-              } else if (decision.outcome === "unknown") {
-                throw new OutcomeUnknownError(decision.reason, {
-                  cause: error,
-                });
-              } else {
-                if (operation) {
-                  let entry: unknown;
-                  try {
-                    entry = await operation.read();
-                  } catch (journalError) {
-                    throw new OutcomeUnknownError(
-                      "The operation failed, and its journal could not prove whether the effect started.",
-                      { cause: new AggregateError([error, journalError]) },
-                    );
-                  }
-                  if (entry === undefined) {
-                    await store.release(key, settlementOptions);
-                    settled = true;
-                    throw error;
-                  }
-                }
-                throw new OutcomeUnknownError(
-                  "The effect may have started, but recovery could not prove its outcome.",
-                  { cause: error },
-                );
-              }
-            }
-
-            await complete(output);
-            if (!recovered) emit("executed");
           }
-        } finally {
-          if (!settled) {
-            try {
-              await store.abandon(key, settlementOptions);
-            } catch {
-              // Preserve the operation error; the durable in-flight row remains safe.
-            }
-          }
+
+          sealPendingResult = async () => await complete(output);
+          if (!recovered) emit("executed");
         }
       }
     } else {
@@ -484,9 +594,18 @@ export async function runGuarded<
 
     observeLateAbort();
 
+    if (sealPendingResult) await sealPendingResult();
+
     emit("succeeded");
     return output;
   } catch (error) {
+    if (abandonPendingClaim) {
+      try {
+        await abandonPendingClaim();
+      } catch {
+        // Preserve the operation error; the durable in-flight row remains safe.
+      }
+    }
     emit(
       error instanceof OutcomeUnknownError ? "outcome_unknown" : "failed",
       error,

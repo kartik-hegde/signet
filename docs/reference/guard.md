@@ -91,6 +91,10 @@ work without executing again, completes recovered results, and returns
 when an empty configured journal proves the handler failed before the effect boundary;
 otherwise it calls `abandon` and preserves the durable claim.
 
+An abandoned claim with an empty Proof Seal journal is known to be pre-effect, so Signet
+releases and reclaims it instead of invoking recovery. A fresh or recovered result is
+written as `completed` only after configured verification succeeds.
+
 ### `journal`
 
 ```ts
@@ -101,12 +105,24 @@ journal?: {
 ```
 
 Creates an invocation-scoped `operation` handle for execution, recovery, and
-verification. The handle provides `key`, `read()`, `write(entry)`, and `remove()`.
-When `key` is omitted, the configured idempotency key is reused.
+verification. Proof Seal adds an explicit effect lifecycle:
+
+```ts
+await operation.beginEffect({ resourceId });
+const result = await mutateResource();
+await operation.recordEffect({ resourceId, resultId: result.id });
+```
+
+The handle provides `key`, `state()`, `beginEffect()`, `recordEffect()`, `read()`, and
+`remove()`. `state()` returns the durable `effect_started` or `effect_observed` phase;
+`read()` returns only its application correlation. The legacy `write()` method remains
+compatible and treats its first write as `effect_started`. When `key` is omitted, the
+configured idempotency key is reused.
 
 Journal access uses a separate finalization signal so a correlation write after an
 irreversible effect is not discarded by late caller cancellation. Stores must provide
 their own bounded I/O behavior. See [Operation journals](../guide/operation-journal).
+See [Proof Seal](../guide/proof-seal) for the complete transition and recovery model.
 
 ### `verify`
 
@@ -124,6 +140,10 @@ positive integer `verifyTimeoutMs` to bound this stage; Signet rejects at that d
 with `VerificationError` and aborts the signal supplied to the verifier. Without it,
 the verifier must settle on its own. The original invocation signal never cancels
 finalization.
+
+For a fresh or recovered idempotent operation, verification runs before the result is
+sealed as completed. A failed or unavailable verifier leaves the claim and Proof Seal
+correlation recoverable instead of caching an unverified result.
 
 ### `recover`
 
@@ -171,9 +191,11 @@ configured.
 started
 authorized       when authorization is configured
 confirmation_requested|confirmed|declined when confirmation is configured
+effect_started|effect_observed when the application advances Proof Seal
 executed|replayed|recovered
 output_validated|output_oversized|output_unmeasurable when a budget is configured
 verified         when verification is configured
+sealed           when a fresh or recovered result becomes durably replayable
 succeeded|failed|outcome_unknown
 ```
 

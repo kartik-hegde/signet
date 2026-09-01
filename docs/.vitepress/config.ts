@@ -44,6 +44,7 @@ export default defineConfig({
           },
           { text: "Outcome verification", link: "/guide/verification" },
           { text: "Operation journals", link: "/guide/operation-journal" },
+          { text: "Proof Seal", link: "/guide/proof-seal" },
           { text: "Testing", link: "/guide/testing" },
           { text: "Developer tooling", link: "/guide/developer-tooling" },
           { text: "Performance", link: "/guide/performance" },
