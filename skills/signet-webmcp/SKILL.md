@@ -67,17 +67,15 @@ const registration = await signet.expose({
   },
   journal: { store: operationJournal },
   execute: async ({ orderId, reason }, { context, operation, signal }) => {
+    await operation?.write({ orderId });
     const order = await cancelOrder(
       { orderId, reason },
       { accountId: context.accountId, signal },
     );
-    await operation?.write({ orderId: order.id });
     return order;
   },
   recover: async ({ input, context, operation, signal }) => {
-    if (!(await operation?.read())) {
-      return { recovered: false, outcome: "unknown" };
-    }
+    if (!(await operation?.read())) return { recovered: false };
     const order = await getOrder(input.orderId, { signal });
     return matchesRequestedCancellation(order, input, context)
       ? { recovered: true, output: order }

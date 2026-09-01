@@ -9,7 +9,10 @@ and false success—without a browser or model in the loop.
 ```ts
 import { describe, expect, it, vi } from "vitest";
 import { guard } from "@signet/webmcp";
-import { MemoryIdempotencyStore } from "@signet/webmcp/testing";
+import {
+  MemoryIdempotencyStore,
+  MemoryOperationJournal,
+} from "@signet/webmcp/testing";
 
 const invocation = () => ({ signal: new AbortController().signal });
 
@@ -32,12 +35,14 @@ it("does not execute for a viewer", async () => {
 ```ts
 it("performs one effect for repeated input", async () => {
   const store = new MemoryIdempotencyStore();
+  const journal = new MemoryOperationJournal();
   const cancel = vi.fn(async () => ({ state: "cancelled" as const }));
   const execute = guard(cancel, {
     idempotency: {
       key: ({ input }) => input.orderId,
       store,
     },
+    journal: { store: journal },
   });
 
   await execute({ orderId: "A" }, invocation());

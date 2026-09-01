@@ -1,7 +1,10 @@
 /// <reference types="webmcp-types" />
 
 import { createSignet } from "../src/index.js";
-import { MemoryIdempotencyStore } from "../src/testing.js";
+import {
+  MemoryIdempotencyStore,
+  MemoryOperationJournal,
+} from "../src/testing.js";
 
 interface DomainResult {
   readonly domain: string;
@@ -64,8 +67,10 @@ const reserveRegistration = await signet.expose<DomainInput, ReservationResult>(
       // in production.
       store: new MemoryIdempotencyStore(),
     },
+    journal: { store: new MemoryOperationJournal() },
     authorize: ({ context }) => context.canReserveDomains,
-    execute: async ({ domain }, { signal }) => {
+    execute: async ({ domain }, { operation, signal }) => {
+      await operation?.write({ domain });
       const response = await fetch("/api/domain-reservations", {
         method: "POST",
         headers: { "content-type": "application/json" },
