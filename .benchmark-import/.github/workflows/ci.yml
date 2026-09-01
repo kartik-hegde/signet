@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SEED_USERBASE_SIZE: "5"
+      SEED_CONTACTS_PER_USER: "3"
+      SEED_PAYMENTS_PER_USER: "15"
+      SEED_REQUESTS_PER_USER: "10"
+      SEED_BANK_ACCOUNTS_PER_USER: "1"
+      SEED_LIKES_PER_USER: "2"
+      SEED_COMMENTS_PER_USER: "2"
+      SEED_NOTIFICATIONS_PER_USER: "8"
+      SEED_BANK_TRANSFERS_PER_USER: "5"
+      SEED_DEFAULT_USER_PASSWORD: s3cret
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: kartik-hegde/signet
+          path: .local/signet
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+          cache-dependency-path: apps/cypress-realworld-app/yarn.lock
+
+      - name: Install Signet dependencies
+        run: npm ci --prefix .local/signet
+
+      - name: Install reference application
+        run: npm run install:p0
+
+      - name: Evaluation contracts
+        run: npm run test:eval
+
+      - name: Reference application types
+        run: npm --prefix apps/cypress-realworld-app run types
+
+      - name: Reference application unit tests
+        run: npm --prefix apps/cypress-realworld-app run test:unit:ci
+
+      - name: Deterministic safety suite
+        run: npm run bench:safety
+        env:
+          SIGNET_DIR: ../.local/signet
+
+      - name: Directional build-versus-buy suite
+        run: npm run bench:build-vs-buy
+        env:
+          SIGNET_DIR: .local/signet
+
+      - name: Authenticated payment parity
+        run: npm run bench:p0
+        env:
+          SIGNET_DIR: .local/signet
+
+      - name: Full WebMCP browser regression
+        working-directory: apps/cypress-realworld-app
+        run: node_modules/.bin/start-server-and-test start:webmcp:ci http://localhost:3100 test:webmcp
+        env:
+          PORT: "3100"
+          VITE_BACKEND_PORT: "3101"
+          BACKEND_PORT: "3101"

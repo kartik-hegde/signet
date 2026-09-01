@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+.venv/
+.local/
+__pycache__/
+*.pyc
+artifacts/
+demo/cypress/screenshots/
+demo/cypress/videos/
+results/raw/
+results/private/

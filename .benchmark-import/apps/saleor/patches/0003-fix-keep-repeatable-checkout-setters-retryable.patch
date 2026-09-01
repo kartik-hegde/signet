@@ -1,0 +1,194 @@
+From d82ff357c6f2e561898dc6533dd539e05287926c Mon Sep 17 00:00:00 2001
+From: kartik-hegde <hegdekartik7@gmail.com>
+Date: Mon, 31 Aug 2026 19:24:35 -0400
+Subject: [PATCH] fix: keep repeatable checkout setters retryable
+
+---
+ src/checkout/signet/checkout-model.ts      |  2 -
+ src/checkout/signet/checkout-tools.test.ts | 45 +++++++++++++++++++++-
+ src/checkout/signet/checkout-tools.ts      | 38 +-----------------
+ 3 files changed, 46 insertions(+), 39 deletions(-)
+
+diff --git a/src/checkout/signet/checkout-model.ts b/src/checkout/signet/checkout-model.ts
+index 37b6708e..f6f24b8c 100644
+--- a/src/checkout/signet/checkout-model.ts
++++ b/src/checkout/signet/checkout-model.ts
+@@ -14,7 +14,6 @@ export type CheckoutContext = {
+ };
+ 
+ export type ContactInput = {
+-	operationId: string;
+ 	email: string;
+ 	firstName: string;
+ 	lastName: string;
+@@ -28,7 +27,6 @@ export type ContactInput = {
+ };
+ 
+ export type DeliveryInput = {
+-	operationId: string;
+ 	deliveryId: string;
+ };
+ 
+diff --git a/src/checkout/signet/checkout-tools.test.ts b/src/checkout/signet/checkout-tools.test.ts
+index e48032b9..29ba98ce 100644
+--- a/src/checkout/signet/checkout-tools.test.ts
++++ b/src/checkout/signet/checkout-tools.test.ts
+@@ -52,6 +52,7 @@ function setup(
+ 		liveCheckout?: ServerCheckout;
+ 		lostResponse?: boolean;
+ 		getOrderProof?: ReturnType<typeof vi.fn>;
++		updateEmail?: ReturnType<typeof vi.fn>;
+ 	} = {},
+ ) {
+ 	const initial = checkout();
+@@ -80,7 +81,7 @@ function setup(
+ 		})),
+ 		updateBillingAddress: vi.fn(async () => ({ ok: true })),
+ 		updateDeliveryMethod: vi.fn(async () => ({ ok: true, checkout: initial })),
+-		updateEmail: vi.fn(async () => ({ ok: true, checkout: initial })),
++		updateEmail: options.updateEmail ?? vi.fn(async () => ({ ok: true, checkout: initial })),
+ 		updateShippingAddress: vi.fn(async () => ({ ok: true, checkout: initial })),
+ 	} as unknown as CheckoutOperations;
+ 	const idempotencyStore = options.idempotencyStore ?? new MemoryIdempotencyStore();
+@@ -123,6 +124,23 @@ async function harnessFor(placeOrder: ReturnType<typeof setup>["tools"]["placeOr
+ 	return harness;
+ }
+ 
++async function harnessForContact(contact: ReturnType<typeof setup>["tools"]["contact"]) {
++	const harness = createWebMcpTestHarness();
++	const signet = createSignet({
++		modelContext: harness.modelContext,
++		context: () => ({
++			checkoutId: "checkout-1",
++			channel: "default-channel",
++			email: "ada@example.com",
++			lineCount: 1,
++			totalAmount: 20,
++			currency: "USD",
++		}),
++	});
++	await signet.expose(contact);
++	return harness;
++}
++
+ describe("Saleor Signet checkout tools", () => {
+ 	it("keeps all five production tools agent-ready", () => {
+ 		const { tools } = setup();
+@@ -132,6 +150,31 @@ describe("Saleor Signet checkout tools", () => {
+ 		}
+ 	});
+ 
++	it("leaves a rejected contact update directly retryable", async () => {
++		const updateEmail = vi
++			.fn()
++			.mockResolvedValueOnce({ ok: false, error: "Saleor rejected the checkout email." })
++			.mockResolvedValue({ ok: true, checkout: checkout() });
++		const { tools } = setup({ updateEmail });
++		const harness = await harnessForContact(tools.contact);
++		const input = {
++			email: "ada@example.com",
++			firstName: "Ada",
++			lastName: "Lovelace",
++			streetAddress1: "1 Analytical Engine Way",
++			city: "London",
++			countryArea: "London",
++			postalCode: "SW1A 1AA",
++			countryCode: "GB",
++		};
++
++		await expect(harness.invoke("set_checkout_contact", input)).rejects.toThrow(
++			"Saleor rejected the checkout email.",
++		);
++		await expect(harness.invoke("set_checkout_contact", input)).resolves.toBeDefined();
++		expect(updateEmail).toHaveBeenCalledTimes(2);
++	});
++
+ 	it("places one order and replays the result for the same intent", async () => {
+ 		const { confirm, payment, tools } = setup();
+ 		const harness = await harnessFor(tools.placeOrder);
+diff --git a/src/checkout/signet/checkout-tools.ts b/src/checkout/signet/checkout-tools.ts
+index 5394ec9b..02cb0850 100644
+--- a/src/checkout/signet/checkout-tools.ts
++++ b/src/checkout/signet/checkout-tools.ts
+@@ -72,16 +72,10 @@ export function createCheckoutTools(dependencies: CheckoutToolDependencies): Che
+ 		name: "set_checkout_contact",
+ 		title: "Set checkout contact and shipping address",
+ 		description:
+-			"Set the guest email and shipping address on the active Saleor checkout. Use a fresh operationId for a new intent and reuse it only when retrying the exact same change.",
++			"Set the guest email and shipping address on the active Saleor checkout. Repeating the same values is safe.",
+ 		inputSchema: {
+ 			type: "object",
+ 			properties: {
+-				operationId: {
+-					type: "string",
+-					minLength: 8,
+-					maxLength: 64,
+-					description: "A stable unique ID for this exact contact-update intent; reuse it only for retries.",
+-				},
+ 				email: {
+ 					type: "string",
+ 					minLength: 3,
+@@ -143,7 +137,6 @@ export function createCheckoutTools(dependencies: CheckoutToolDependencies): Che
+ 				},
+ 			},
+ 			required: [
+-				"operationId",
+ 				"email",
+ 				"firstName",
+ 				"lastName",
+@@ -156,22 +149,6 @@ export function createCheckoutTools(dependencies: CheckoutToolDependencies): Che
+ 			additionalProperties: false,
+ 		},
+ 		authorize: requireActiveCheckout,
+-		idempotency: {
+-			store: idempotencyStore,
+-			key: ({ input, context }) =>
+-				`${context.checkoutId}:${input.operationId}:contact:${JSON.stringify([
+-					input.email,
+-					input.firstName,
+-					input.lastName,
+-					input.streetAddress1,
+-					input.streetAddress2 ?? "",
+-					input.city,
+-					input.countryArea,
+-					input.postalCode,
+-					input.countryCode,
+-					input.phone ?? "",
+-				])}`,
+-		},
+ 		execute: async (input) => {
+ 			const active = requireCheckout(checkoutState.read());
+ 			const emailResult = await operations.updateEmail(active.id, input.email);
+@@ -226,13 +203,6 @@ export function createCheckoutTools(dependencies: CheckoutToolDependencies): Che
+ 		inputSchema: {
+ 			type: "object",
+ 			properties: {
+-				operationId: {
+-					type: "string",
+-					minLength: 8,
+-					maxLength: 64,
+-					description:
+-						"A stable unique ID for this exact delivery-selection intent; reuse it only for retries.",
+-				},
+ 				deliveryId: {
+ 					type: "string",
+ 					minLength: 1,
+@@ -240,14 +210,10 @@ export function createCheckoutTools(dependencies: CheckoutToolDependencies): Che
+ 					description: "A delivery ID returned by list_delivery_options for the active checkout.",
+ 				},
+ 			},
+-			required: ["operationId", "deliveryId"],
++			required: ["deliveryId"],
+ 			additionalProperties: false,
+ 		},
+ 		authorize: requireActiveCheckout,
+-		idempotency: {
+-			store: idempotencyStore,
+-			key: ({ input, context }) => `${context.checkoutId}:${input.operationId}:delivery:${input.deliveryId}`,
+-		},
+ 		execute: async ({ deliveryId }) => {
+ 			const active = requireCheckout(checkoutState.read());
+ 			const result = await operations.updateDeliveryMethod(active.id, deliveryId);
+-- 
+2.50.1 (Apple Git-155)
+

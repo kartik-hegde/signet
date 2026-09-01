@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "cal-diy-booker",
+  "name": "Cal.diy Booker",
+  "sourceLayout": "sibling-fork",
+  "application": {
+    "directory": "../cal-diy-signet",
+    "upstream": "https://github.com/calcom/cal.diy.git",
+    "revision": "176037d0afbe572f870a3c702985e7cd83fe6c0c",
+    "integrationRevision": "f2b1fc9b66f2f718286f4e79cae52b008d415b2f",
+    "license": "AGPL-3.0"
+  },
+  "signet": {
+    "directory": "../signet",
+    "revision": "caeda953cc0a83fbd3277f2ccee722b96e92b551"
+  },
+  "ports": {
+    "web": 3000,
+    "postgres": 5450
+  },
+  "health": "http://127.0.0.1:3000/pro/30min?date=2026-09-04",
+  "oracle": "scripts/oracle.mjs",
+  "tasks": "tasks.json"
+}

@@ -1,0 +1,737 @@
+From 65dd4f6562f64493ec786d90c12eaecf919e9e5f Mon Sep 17 00:00:00 2001
+From: kartik-hegde <hegdekartik7@gmail.com>
+Date: Mon, 31 Aug 2026 18:14:31 -0400
+Subject: [PATCH] test: harden Signet checkout integration
+
+---
+ src/checkout/signet/checkout-operations.ts    |  26 +++
+ src/checkout/signet/checkout-tools.test.ts    | 220 ++++++++++++++++++
+ src/checkout/signet/checkout-tools.ts         | 167 +++++++++----
+ .../signet/indexed-db-idempotency-store.ts    | 116 ---------
+ src/checkout/signet/signet-checkout-tools.tsx |  11 +-
+ 5 files changed, 375 insertions(+), 165 deletions(-)
+ create mode 100644 src/checkout/signet/checkout-operations.ts
+ create mode 100644 src/checkout/signet/checkout-tools.test.ts
+ delete mode 100644 src/checkout/signet/indexed-db-idempotency-store.ts
+
+diff --git a/src/checkout/signet/checkout-operations.ts b/src/checkout/signet/checkout-operations.ts
+new file mode 100644
+index 00000000..207f93a4
+--- /dev/null
++++ b/src/checkout/signet/checkout-operations.ts
+@@ -0,0 +1,26 @@
++import {
++	calculateDeliveryOptions,
++	executeSignetLegacyDummyPayment,
++	getSignetOrderProof,
++	updateCheckoutBillingAddress,
++	updateCheckoutDeliveryMethod,
++	updateCheckoutEmail,
++	updateCheckoutShippingAddress,
++} from "@/app/(checkout)/actions";
++import { executePayment, resolvePaymentProvider } from "@/checkout/lib/payment";
++
++/** The real Saleor boundary, injected so the WebMCP tools remain deterministic to test. */
++export const checkoutOperations = {
++	calculateDeliveryOptions,
++	executeLegacyDummyPayment: executeSignetLegacyDummyPayment,
++	executePayment,
++	getOrderProof: getSignetOrderProof,
++	resolvePaymentProvider,
++	updateBillingAddress: updateCheckoutBillingAddress,
++	updateDeliveryMethod: updateCheckoutDeliveryMethod,
++	updateEmail: updateCheckoutEmail,
++	updateShippingAddress: updateCheckoutShippingAddress,
++};
++
++export type CheckoutOperations = typeof checkoutOperations;
++export type CheckoutOrderProof = NonNullable<Awaited<ReturnType<typeof getSignetOrderProof>>>;
+diff --git a/src/checkout/signet/checkout-tools.test.ts b/src/checkout/signet/checkout-tools.test.ts
+new file mode 100644
+index 00000000..e48032b9
+--- /dev/null
++++ b/src/checkout/signet/checkout-tools.test.ts
+@@ -0,0 +1,220 @@
++import { assertToolReady, createSignet, OutcomeUnknownError } from "@signet/webmcp";
++import {
++	createWebMcpTestHarness,
++	MemoryIdempotencyStore,
++	MemoryOperationJournal,
++} from "@signet/webmcp/testing";
++import { describe, expect, it, vi } from "vitest";
++
++import type { CheckoutGatewayMessagesHook } from "@/checkout/hooks/use-checkout-gateway-messages";
++import type { ServerCheckout } from "@/checkout/lib/checkout-types";
++
++import { CheckoutSnapshot } from "./checkout-model";
++import type { CheckoutOperations } from "./checkout-operations";
++import { createCheckoutTools } from "./checkout-tools";
++
++const orderInput = {
++	operationId: "operation-0001",
++	expectedTotalAmount: 20,
++	expectedCurrency: "USD",
++};
++
++function checkout(totalAmount = 20): ServerCheckout {
++	return {
++		id: "checkout-1",
++		channel: { slug: "default-channel" },
++		email: "ada@example.com",
++		lines: [{ quantity: 1 }],
++		totalPrice: { gross: { amount: totalAmount, currency: "USD" } },
++		shippingAddress: {
++			firstName: "Ada",
++			lastName: "Lovelace",
++			companyName: "",
++			streetAddress1: "1 Analytical Engine Way",
++			streetAddress2: "",
++			city: "London",
++			cityArea: "",
++			countryArea: "London",
++			postalCode: "SW1A 1AA",
++			country: { code: "GB" },
++			phone: "",
++		},
++		delivery: { id: "delivery-1" },
++		isShippingRequired: true,
++		availablePaymentGateways: [{ id: "mirumee.payments.dummy", name: "Dummy" }],
++	} as unknown as ServerCheckout;
++}
++
++function setup(
++	options: {
++		idempotencyStore?: MemoryIdempotencyStore;
++		journal?: MemoryOperationJournal;
++		liveCheckout?: ServerCheckout;
++		lostResponse?: boolean;
++		getOrderProof?: ReturnType<typeof vi.fn>;
++	} = {},
++) {
++	const initial = checkout();
++	const checkoutState = new CheckoutSnapshot();
++	checkoutState.update(initial);
++	const payment = vi.fn(async () => ({ ok: true as const, orderId: "order-1" }));
++	const proof = {
++		orderId: "order-1",
++		number: "1001",
++		email: "ada@example.com",
++		isPaid: true,
++		lineCount: 1,
++		totalAmount: 20,
++		currency: "USD",
++	};
++	const getOrderProof = options.getOrderProof ?? vi.fn(async () => proof);
++	const operations = {
++		calculateDeliveryOptions: vi.fn(async () => ({ ok: true, deliveries: [] })),
++		executeLegacyDummyPayment: payment,
++		executePayment: payment,
++		getOrderProof,
++		resolvePaymentProvider: vi.fn(() => ({
++			type: "dummy",
++			gateway: { id: "mirumee.payments.dummy", name: "Dummy" },
++			submitMode: "server",
++		})),
++		updateBillingAddress: vi.fn(async () => ({ ok: true })),
++		updateDeliveryMethod: vi.fn(async () => ({ ok: true, checkout: initial })),
++		updateEmail: vi.fn(async () => ({ ok: true, checkout: initial })),
++		updateShippingAddress: vi.fn(async () => ({ ok: true, checkout: initial })),
++	} as unknown as CheckoutOperations;
++	const idempotencyStore = options.idempotencyStore ?? new MemoryIdempotencyStore();
++	const journal = options.journal ?? new MemoryOperationJournal();
++	let lostResponse = options.lostResponse ?? false;
++	const confirm = vi.fn(async () => true);
++	const tools = createCheckoutTools({
++		checkoutState,
++		consumeLostResponseFault: () => {
++			if (!lostResponse) return false;
++			lostResponse = false;
++			return true;
++		},
++		gatewayMessages: {} as CheckoutGatewayMessagesHook,
++		idempotencyStore,
++		operationJournal: journal,
++		operations,
++		refreshCheckout: vi.fn(async () => options.liveCheckout ?? initial),
++		requestApproval: confirm,
++		setCheckout: (value) => checkoutState.update(value),
++	});
++
++	return { confirm, getOrderProof, idempotencyStore, journal, payment, tools };
++}
++
++async function harnessFor(placeOrder: ReturnType<typeof setup>["tools"]["placeOrder"]) {
++	const harness = createWebMcpTestHarness();
++	const signet = createSignet({
++		modelContext: harness.modelContext,
++		context: () => ({
++			checkoutId: "checkout-1",
++			channel: "default-channel",
++			email: "ada@example.com",
++			lineCount: 1,
++			totalAmount: 20,
++			currency: "USD",
++		}),
++	});
++	await signet.expose(placeOrder);
++	return harness;
++}
++
++describe("Saleor Signet checkout tools", () => {
++	it("keeps all five production tools agent-ready", () => {
++		const { tools } = setup();
++
++		for (const tool of Object.values(tools)) {
++			expect(() => assertToolReady(tool)).not.toThrow();
++		}
++	});
++
++	it("places one order and replays the result for the same intent", async () => {
++		const { confirm, payment, tools } = setup();
++		const harness = await harnessFor(tools.placeOrder);
++
++		const first = await harness.invoke("place_order", orderInput);
++		const replay = await harness.invoke("place_order", orderInput);
++
++		expect(replay).toEqual(first);
++		expect(payment).toHaveBeenCalledOnce();
++		expect(confirm).toHaveBeenCalledOnce();
++	});
++
++	it("coalesces concurrent calls with the same operation ID", async () => {
++		const { confirm, payment, tools } = setup();
++		const harness = await harnessFor(tools.placeOrder);
++
++		const [first, duplicate] = await Promise.all([
++			harness.invoke("place_order", orderInput),
++			harness.invoke("place_order", orderInput),
++		]);
++
++		expect(duplicate).toEqual(first);
++		expect(payment).toHaveBeenCalledOnce();
++		expect(confirm).toHaveBeenCalledOnce();
++	});
++
++	it("recovers a lost response on a fresh tool instance without paying twice", async () => {
++		const idempotencyStore = new MemoryIdempotencyStore();
++		const journal = new MemoryOperationJournal();
++		const getOrderProof = vi
++			.fn()
++			.mockRejectedValueOnce(new Error("verification temporarily unavailable"))
++			.mockResolvedValue({
++				orderId: "order-1",
++				number: "1001",
++				email: "ada@example.com",
++				isPaid: true,
++				lineCount: 1,
++				totalAmount: 20,
++				currency: "USD",
++			});
++		const first = setup({ idempotencyStore, journal, lostResponse: true, getOrderProof });
++		const firstHarness = await harnessFor(first.tools.placeOrder);
++
++		await expect(firstHarness.invoke("place_order", orderInput)).rejects.toBeInstanceOf(OutcomeUnknownError);
++
++		const afterReload = setup({ idempotencyStore, journal, getOrderProof });
++		const reloadHarness = await harnessFor(afterReload.tools.placeOrder);
++		await expect(reloadHarness.invoke("place_order", orderInput)).resolves.toMatchObject({
++			orderId: "order-1",
++			status: "placed",
++		});
++		expect(first.payment).toHaveBeenCalledOnce();
++		expect(afterReload.payment).not.toHaveBeenCalled();
++		expect(afterReload.confirm).not.toHaveBeenCalled();
++		expect(
++			journal.read("checkout-1:operation-0001:place:USD:20.00", {
++				signal: new AbortController().signal,
++			}),
++		).toBeUndefined();
++	});
++
++	it("rejects a stale total before payment and leaves the intent retryable", async () => {
++		const { confirm, payment, tools } = setup({ liveCheckout: checkout(21) });
++		const harness = await harnessFor(tools.placeOrder);
++
++		await expect(harness.invoke("place_order", orderInput)).rejects.toThrow(
++			"Checkout total changed to USD 21.00",
++		);
++		await expect(harness.invoke("place_order", orderInput)).rejects.toThrow(
++			"Checkout total changed to USD 21.00",
++		);
++		expect(payment).not.toHaveBeenCalled();
++		expect(confirm).toHaveBeenCalledTimes(2);
++	});
++
++	it("rejects invented arguments before any application action", async () => {
++		const { payment, tools } = setup();
++		const harness = await harnessFor(tools.placeOrder);
++
++		await expect(harness.invoke("place_order", { ...orderInput, discountOverride: 100 })).rejects.toThrow(
++			"not allowed",
++		);
++		expect(payment).not.toHaveBeenCalled();
++	});
++});
+diff --git a/src/checkout/signet/checkout-tools.ts b/src/checkout/signet/checkout-tools.ts
+index e31fe4b0..5394ec9b 100644
+--- a/src/checkout/signet/checkout-tools.ts
++++ b/src/checkout/signet/checkout-tools.ts
+@@ -1,17 +1,6 @@
+ import type { IdempotencyStore, OperationJournal, SignetTool } from "@signet/webmcp";
+ 
+-import {
+-	calculateDeliveryOptions,
+-	executeSignetLegacyDummyPayment,
+-	getSignetOrderProof,
+-	updateCheckoutBillingAddress,
+-	updateCheckoutDeliveryMethod,
+-	updateCheckoutEmail,
+-	updateCheckoutShippingAddress,
+-	type SignetOrderProof,
+-} from "@/app/(checkout)/actions";
+ import type { CheckoutGatewayMessagesHook } from "@/checkout/hooks/use-checkout-gateway-messages";
+-import { executePayment, resolvePaymentProvider } from "@/checkout/lib/payment";
+ import { getCheckoutPayAmount, getCheckoutPayCurrency } from "@/checkout/lib/payment/checkout-pay-amount";
+ import type { CheckoutDataContextValue } from "@/checkout/providers/checkout-data";
+ 
+@@ -21,26 +10,27 @@ import {
+ 	type CheckoutSnapshot,
+ 	type ContactInput,
+ 	type DeliveryInput,
+-	LOST_RESPONSE_FAULT,
+ 	nearlyEqual,
+ 	type PlaceOrderInput,
+ 	requireCheckout,
+ 	shippingAddressInput,
+ 	toAddressInput,
+ } from "./checkout-model";
++import type { CheckoutOperations, CheckoutOrderProof } from "./checkout-operations";
+ 
+-type OrderResult = SignetOrderProof & { status: "placed" };
++type OrderResult = CheckoutOrderProof & { status: "placed" };
+ type OrderCorrelation = { phase: "payment_started" } | { phase: "order_created"; orderId: string };
+ 
+-type ToolDependencies = {
++export type CheckoutToolDependencies = {
+ 	checkoutState: CheckoutSnapshot;
+ 	refreshCheckout: CheckoutDataContextValue["refreshCheckout"];
+ 	setCheckout: CheckoutDataContextValue["setCheckout"];
+ 	gatewayMessages: CheckoutGatewayMessagesHook;
+ 	idempotencyStore: IdempotencyStore;
+ 	operationJournal: OperationJournal;
++	operations: CheckoutOperations;
+ 	requestApproval(title: string, detail: string): Promise<boolean>;
+-	onFaultConsumed(): void;
++	consumeLostResponseFault(): boolean;
+ };
+ 
+ export type CheckoutToolSet = {
+@@ -55,13 +45,14 @@ export type CheckoutToolSet = {
+ 	placeOrder: SignetTool<PlaceOrderInput, OrderResult, CheckoutContext>;
+ };
+ 
+-export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToolSet {
++export function createCheckoutTools(dependencies: CheckoutToolDependencies): CheckoutToolSet {
+ 	const {
+ 		checkoutState,
++		consumeLostResponseFault,
+ 		gatewayMessages,
+ 		idempotencyStore,
+-		onFaultConsumed,
+ 		operationJournal,
++		operations,
+ 		refreshCheckout,
+ 		requestApproval,
+ 		setCheckout,
+@@ -85,17 +76,71 @@ export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToo
+ 		inputSchema: {
+ 			type: "object",
+ 			properties: {
+-				operationId: { type: "string", minLength: 8 },
+-				email: { type: "string", minLength: 3 },
+-				firstName: { type: "string", minLength: 1 },
+-				lastName: { type: "string", minLength: 1 },
+-				streetAddress1: { type: "string", minLength: 1 },
+-				streetAddress2: { type: "string" },
+-				city: { type: "string", minLength: 1 },
+-				countryArea: { type: "string", minLength: 1 },
+-				postalCode: { type: "string", minLength: 1 },
+-				countryCode: { type: "string", pattern: "^[A-Z]{2}$" },
+-				phone: { type: "string" },
++				operationId: {
++					type: "string",
++					minLength: 8,
++					maxLength: 64,
++					description: "A stable unique ID for this exact contact-update intent; reuse it only for retries.",
++				},
++				email: {
++					type: "string",
++					minLength: 3,
++					maxLength: 254,
++					description: "The shopper email address to attach to the guest checkout.",
++				},
++				firstName: {
++					type: "string",
++					minLength: 1,
++					maxLength: 100,
++					description: "The shipping recipient's first name.",
++				},
++				lastName: {
++					type: "string",
++					minLength: 1,
++					maxLength: 100,
++					description: "The shipping recipient's last name.",
++				},
++				streetAddress1: {
++					type: "string",
++					minLength: 1,
++					maxLength: 200,
++					description: "The primary street-address line for shipping.",
++				},
++				streetAddress2: {
++					type: "string",
++					maxLength: 200,
++					description: "An optional apartment, suite, unit, or secondary address line.",
++				},
++				city: {
++					type: "string",
++					minLength: 1,
++					maxLength: 100,
++					description: "The shipping city or locality.",
++				},
++				countryArea: {
++					type: "string",
++					minLength: 1,
++					maxLength: 100,
++					description: "The shipping state, province, or region.",
++				},
++				postalCode: {
++					type: "string",
++					minLength: 1,
++					maxLength: 32,
++					description: "The shipping postal or ZIP code.",
++				},
++				countryCode: {
++					type: "string",
++					minLength: 2,
++					maxLength: 2,
++					pattern: "^[A-Z]{2}$",
++					description: "The two-letter uppercase ISO 3166-1 shipping country code.",
++				},
++				phone: {
++					type: "string",
++					maxLength: 32,
++					description: "An optional recipient phone number including country code.",
++				},
+ 			},
+ 			required: [
+ 				"operationId",
+@@ -129,10 +174,10 @@ export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToo
+ 		},
+ 		execute: async (input) => {
+ 			const active = requireCheckout(checkoutState.read());
+-			const emailResult = await updateCheckoutEmail(active.id, input.email);
++			const emailResult = await operations.updateEmail(active.id, input.email);
+ 			if (!emailResult.ok) throw new Error(emailResult.error ?? "Saleor rejected the checkout email.");
+ 
+-			const addressResult = await updateCheckoutShippingAddress(active.id, toAddressInput(input), false);
++			const addressResult = await operations.updateShippingAddress(active.id, toAddressInput(input), false);
+ 			if (!addressResult.ok) {
+ 				throw new Error(addressResult.error ?? "Saleor rejected the shipping address.");
+ 			}
+@@ -158,7 +203,7 @@ export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToo
+ 		annotations: { readOnlyHint: true },
+ 		execute: async () => {
+ 			const active = requireCheckout(checkoutState.read());
+-			const result = await calculateDeliveryOptions(active.id);
++			const result = await operations.calculateDeliveryOptions(active.id);
+ 			if (!result.ok) throw new Error(result.error ?? "Saleor could not calculate delivery options.");
+ 			return {
+ 				deliveries: result.deliveries.map((delivery) => ({
+@@ -181,8 +226,19 @@ export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToo
+ 		inputSchema: {
+ 			type: "object",
+ 			properties: {
+-				operationId: { type: "string", minLength: 8 },
+-				deliveryId: { type: "string", minLength: 1 },
++				operationId: {
++					type: "string",
++					minLength: 8,
++					maxLength: 64,
++					description:
++						"A stable unique ID for this exact delivery-selection intent; reuse it only for retries.",
++				},
++				deliveryId: {
++					type: "string",
++					minLength: 1,
++					maxLength: 512,
++					description: "A delivery ID returned by list_delivery_options for the active checkout.",
++				},
+ 			},
+ 			required: ["operationId", "deliveryId"],
+ 			additionalProperties: false,
+@@ -194,7 +250,7 @@ export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToo
+ 		},
+ 		execute: async ({ deliveryId }) => {
+ 			const active = requireCheckout(checkoutState.read());
+-			const result = await updateCheckoutDeliveryMethod(active.id, deliveryId);
++			const result = await operations.updateDeliveryMethod(active.id, deliveryId);
+ 			if (!result.ok) throw new Error(result.error ?? "Saleor rejected the delivery option.");
+ 			return await refreshAndAdopt(refreshCheckout, setCheckout);
+ 		},
+@@ -212,9 +268,24 @@ export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToo
+ 		inputSchema: {
+ 			type: "object",
+ 			properties: {
+-				operationId: { type: "string", minLength: 8 },
+-				expectedTotalAmount: { type: "number", minimum: 0 },
+-				expectedCurrency: { type: "string", pattern: "^[A-Z]{3}$" },
++				operationId: {
++					type: "string",
++					minLength: 8,
++					maxLength: 64,
++					description: "A stable unique ID for this exact order-placement intent; reuse it only for retries.",
++				},
++				expectedTotalAmount: {
++					type: "number",
++					minimum: 0,
++					description: "The exact checkout total observed from inspect_checkout before requesting approval.",
++				},
++				expectedCurrency: {
++					type: "string",
++					minLength: 3,
++					maxLength: 3,
++					pattern: "^[A-Z]{3}$",
++					description: "The three-letter uppercase currency code observed from inspect_checkout.",
++				},
+ 			},
+ 			required: ["operationId", "expectedTotalAmount", "expectedCurrency"],
+ 			additionalProperties: false,
+@@ -253,19 +324,23 @@ export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToo
+ 				throw new Error("Select a delivery option before placing the order.");
+ 			}
+ 
+-			const billingResult = await updateCheckoutBillingAddress({
++			const billingResult = await operations.updateBillingAddress({
+ 				checkoutId: active.id,
+ 				billingAddress,
+ 				saveAddress: false,
+ 			});
+ 			if (!billingResult.ok) throw new Error(billingResult.error ?? "Saleor rejected the billing address.");
+ 
+-			const paymentProvider = resolvePaymentProvider(fresh.availablePaymentGateways);
++			const paymentProvider = operations.resolvePaymentProvider(fresh.availablePaymentGateways);
+ 			await operation?.write<OrderCorrelation>({ phase: "payment_started" });
+ 			const paymentResult =
+ 				paymentProvider.type === "dummy" && paymentProvider.gateway.id === "mirumee.payments.dummy"
+-					? await executeSignetLegacyDummyPayment(fresh.id, amount)
+-					: await executePayment(paymentProvider, { checkoutId: fresh.id, amount }, gatewayMessages);
++					? await operations.executeLegacyDummyPayment(fresh.id, amount)
++					: await operations.executePayment(
++							paymentProvider,
++							{ checkoutId: fresh.id, amount },
++							gatewayMessages,
++						);
+ 			if (!paymentResult.ok) {
+ 				await operation?.remove();
+ 				throw new Error(paymentResult.error);
+@@ -275,13 +350,11 @@ export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToo
+ 				phase: "order_created",
+ 				orderId: paymentResult.orderId,
+ 			});
+-			if (sessionStorage.getItem(LOST_RESPONSE_FAULT) === "armed") {
+-				sessionStorage.removeItem(LOST_RESPONSE_FAULT);
+-				onFaultConsumed();
++			if (consumeLostResponseFault()) {
+ 				throw new Error("Injected lost response after Saleor committed the order.");
+ 			}
+ 
+-			const proof = await getSignetOrderProof(paymentResult.orderId);
++			const proof = await operations.getOrderProof(paymentResult.orderId);
+ 			if (!proof) throw new Error("The order response arrived but authoritative verification failed.");
+ 			return { ...proof, status: "placed" };
+ 		},
+@@ -295,7 +368,7 @@ export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToo
+ 					reason: "Payment started, but no Saleor order ID was recorded.",
+ 				};
+ 			}
+-			const proof = await getSignetOrderProof(correlation.orderId);
++			const proof = await operations.getOrderProof(correlation.orderId);
+ 			return proof
+ 				? { recovered: true, output: { ...proof, status: "placed" } }
+ 				: {
+@@ -305,7 +378,7 @@ export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToo
+ 					};
+ 		},
+ 		verify: async ({ input, output, context }) => {
+-			const proof = await getSignetOrderProof(output.orderId);
++			const proof = await operations.getOrderProof(output.orderId);
+ 			return (
+ 				proof?.isPaid === true &&
+ 				proof.email === context.email &&
+diff --git a/src/checkout/signet/indexed-db-idempotency-store.ts b/src/checkout/signet/indexed-db-idempotency-store.ts
+deleted file mode 100644
+index e93586a9..00000000
+--- a/src/checkout/signet/indexed-db-idempotency-store.ts
++++ /dev/null
+@@ -1,116 +0,0 @@
+-import type { ExecuteOptions, IdempotencyResult, IdempotencyStore } from "@signet/webmcp";
+-
+-const DATABASE_NAME = "saleor-signet";
+-const STORE_NAME = "completed-operations";
+-const DATABASE_VERSION = 1;
+-
+-type StoredOperation = {
+-	key: string;
+-	value: unknown;
+-	completedAt: string;
+-};
+-
+-function openDatabase(): Promise<IDBDatabase> {
+-	return new Promise((resolve, reject) => {
+-		const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+-		request.onupgradeneeded = () => {
+-			if (!request.result.objectStoreNames.contains(STORE_NAME)) {
+-				request.result.createObjectStore(STORE_NAME, { keyPath: "key" });
+-			}
+-		};
+-		request.onsuccess = () => resolve(request.result);
+-		request.onerror = () => reject(request.error ?? new Error("Unable to open the Signet operation store."));
+-	});
+-}
+-
+-async function readOperation<Output>(key: string): Promise<Output | undefined> {
+-	const database = await openDatabase();
+-	try {
+-		return await new Promise<Output | undefined>((resolve, reject) => {
+-			const request = database.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).get(key);
+-			request.onsuccess = () =>
+-				resolve((request.result as StoredOperation | undefined)?.value as Output | undefined);
+-			request.onerror = () =>
+-				reject(request.error ?? new Error("Unable to read the Signet operation store."));
+-		});
+-	} finally {
+-		database.close();
+-	}
+-}
+-
+-async function writeOperation<Output>(key: string, value: Output): Promise<void> {
+-	const database = await openDatabase();
+-	try {
+-		await new Promise<void>((resolve, reject) => {
+-			const transaction = database.transaction(STORE_NAME, "readwrite");
+-			transaction.objectStore(STORE_NAME).put({
+-				key,
+-				value,
+-				completedAt: new Date().toISOString(),
+-			} satisfies StoredOperation);
+-			transaction.oncomplete = () => resolve();
+-			transaction.onerror = () =>
+-				reject(transaction.error ?? new Error("Unable to save the Signet operation."));
+-			transaction.onabort = () =>
+-				reject(transaction.error ?? new Error("Saving the Signet operation was aborted."));
+-		});
+-	} finally {
+-		database.close();
+-	}
+-}
+-
+-/**
+- * Persists completed operations for the lifetime of this browser profile and
+- * uses the Web Locks API to coalesce equal intent across tabs.
+- */
+-export class IndexedDbIdempotencyStore implements IdempotencyStore {
+-	readonly #pending = new Map<string, Promise<unknown>>();
+-
+-	async execute<Output>(
+-		key: string,
+-		operation: () => Promise<Output>,
+-		options: ExecuteOptions,
+-	): Promise<IdempotencyResult<Output>> {
+-		options.signal.throwIfAborted();
+-
+-		const pending = this.#pending.get(key) as Promise<Output> | undefined;
+-		if (pending) {
+-			return { value: await pending, replayed: true };
+-		}
+-
+-		const run = this.#executeLocked(key, operation, options);
+-		this.#pending.set(
+-			key,
+-			run.then((result) => result.value),
+-		);
+-		try {
+-			return await run;
+-		} finally {
+-			this.#pending.delete(key);
+-		}
+-	}
+-
+-	async #executeLocked<Output>(
+-		key: string,
+-		operation: () => Promise<Output>,
+-		options: ExecuteOptions,
+-	): Promise<IdempotencyResult<Output>> {
+-		const execute = async (): Promise<IdempotencyResult<Output>> => {
+-			options.signal.throwIfAborted();
+-			const saved = await readOperation<Output>(key);
+-			if (saved !== undefined) {
+-				return { value: saved, replayed: true };
+-			}
+-
+-			const value = await operation();
+-			await writeOperation(key, value);
+-			return { value, replayed: false };
+-		};
+-
+-		if (navigator.locks) {
+-			return navigator.locks.request(`signet:${key}`, { signal: options.signal }, execute);
+-		}
+-
+-		return execute();
+-	}
+-}
+diff --git a/src/checkout/signet/signet-checkout-tools.tsx b/src/checkout/signet/signet-checkout-tools.tsx
+index f659a563..de00a908 100644
+--- a/src/checkout/signet/signet-checkout-tools.tsx
++++ b/src/checkout/signet/signet-checkout-tools.tsx
+@@ -4,13 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
+ 
+ import { createSignet, type GuardEvent, WebStorageOperationJournal } from "@signet/webmcp";
+ import { useSignetTool } from "@signet/webmcp/react";
++import { IndexedDbIdempotencyStore } from "@signet/webmcp/stores";
+ 
+ import { useCheckoutGatewayMessages } from "@/checkout/hooks/use-checkout-gateway-messages";
+ import { useCheckoutData } from "@/checkout/providers/checkout-data";
+ 
+ import { CheckoutSnapshot, checkoutContext, LOST_RESPONSE_FAULT } from "./checkout-model";
++import { checkoutOperations } from "./checkout-operations";
+ import { createCheckoutTools } from "./checkout-tools";
+-import { IndexedDbIdempotencyStore } from "./indexed-db-idempotency-store";
+ import { type ApprovalRequest, SignetDemoPanel } from "./signet-demo-panel";
+ 
+ export function SignetCheckoutTools() {
+@@ -67,13 +68,19 @@ export function SignetCheckoutTools() {
+ 		() =>
+ 			createCheckoutTools({
+ 				checkoutState,
++				consumeLostResponseFault: () => {
++					if (sessionStorage.getItem(LOST_RESPONSE_FAULT) !== "armed") return false;
++					sessionStorage.removeItem(LOST_RESPONSE_FAULT);
++					setFaultArmed(false);
++					return true;
++				},
+ 				refreshCheckout,
+ 				setCheckout,
+ 				gatewayMessages,
+ 				idempotencyStore,
+ 				operationJournal,
++				operations: checkoutOperations,
+ 				requestApproval,
+-				onFaultConsumed: () => setFaultArmed(false),
+ 			}),
+ 		[
+ 			checkoutState,
+-- 
+2.50.1 (Apple Git-155)
+

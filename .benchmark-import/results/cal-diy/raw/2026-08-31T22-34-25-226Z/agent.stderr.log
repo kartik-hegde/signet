@@ -1,0 +1,13 @@
+Reading additional input from stdin...
+2026-08-31T22:34:27.144155Z  WARN codex_core_plugins::remote::remote_installed_plugin_sync: remote installed plugin bundle sync failed error=chatgpt authentication required for remote plugin catalog; api key auth is not supported
+2026-08-31T22:34:27.179368Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-08-31T22:34:27.204479Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-08-31T22:34:27.226240Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-08-31T22:34:27.251245Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-08-31T22:34:27.274879Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-08-31T22:34:27.298064Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-08-31T22:34:27.323054Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-08-31T22:34:27.356189Z  WARN codex_core_plugins::manager: failed to warm featured plugin ids cache error=remote plugin sync request to https://chatgpt.com/backend-api/plugins/featured failed with status 401 Unauthorized: {"detail":"Unauthorized"}
+2026-08-31T22:34:27.803829Z  WARN codex_core_plugins::manifest: ignoring interface.defaultPrompt[0]: prompt must be at most 128 characters path=/Users/kartik/.codex/.tmp/plugins/plugins/ngs-analysis/.codex-plugin/plugin.json
+2026-08-31T22:34:27.804429Z  WARN codex_core_plugins::loader: skipping remote curated plugin source during cache refresh plugin="crowdstrike-falcon-foundry" marketplace="openai-curated"
+2026-08-31T22:34:27.804440Z  WARN codex_core_plugins::loader: skipping remote curated plugin source during cache refresh plugin="crowdstrike-falcon-fusion" marketplace="openai-curated"
