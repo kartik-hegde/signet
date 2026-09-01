@@ -1,5 +1,6 @@
 node_modules/
 dist/
+examples/hello-world/dist/
 coverage/
 docs/.vitepress/cache/
 docs/.vitepress/dist/

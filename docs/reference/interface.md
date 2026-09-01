@@ -88,4 +88,5 @@ Invalid definitions reject before registration. Invalid invocation input throws
 `ValidationError`. Expected application failures may use `ToolError`. Signet does
 not retry operations automatically.
 
-See [Getting started](../guide/getting-started) for a complete example.
+See [Getting started](../guide/getting-started) for the smallest example and
+[Core concepts](../guide/core-concepts) for each optional control.

@@ -15,6 +15,7 @@ export default defineConfig({
     siteTitle: "Signet",
     nav: [
       { text: "Docs", link: "/guide/getting-started" },
+      { text: "Tutorials", link: "/tutorials/" },
       {
         text: "Examples",
         link: "https://github.com/kartik-hegde/signet/tree/main/examples",
@@ -31,7 +32,24 @@ export default defineConfig({
         items: [
           { text: "Why Signet", link: "/guide/why-signet" },
           { text: "Getting started", link: "/guide/getting-started" },
+          { text: "Core concepts", link: "/guide/core-concepts" },
           { text: "Production WebMCP", link: "/guide/production-webmcp" },
+        ],
+      },
+      {
+        text: "Tutorials",
+        items: [
+          { text: "Choose a codelab", link: "/tutorials/" },
+          { text: "1. First agent call", link: "/tutorials/first-agent-call" },
+          {
+            text: "2. Authenticated payment",
+            link: "/guide/real-browser-example",
+          },
+          { text: "3. Cal.diy booking", link: "/tutorials/cal-diy" },
+          {
+            text: "Patterns from integrations",
+            link: "/guide/integration-patterns",
+          },
         ],
       },
       {

@@ -4,8 +4,10 @@ Use this before shipping an authenticated or state-changing WebMCP tool.
 
 ## Native integration
 
-- [ ] Register through `document.modelContext.registerTool()`.
-- [ ] Use the official `webmcp-types` declarations.
+- [ ] Expose through `createSignet().expose()`, which registers with native
+      `document.modelContext.registerTool()`.
+- [ ] Use the official `webmcp-types` declarations when application code accesses the
+      native API directly.
 - [ ] Abort the registration signal when the tool should disappear.
 - [ ] Keep the human interface usable without WebMCP.
 - [ ] Register only in page and authentication states where the tool makes sense.
@@ -22,6 +24,8 @@ Use this before shipping an authenticated or state-changing WebMCP tool.
 
 - [ ] Define a stable, correctly scoped idempotency key.
 - [ ] Coordinate duplicate work atomically in durable storage.
+- [ ] Pair idempotency with an operation journal that records effect-boundary
+      correlation.
 - [ ] Distinguish a live owner from abandoned in-flight work across tabs or processes.
 - [ ] Verify the intended state independently when false success matters.
 - [ ] Preserve the `AbortSignal` through cancellable work.

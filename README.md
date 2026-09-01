@@ -5,18 +5,6 @@
 Signet turns application functions you already own into production-ready tools that
 browser agents can discover and use through native WebMCP.
 
-Using a coding agent? Give it [`AGENTS.md`](./AGENTS.md), the complete public contract.
-It should not need to inspect Signet's compiled implementation.
-
-For Codex, install the bundled project skill once:
-
-```sh
-mkdir -p .agents/skills
-cp -R node_modules/@signet/webmcp/skills/signet-webmcp .agents/skills/
-```
-
-Then ask it to use `$signet-webmcp` when exposing or reviewing website tools.
-
 You decide what agents should be able to do. Signet handles the boundary around those
 capabilities: registration, input validation, application context, expected errors,
 safe execution, testing, and observability.
@@ -27,7 +15,7 @@ safe execution, testing, and observability.
 npm install @signet/webmcp
 ```
 
-Expose one existing function:
+Expose one function from browser code:
 
 ```ts
 import { createSignet } from "@signet/webmcp";
@@ -35,29 +23,15 @@ import { createSignet } from "@signet/webmcp";
 const signet = createSignet();
 
 const registration = await signet.expose({
-  name: "search_products",
-  description: "Find products matching a query and return stable product IDs.",
+  name: "get_greeting",
+  description: "Return a greeting from this website.",
   inputSchema: {
     type: "object",
-    properties: {
-      query: {
-        type: "string",
-        minLength: 1,
-        description: "Words from the product name.",
-      },
-    },
-    required: ["query"],
+    properties: {},
     additionalProperties: false,
   },
   annotations: { readOnlyHint: true },
-  execute: async ({ query }: { query: string }, { signal }) => {
-    const response = await fetch(
-      `/api/products?q=${encodeURIComponent(query)}`,
-      { signal },
-    );
-    if (!response.ok) throw new Error(`Search failed: ${response.status}`);
-    return response.json();
-  },
+  execute: () => ({ message: "Hello, world!" }),
 });
 ```
 
@@ -74,7 +48,24 @@ Dispose the registration when the capability is no longer available:
 registration.dispose();
 ```
 
-See the complete [getting-started guide](./docs/guide/getting-started.md).
+See the complete [getting-started guide](./docs/guide/getting-started.md), then learn
+how [Signet's core abstractions](./docs/guide/core-concepts.md) map to application code.
+For a runnable React page, Chrome inspection, and a first model-driven call, use the
+[first agent call codelab](./docs/tutorials/first-agent-call.md).
+
+## Integrate with a coding agent
+
+Give a coding agent [`AGENTS.md`](./AGENTS.md), the complete public contract. It should
+not need to inspect Signet's compiled implementation.
+
+For Codex, install the bundled project skill once:
+
+```sh
+mkdir -p .agents/skills
+cp -R node_modules/@signet/webmcp/skills/signet-webmcp .agents/skills/
+```
+
+Then ask it to use `$signet-webmcp` when exposing or reviewing website tools.
 
 ## Add production behavior when needed
 
@@ -129,20 +120,21 @@ await signet.expose({
       });
     }
 
+    await operation?.write({ orderId });
     const cancelled = await cancelOrder({
       orderId,
       userId: context.userId,
       signal,
     });
-    await operation?.write({ orderId: cancelled.id });
     return cancelled;
   },
 
   recover: async ({ input, context, operation }) => {
     const correlation = await operation?.read<{ orderId: string }>();
+    if (!correlation) return { recovered: false };
     const order = await getOrder(input.orderId);
     if (order?.userId === context.userId && order.status === "cancelled") {
-      return correlation?.orderId === order.id
+      return correlation.orderId === order.id
         ? { recovered: true, output: order }
         : {
             recovered: false,
@@ -287,6 +279,11 @@ polyfill, Signet JSON format, or compiler.
 ## Explore
 
 - [Getting started](./docs/guide/getting-started.md)
+- [Core concepts](./docs/guide/core-concepts.md)
+- [Tutorials](./docs/tutorials/index.md)
+- [Authenticated payment codelab](./docs/guide/real-browser-example.md)
+- [Cal.diy booking codelab](./docs/tutorials/cal-diy.md)
+- [Patterns from real integrations](./docs/guide/integration-patterns.md)
 - [Interface API](./docs/reference/interface.md)
 - [Production WebMCP](./docs/guide/production-webmcp.md)
 - [Testing](./docs/guide/testing.md)

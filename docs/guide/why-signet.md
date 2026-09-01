@@ -43,8 +43,9 @@ A public product lookup should stay simple. An authenticated invoice read may ne
 application context and authorization. A state-changing action may also need durable
 idempotency and authoritative outcome verification.
 
-The current `guard()` API provides those optional execution controls. It supports the
-larger exposure workflow; it does not define Signet's category.
+The `createSignet().expose()` workflow adds those controls to individual tools as
+needed. The lower-level `guard()` remains available for an existing native
+registration, but most applications should start with the interface API.
 
 ## What Signet is not
 

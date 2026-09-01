@@ -4,6 +4,7 @@ import {
   type GuardObserver,
   type IdempotencyStore,
   type ModelContextLike,
+  type OperationJournal,
 } from "@signet/webmcp";
 
 type Session = {
@@ -27,6 +28,7 @@ type Order = {
 export interface CancelOrderDependencies {
   modelContext?: ModelContextLike;
   operationStore: IdempotencyStore;
+  operationJournal: OperationJournal;
   observe?: GuardObserver;
   getSession(options: { signal: AbortSignal }): Promise<Session>;
   getOrder(
@@ -76,7 +78,8 @@ export async function exposeCancelOrder(dependencies: CancelOrderDependencies) {
           "cancel",
         ].join(":"),
     },
-    execute: async ({ orderId, reason }, { context, signal }) => {
+    journal: { store: dependencies.operationJournal },
+    execute: async ({ orderId, reason }, { context, operation, signal }) => {
       const order = await dependencies.getOrder(orderId, { signal });
       if (order?.status === "shipped") {
         throw new ToolError({
@@ -85,6 +88,7 @@ export async function exposeCancelOrder(dependencies: CancelOrderDependencies) {
           retryable: false,
         });
       }
+      await operation?.write({ orderId });
       return dependencies.cancelOrder(
         { orderId, reason },
         { accountId: context.accountId, signal },

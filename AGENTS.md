@@ -37,23 +37,17 @@ const registration = await signet.expose({
   },
   journal: { store: operationJournal }, // reuses the idempotency key
   execute: async ({ orderId }, { context, operation, signal }) => {
+    await operation?.write({ orderId });
     const result = await cancelOrder({
       orderId,
       accountId: context.accountId,
       signal,
     });
-    await operation?.write({ orderId: result.id });
     return result;
   },
   recover: async ({ input, context, operation, signal }) => {
     const correlation = await operation?.read<{ orderId: string }>();
-    if (!correlation) {
-      return {
-        recovered: false,
-        outcome: "unknown",
-        reason: "Cancellation may have committed without a correlation ID.",
-      };
-    }
+    if (!correlation) return { recovered: false };
     const order = await getOrder(input.orderId, { signal });
     return order?.accountId === context.accountId &&
       order.status === "cancelled"

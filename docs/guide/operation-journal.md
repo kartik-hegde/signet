@@ -29,13 +29,7 @@ const tool = {
   },
   async recover({ operation, signal }) {
     const correlation = await operation?.read<{ orderId: string }>();
-    if (!correlation) {
-      return {
-        recovered: false,
-        outcome: "unknown",
-        reason: "The order may exist, but no order ID was returned.",
-      };
-    }
+    if (!correlation) return { recovered: false };
 
     const order = await orders.get(correlation.orderId, { signal });
     return order

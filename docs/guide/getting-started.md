@@ -1,21 +1,29 @@
 # Getting started
 
-Signet exposes existing application functions to agents through native WebMCP. Start
-with four fields, then add production controls only where the operation needs them.
+Signet makes a function in your website discoverable and callable by browser agents
+through native WebMCP. A tool can be as small as a function that returns a greeting.
 
-## Install
+## Before you start
+
+Signet runs in browser code. Add it to a client-side module that loads with the page
+where the capability should be available. It does not create a server, host your
+tools, or replace your application's API.
+
+WebMCP is still experimental. In a browser without WebMCP, Signet leaves the human
+website unchanged and reports the tool as `unsupported`.
+
+## Install Signet
 
 ```sh
 npm install @signet/webmcp
 ```
 
-Your application needs WebMCP declarations during development:
+That is the only package required to use Signet. Install `webmcp-types` separately
+only when application code accesses the native `document.modelContext` API directly.
 
-```sh
-npm install --save-dev webmcp-types
-```
+## Expose one tool
 
-## Expose a tool
+Add this to a client-side module:
 
 ```ts
 import { createSignet } from "@signet/webmcp";
@@ -23,122 +31,58 @@ import { createSignet } from "@signet/webmcp";
 const signet = createSignet();
 
 const registration = await signet.expose({
-  name: "search_products",
-  description: "Find products matching a query and return stable product IDs.",
+  name: "get_greeting",
+  description: "Return a greeting from this website.",
   inputSchema: {
     type: "object",
-    properties: {
-      query: {
-        type: "string",
-        minLength: 1,
-        description: "Words from the product name.",
-      },
-    },
-    required: ["query"],
+    properties: {},
     additionalProperties: false,
   },
   annotations: { readOnlyHint: true },
-  execute: async ({ query }: { query: string }, { signal }) => {
-    const response = await fetch(
-      `/api/products?q=${encodeURIComponent(query)}`,
-      { signal },
-    );
-    if (!response.ok) throw new Error(`Search failed: ${response.status}`);
-    return response.json();
-  },
+  execute: () => ({ message: "Hello, world!" }),
 });
 ```
 
-Signet validates the definition, compiles the input schema once, and registers the tool
-through `document.modelContext.registerTool()`. Invalid input never reaches your
-application function.
+A compatible browser agent can now discover `get_greeting`, call it with `{}`, and
+receive:
 
-When the tool should disappear—for example on logout, navigation, or component
-teardown—dispose it:
+```json
+{ "message": "Hello, world!" }
+```
+
+Every tool has four required fields:
+
+- `name`: a stable `verb_noun` identifier an agent can select;
+- `description`: what the tool does and any important constraint;
+- `inputSchema`: the JSON Schema Signet validates before execution;
+- `execute`: the application function that returns the result.
+
+The optional `readOnlyHint` tells agents that calling this tool does not change state.
+
+## Check registration
+
+After `expose()` resolves, the registration status is either `registered` or
+`unsupported`:
 
 ```ts
-registration.dispose();
+console.log(registration.status);
 ```
 
-On browsers without WebMCP, the human website continues normally and the registration
-has status `unsupported`. Use `createSignet({ unsupported: "throw" })` in tests when
-missing WebMCP should fail.
-
-The [WebMCP draft](https://webmachinelearning.github.io/webmcp/) creates
-`document.modelContext` with the document. Register tools when
-their application logic is ready; an agent that connects later sees the document's
-current tools. If an extension or polyfill supplies a non-native bridge after startup,
-wait for that bridge and pass it explicitly with `createSignet({ modelContext })`.
-Signet does not poll the page or pretend an unavailable protocol is ready.
-
-## Add application context
-
-Resolve trusted identity and resource context from your application, never from agent
-arguments:
+Use `unsupported: "warn"` while integrating if you want a console warning when the
+native browser API is missing:
 
 ```ts
-const signet = createSignet({
-  context: async ({ signal }) => {
-    const session = await currentSession({ signal });
-    return { userId: session.user.id };
-  },
-});
+const signet = createSignet({ unsupported: "warn" });
 ```
 
-The resolved context is available to execution and policy hooks.
+Signet does not poll for a bridge that may appear later. If an extension or test
+environment provides a `modelContext`, wait for it and pass it explicitly to
+`createSignet({ modelContext })`.
 
-## Add controls to a consequential tool
+## Test it without a browser agent
 
-```ts
-import { ToolError, createSignet } from "@signet/webmcp";
-
-const signet = createSignet({
-  context: async ({ signal }) => currentSession({ signal }),
-  observe: recordSignetEvent,
-});
-
-await signet.expose({
-  name: "cancel_order",
-  description: "Cancel one unshipped order belonging to the signed-in user.",
-  inputSchema: {
-    type: "object",
-    properties: { orderId: { type: "string", minLength: 1 } },
-    required: ["orderId"],
-    additionalProperties: false,
-  },
-  // Authorization runs before replay. Mutable order eligibility belongs in execute.
-  authorize: ({ context }) => context.scopes.includes("orders:cancel"),
-  idempotency: {
-    store: productionIdempotencyStore,
-    key: ({ input, context }) => `${context.userId}:${input.orderId}:cancel`,
-  },
-  execute: async ({ orderId }, { context, signal }) => {
-    const order = await getOrder(orderId);
-    if (order?.status === "shipped") {
-      throw new ToolError({
-        code: "order_already_shipped",
-        message: "Shipped orders cannot be cancelled.",
-        retryable: false,
-      });
-    }
-    return cancelOrder({ orderId, userId: context.userId, signal });
-  },
-  verify: async ({ input, context }) => {
-    const order = await getOrder(input.orderId);
-    return order?.userId === context.userId && order.status === "cancelled";
-  },
-});
-```
-
-The application still owns authentication, authorization, durable idempotency,
-business logic, and authoritative state. Signet coordinates and observes those checks
-at the agent boundary.
-
-Signet re-evaluates authorization before every replay. Keep current access policy in
-`authorize`, but put mutable conditions that success changes inside `execute` so they
-do not reject the stored result of a valid repeat.
-
-## Test without a model or browser
+The test harness supplies the same registration boundary and lets a test invoke the
+real tool callback:
 
 ```ts
 import { createSignet } from "@signet/webmcp";
@@ -148,26 +92,41 @@ const harness = createWebMcpTestHarness();
 const signet = createSignet({ modelContext: harness.modelContext });
 
 await signet.expose({
-  name: "search_products",
-  description: "Find products matching a query.",
+  name: "get_greeting",
+  description: "Return a greeting from this website.",
   inputSchema: {
     type: "object",
-    properties: { query: { type: "string", minLength: 1 } },
-    required: ["query"],
+    properties: {},
     additionalProperties: false,
   },
-  execute: ({ query }: { query: string }) => searchProducts(query),
+  annotations: { readOnlyHint: true },
+  execute: () => ({ message: "Hello, world!" }),
 });
 
-expect(harness.tools().map((tool) => tool.name)).toEqual(["search_products"]);
-await expect(
-  harness.invoke("search_products", { query: "boots" }),
-).resolves.toEqual(expectedProducts);
+expect(await harness.invoke("get_greeting", {})).toEqual({
+  message: "Hello, world!",
+});
 ```
 
-This deterministic lane verifies registration, validation, execution, cancellation,
-and disposal. Before shipping, also exercise representative tasks through a supported
-native WebMCP browser agent.
+The harness is deterministic and does not need a model, browser, or API key.
 
-Continue with [Production WebMCP](./production-webmcp), [Testing](./testing), and the
-[interface API](../reference/interface).
+## Remove the tool when its page state disappears
+
+A tool should exist only while its capability is available. Dispose the registration
+on logout, navigation, or teardown:
+
+```ts
+registration.dispose();
+```
+
+React applications can bind the same lifecycle to a component:
+
+```ts
+import { useSignetTool } from "@signet/webmcp/react";
+
+const state = useSignetTool(signet, greetingTool, [greetingTool]);
+```
+
+Next, learn the [core Signet abstractions](./core-concepts) and how each one maps to
+application code. To run this example as a website and let an agent invoke it, follow
+the [first agent call codelab](../tutorials/first-agent-call).

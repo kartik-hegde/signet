@@ -42,11 +42,15 @@ idempotency: {
     input.orderId,
   ].join(":"),
   store: durableStore,
+},
+journal: {
+  store: operationJournal,
 }
 ```
 
 Include the principal and tenant when their permissions or results differ. Include an
-operation version when semantics change.
+operation version when semantics change. Signet requires the operation journal so it
+can distinguish a proven pre-effect failure from an interrupted effect.
 
 ## Parallel where safe
 
