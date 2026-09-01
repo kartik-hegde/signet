@@ -190,6 +190,14 @@ Express backend independently keeps a durable operation record, returns an exist
 result for an identical retry, and rejects conflicting reuse of an operation ID. A
 production application should use storage whose durability matches its effect.
 
+`MemoryIdempotencyStore` and `MemoryOperationJournal` are imported from
+`@signet/webmcp/testing` on purpose: they are process-local, and that import path is
+meant to be visible in review when it appears in application code. When you carry this
+pattern into your own application, use `IndexedDbIdempotencyStore` from
+`@signet/webmcp/stores` instead, and read
+[idempotency and concurrency](./idempotency-concurrency) for what a durable adapter
+must guarantee.
+
 ## 5. Dispose every registration
 
 All three registrations share one abort signal. When the authenticated subtree

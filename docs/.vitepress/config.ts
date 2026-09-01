@@ -64,6 +64,7 @@ export default defineConfig({
           { text: "Operation journals", link: "/guide/operation-journal" },
           { text: "Testing", link: "/guide/testing" },
           { text: "Developer tooling", link: "/guide/developer-tooling" },
+          { text: "Troubleshooting", link: "/guide/troubleshooting" },
           { text: "Performance", link: "/guide/performance" },
         ],
       },

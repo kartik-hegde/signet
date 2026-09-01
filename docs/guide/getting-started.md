@@ -79,6 +79,19 @@ Signet does not poll for a bridge that may appear later. If an extension or test
 environment provides a `modelContext`, wait for it and pass it explicitly to
 `createSignet({ modelContext })`.
 
+## Server-side rendering
+
+Signet is safe to import and call where there is no `document`, so a module shared by
+server and browser code does not need an environment guard. During a Next.js, Remix, or
+plain Node render, `createSignet()` finds no native boundary, `expose()` resolves with
+status `unsupported`, and the returned registration still has a working `dispose()`.
+Nothing throws and no tool is published.
+
+The registration that matters therefore happens when the module runs in the browser.
+Keep `expose()` in code that reaches the client — an effect, a client component, or a
+module the page loads — rather than in a server-only render path, where it will
+correctly do nothing.
+
 ## Test it without a browser agent
 
 The test harness supplies the same registration boundary and lets a test invoke the
