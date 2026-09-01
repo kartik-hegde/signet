@@ -3,10 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "signet": "eval/cli.mjs"
+  },
   "engines": {
     "node": ">=22.5"
   },
   "scripts": {
+    "eval": "node eval/cli.mjs eval",
     "test:eval": "node --test eval/test/*.test.mjs",
     "bench:p0": "node scripts/run-p0.mjs",
     "bench:p1": "npx --yes --package=node@24 node agent-effectiveness/run.mjs",

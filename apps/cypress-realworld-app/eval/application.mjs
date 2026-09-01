@@ -82,7 +82,7 @@ export function createPaymentApplicationAdapter({
           `${node} ${tsNode} -P tsconfig.tsnode.json scripts/testServer.ts`,
           `${node} ${tsNode} -P tsconfig.tsnode.json --files backend/app.ts`,
         ],
-        { cwd: appDir, env: environment, stdio: ["ignore", "pipe", "pipe"], detached: true },
+        { cwd: appDir, env: environment, stdio: "ignore", detached: true },
       );
       ownsProcess = true;
       await waitFor(ready, "the payment fixture", 120_000);

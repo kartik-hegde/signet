@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "description": "Portable cases and local evaluation tools for agent-ready websites.",
   "type": "module",
+  "bin": {
+    "signet": "./cli.mjs"
+  },
   "sideEffects": false,
   "exports": {
     ".": {
