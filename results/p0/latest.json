@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-01T01:39:14.510Z",
+  "generatedAt": "2026-09-01T03:07:53.990Z",
   "status": "p0_directional",
   "note": "Deterministic application drivers establish parity and directional overhead. They are not an LLM-agent speed claim.",
   "provenance": {
-    "benchmarkCommit": "9785532",
-    "signetCommit": "caeda95",
+    "benchmarkCommit": "88188e3",
+    "signetCommit": "1903fe7",
     "application": "Cypress Real World App payment fixture"
   },
   "effectiveness": {
@@ -19,7 +19,7 @@
       "ui": {
         "task": "send-payment",
         "mode": "ui",
-        "durationMs": 1069.1,
+        "durationMs": 1051.8,
         "interactionCount": 6,
         "toolCalls": 0,
         "httpRequests": 3,
@@ -28,7 +28,7 @@
       "webmcp_raw": {
         "task": "send-payment",
         "mode": "webmcp_raw",
-        "durationMs": 32.5,
+        "durationMs": 34.7,
         "interactionCount": 3,
         "toolCalls": 3,
         "httpRequests": 3,
@@ -46,18 +46,18 @@
     },
     "comparisons": {
       "rawWebMcpVsUi": {
-        "durationSpeedup": 32.9,
-        "durationReductionPercent": 96.96,
+        "durationSpeedup": 30.31,
+        "durationReductionPercent": 96.7,
         "interactionReductionPercent": 50
       },
       "signetWebMcpVsUi": {
-        "durationSpeedup": 22.09,
-        "durationReductionPercent": 95.47,
+        "durationSpeedup": 21.73,
+        "durationReductionPercent": 95.4,
         "interactionReductionPercent": 50
       },
       "signetVsRawWebMcp": {
-        "durationRatio": 1.49,
-        "addedDurationMs": 15.9,
+        "durationRatio": 1.39,
+        "addedDurationMs": 13.7,
         "additionalHttpRequests": 2
       }
     }
@@ -80,7 +80,7 @@
         "honesty": 0,
         "scenariosPassed": 3,
         "scenariosRun": 7,
-        "medianInvocationMs": 0.3,
+        "medianInvocationMs": 0.2,
         "counters": {
           "duplicate_effects": 3,
           "false_success": 0,
@@ -140,7 +140,7 @@
         "honesty": 100,
         "scenariosPassed": 6,
         "scenariosRun": 7,
-        "medianInvocationMs": 0.5,
+        "medianInvocationMs": 0.7,
         "counters": {
           "duplicate_effects": 0,
           "false_success": 0,

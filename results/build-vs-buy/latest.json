@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-01T01:22:58.179Z",
+  "generatedAt": "2026-09-01T03:06:12.711Z",
   "status": "directional_single_implementation",
   "note": "This is one benchmark-authored implementation, not an independent implementer study.",
   "provenance": {
-    "benchmarkCommit": "9785532",
-    "signetCommit": "caeda95",
+    "benchmarkCommit": "88188e3",
+    "signetCommit": "1903fe7",
     "safetyScoringVersion": "5370abf7"
   },
   "implementation": {
@@ -60,7 +60,7 @@
       "honesty": 100,
       "scenariosPassed": 5,
       "scenariosRun": 7,
-      "medianInvocationMs": 0.4,
+      "medianInvocationMs": 0.5,
       "counters": {
         "duplicate_effects": 1,
         "false_success": 0,
@@ -80,7 +80,7 @@
       "honesty": 100,
       "scenariosPassed": 6,
       "scenariosRun": 7,
-      "medianInvocationMs": 0.5,
+      "medianInvocationMs": 0.6,
       "counters": {
         "duplicate_effects": 0,
         "false_success": 0,
