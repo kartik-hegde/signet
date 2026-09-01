@@ -2,10 +2,12 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path, { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const DEFAULT_ROOT = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 
 export function createSignetAgentAdapter({
-  root,
+  root = DEFAULT_ROOT,
   model = process.env.P1_MODEL ?? "gpt-5.4-mini",
   reasoning = process.env.P1_REASONING ?? "low",
   providerPath = resolve(root, process.env.P1_PROVIDER ?? "agent-effectiveness/providers/codex.mjs"),

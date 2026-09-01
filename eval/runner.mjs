@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { createEvidence } from "./evidence.mjs";
+import { FAILURE_CATEGORIES, createEvidence } from "./evidence.mjs";
 
 /** Run one Case once. The oracle, never the agent transcript, decides success. */
 export async function runTrial({
@@ -149,7 +149,7 @@ export function classifyFailure(error, timedOut = false) {
   if (timedOut) {
     return { category: "execution_control", message: errorMessage(error), stage: "timeout", retryable: true };
   }
-  const category = typeof error?.category === "string" ? error.category : "environment";
+  const category = FAILURE_CATEGORIES.includes(error?.category) ? error.category : "environment";
   return {
     category,
     message: errorMessage(error),

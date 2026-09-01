@@ -9,11 +9,14 @@ import {
   symlinkSync,
 } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { waitFor } from "../../../agent-effectiveness/lib/cdp.mjs";
 
+const DEFAULT_ROOT = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+
 export function createPaymentApplicationAdapter({
-  root,
+  root = DEFAULT_ROOT,
   appDir = resolve(root, "apps/cypress-realworld-app"),
   signetDir = resolve(root, process.env.SIGNET_DIR ?? "../signet"),
   frontendPort = process.env.BENCHMARK_APP_PORT ?? "3100",

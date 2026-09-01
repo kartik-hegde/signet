@@ -95,3 +95,19 @@ test("runTrial captures adapter failures as evidence", async () => {
   assert.equal(evidence.failure.category, "agent_provider");
   assert.equal(evidence.failure.retryable, true);
 });
+
+test("runTrial normalizes custom adapter categories instead of losing evidence", async () => {
+  const { evaluation, caseDefinition } = fixture(async () => {
+    const error = new Error("third-party category");
+    error.category = "vendor-specific";
+    throw error;
+  });
+  const evidence = await runTrial({
+    caseDefinition,
+    condition: evaluation.conditions[0],
+    index: 1,
+    adapters: evaluation.adapters,
+  });
+  assert.equal(evidence.failure.category, "environment");
+  assert.equal(evidence.failure.message, "third-party category");
+});

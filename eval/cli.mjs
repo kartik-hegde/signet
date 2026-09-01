@@ -35,6 +35,7 @@ export async function main(argv = process.argv.slice(2)) {
   const evidence = [];
   const runContext = { evaluation, outputDir, cases, conditions, trials: options.trials };
   const provenance = options.provenance ?? {};
+  let cleanupError;
 
   process.stdout.write(
     `\nSIGNET EVAL\n${evaluation.suite.id}: ${cases.length} Cases × ${conditions.length} conditions × ${options.trials} trials\n\n`,
@@ -60,7 +61,11 @@ export async function main(argv = process.argv.slice(2)) {
       writeRunManifest(outputDir, evaluation, evidence, options);
     }
   } finally {
-    await evaluation.adapters.application.cleanup?.(runContext);
+    try {
+      await evaluation.adapters.application.cleanup?.(runContext);
+    } catch (error) {
+      cleanupError = error;
+    }
   }
   const reportResult = writeReport({
     suite: evaluation.suite,
@@ -71,6 +76,7 @@ export async function main(argv = process.argv.slice(2)) {
   process.stdout.write(
     `\nWrote ${evidence.length} Trial Evidence files, report.json, and report.md to ${outputDir}\n`,
   );
+  if (cleanupError) throw cleanupError;
   return { evaluation, evidence, outputDir, options, report: reportResult.report };
 }
 
