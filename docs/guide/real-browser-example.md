@@ -234,6 +234,7 @@ logic, balances, and database writes.
 The focused tests prove:
 
 - tools exist only while signed in;
+- production-facing tool metadata passes Signet's readiness diagnostics;
 - invented or unauthorized arguments cause no payment request;
 - concurrent identical calls produce one effect;
 - a reload retry returns the existing durable result;
@@ -251,7 +252,7 @@ npm run test:reference
 
 The install command is needed once. The test command builds Signet and the application,
 starts the React and Express servers, runs the focused Cypress specs, and stops both
-servers. The expected result is 15 passing tests across two spec files.
+servers. The expected result is 16 passing tests across two spec files.
 
 No model credentials are required. To exercise the real native Chrome WebMCP boundary:
 

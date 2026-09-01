@@ -46,9 +46,23 @@ const registration = await signet.expose({
   inputSchema: {
     type: "object",
     properties: {
-      orderId: { type: "string", minLength: 1 },
-      reason: { enum: ["customer_request", "duplicate"] },
-      operationId: { type: "string", minLength: 1, maxLength: 64 },
+      orderId: {
+        type: "string",
+        description: "Stable identifier of the order to cancel.",
+        minLength: 1,
+        maxLength: 128,
+      },
+      reason: {
+        description: "Why the signed-in account is cancelling the order.",
+        enum: ["customer_request", "duplicate"],
+      },
+      operationId: {
+        type: "string",
+        description:
+          "Stable identifier reused for retries of this cancellation.",
+        minLength: 1,
+        maxLength: 64,
+      },
     },
     required: ["orderId", "reason", "operationId"],
     additionalProperties: false,
