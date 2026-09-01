@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: kartik-hegde/signet
+          path: .signet-source
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+          cache-dependency-path: apps/cypress-realworld-app/yarn.lock
+
+      - name: Install reference application
+        run: npm run install:p0
+
+      - name: Evaluation contracts
+        run: npm run test:eval
+
+      - name: Reference application types
+        run: npm --prefix apps/cypress-realworld-app run types
+
+      - name: Deterministic safety suite
+        run: npm run bench:safety
+        env:
+          SIGNET_DIR: .signet-source
+
+      - name: Directional build-versus-buy suite
+        run: npm run bench:build-vs-buy
+        env:
+          SIGNET_DIR: .signet-source
+
+      - name: Authenticated payment parity
+        run: npm run bench:p0
+        env:
+          SIGNET_DIR: .signet-source

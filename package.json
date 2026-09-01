@@ -10,6 +10,7 @@
     "node": ">=22.5"
   },
   "scripts": {
+    "ci": "npm run test:eval && npm --prefix apps/cypress-realworld-app run types",
     "eval": "node eval/cli.mjs eval",
     "test:eval": "node --test eval/test/*.test.mjs",
     "bench:p0": "node scripts/run-p0.mjs",
