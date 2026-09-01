@@ -51,12 +51,10 @@ resolve app context
   -> authorize
   -> obtain application-owned confirmation always, or only for a new effect
   -> resolve an optional operation-journal handle
-  -> atomically claim fresh work or replay a sealed result
-  -> for fresh work, durably mark the application-defined effect boundary and execute
+  -> atomically execute or replay
   -> optionally recover a proven outcome after an execution error
   -> explicitly report an unknown outcome when reconciliation cannot decide
   -> verify observed outcome
-  -> seal the verified result into durable completion
   -> return
 ```
 
