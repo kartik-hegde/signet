@@ -31,6 +31,7 @@ export function createPaymentApplicationAdapter({
   };
   let child;
   let ownsProcess = false;
+  let processLog = "";
 
   const request = async (pathname, init) => {
     const response = await fetch(`${apiUrl}${pathname}`, init);
@@ -82,10 +83,28 @@ export function createPaymentApplicationAdapter({
           `${node} ${tsNode} -P tsconfig.tsnode.json scripts/testServer.ts`,
           `${node} ${tsNode} -P tsconfig.tsnode.json --files backend/app.ts`,
         ],
-        { cwd: appDir, env: environment, stdio: "ignore", detached: true },
+        { cwd: appDir, env: environment, stdio: ["ignore", "pipe", "pipe"], detached: true },
       );
       ownsProcess = true;
-      await waitFor(ready, "the payment fixture", 120_000);
+      const remember = (chunk) => {
+        processLog = `${processLog}${chunk}`.slice(-16_384);
+      };
+      child.stdout.on("data", remember);
+      child.stderr.on("data", remember);
+      const exited = new Promise((_, reject) => {
+        child.once("error", reject);
+        child.once("exit", (code, signal) => {
+          reject(new Error(
+            `Payment fixture exited during startup (${signal ?? `code ${code}`}).\n${processLog}`,
+          ));
+        });
+      });
+      try {
+        await Promise.race([waitFor(ready, "the payment fixture", 120_000), exited]);
+      } catch (error) {
+        if (ownsProcess && child) stopProcessGroup(child);
+        throw error;
+      }
     },
     async reset() {
       await request("/testData/seed", { method: "POST" });

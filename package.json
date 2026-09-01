@@ -11,7 +11,7 @@
   },
   "scripts": {
     "ci": "npm run test:eval && npm --prefix apps/cypress-realworld-app run types",
-    "eval": "node eval/cli.mjs eval",
+    "eval": "npx --yes --package=node@24 node eval/cli.mjs eval",
     "test:eval": "node --test eval/test/*.test.mjs",
     "bench:p0": "node scripts/run-p0.mjs",
     "bench:p1": "npx --yes --package=node@24 node agent-effectiveness/run.mjs",

@@ -19,7 +19,7 @@
     "schemas"
   ],
   "engines": {
-    "node": ">=22.5"
+    "node": ">=22.5 <25"
   },
   "license": "MIT"
 }
