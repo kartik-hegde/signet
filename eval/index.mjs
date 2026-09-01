@@ -14,3 +14,9 @@ export {
 } from "./evidence.mjs";
 export { defineEvaluation, validateAdapter } from "./adapters.mjs";
 export { classifyFailure, runTrial } from "./runner.mjs";
+export {
+  REPORT_SCHEMA_VERSION,
+  buildReport,
+  renderMarkdownReport,
+  writeReport,
+} from "./report.mjs";

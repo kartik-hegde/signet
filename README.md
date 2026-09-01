@@ -15,6 +15,28 @@ Signet is an evaluated arm, not the benchmark oracle. Task completion is graded 
 application state or an independent evaluator, never from Signet events or a tool's own
 success response.
 
+## Run a reusable evaluation
+
+The open-source evaluation kit defines a user intent as a versioned **Case**, executes
+each Case as one or more **Trials**, saves immutable **Evidence**, and aggregates it into
+JSON and Markdown **Reports**. The authenticated-payment suite also includes controlled
+baseline, explicit-metadata, and guided-metadata conditions for hill climbing.
+
+```sh
+npm run eval -- --trials 5
+
+# Select a smaller matrix while developing
+npm run eval -- --case find-payment-recipient --condition signet-baseline,signet-guided --trials 5
+
+# Inspect the run count without starting Chrome or an agent
+npm run eval -- --dry-run
+```
+
+Application, browser, agent, fault, and oracle adapters live outside the core runner.
+This makes the format and local runner reusable while keeping the database oracle
+authoritative. Outputs are written under `results/eval/<timestamp>/`; model-backed runs
+may consume paid provider capacity, so CI uses deterministic contract tests instead.
+
 The current audit and ordered next steps are in
 [`methodology/benchmark-roadmap.md`](./methodology/benchmark-roadmap.md). The main
 change is to benchmark the complete developer loop—time from an existing website

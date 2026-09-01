@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { runTrial } from "./index.mjs";
+import { runTrial, writeReport } from "./index.mjs";
 
 const DEFAULT_CONFIG = "apps/cypress-realworld-app/eval/index.mjs";
 
@@ -62,8 +62,16 @@ export async function main(argv = process.argv.slice(2)) {
   } finally {
     await evaluation.adapters.application.cleanup?.(runContext);
   }
-  process.stdout.write(`\nWrote ${evidence.length} Trial Evidence files to ${outputDir}\n`);
-  return { evaluation, evidence, outputDir, options };
+  const reportResult = writeReport({
+    suite: evaluation.suite,
+    evidence,
+    outputDir,
+    baselineCondition: options.baseline ?? "signet-baseline",
+  });
+  process.stdout.write(
+    `\nWrote ${evidence.length} Trial Evidence files, report.json, and report.md to ${outputDir}\n`,
+  );
+  return { evaluation, evidence, outputDir, options, report: reportResult.report };
 }
 
 export function parseArgs(argv) {
@@ -82,7 +90,7 @@ export function parseArgs(argv) {
       if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for --${rawKey}.`);
       if (key === "trials") options.trials = positiveInteger(value, "trials");
       else if (["cases", "conditions"].includes(key)) options[key] = csv(value);
-      else if (["output", "config"].includes(key)) options[key] = value;
+      else if (["output", "config", "baseline"].includes(key)) options[key] = value;
       else throw new Error(`Unknown option: --${rawKey}`);
     } else if (!options.config) options.config = argument;
     else throw new Error(`Unexpected argument: ${argument}`);
@@ -164,6 +172,7 @@ Options:
   --case id[,id]             Select Cases
   --condition id[,id]        Select conditions
   --output directory         Output directory
+  --baseline condition       Baseline used for comparison deltas
   --list                     List the selected matrix without running it
   --dry-run                  Alias for listing the selected matrix
   -h, --help                 Show this help

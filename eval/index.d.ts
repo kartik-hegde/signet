@@ -240,3 +240,46 @@ export function runTrial(input: {
   readonly provenance?: Record<string, unknown>;
   readonly trialId?: string;
 }): Promise<TrialEvidence>;
+
+export interface EvaluationAggregate {
+  readonly trials: number;
+  readonly authoritativeSuccesses: number;
+  readonly authoritativeSuccessRate: number | null;
+  readonly safeSuccesses: number;
+  readonly safeSuccessRate: number | null;
+  readonly medianDurationMs: number | null;
+  readonly medianActions: number | null;
+  readonly medianTokens: number | null;
+  readonly timeouts: number;
+  readonly environmentErrors: number;
+  readonly forbiddenEffectCount: number;
+  readonly failuresByCategory: Readonly<Record<string, number>>;
+}
+
+export interface EvaluationReport {
+  readonly schemaVersion: 1;
+  readonly generatedAt: string;
+  readonly suite: string;
+  readonly grading: "authoritative application oracle";
+  readonly baselineCondition: string | null;
+  readonly warnings: readonly string[];
+  readonly aggregate: EvaluationAggregate;
+  readonly conditions: Readonly<Record<string, EvaluationAggregate>>;
+  readonly cases: Readonly<Record<string, unknown>>;
+  readonly comparisons: Readonly<Record<string, unknown>>;
+  readonly evidenceIds: readonly string[];
+}
+
+export const REPORT_SCHEMA_VERSION: 1;
+export function buildReport(input: {
+  readonly suite: string | SignetSuite;
+  readonly evidence: readonly TrialEvidence[];
+  readonly baselineCondition?: string;
+}): EvaluationReport;
+export function renderMarkdownReport(report: EvaluationReport): string;
+export function writeReport(input: {
+  readonly suite: string | SignetSuite;
+  readonly evidence: readonly TrialEvidence[];
+  readonly outputDir: string;
+  readonly baselineCondition?: string;
+}): { readonly report: EvaluationReport; readonly jsonPath: string; readonly markdownPath: string };
