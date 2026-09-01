@@ -26,6 +26,9 @@ jobs:
           cache: yarn
           cache-dependency-path: apps/cypress-realworld-app/yarn.lock
 
+      - name: Install Signet runtime dependency
+        run: npm ci --omit=dev --prefix .local/signet
+
       - name: Install reference application
         run: npm run install:p0
 
