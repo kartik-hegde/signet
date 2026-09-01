@@ -15,6 +15,12 @@ Signet is an evaluated arm, not the benchmark oracle. Task completion is graded 
 application state or an independent evaluator, never from Signet events or a tool's own
 success response.
 
+The current audit and ordered next steps are in
+[`methodology/benchmark-roadmap.md`](./methodology/benchmark-roadmap.md). The main
+change is to benchmark the complete developer loop—time from an existing website
+workflow to the first authoritative real-agent success, followed by measurable
+hill-climbing—not only WebMCP efficiency and execution safety.
+
 ## Repository layout
 
 | Path                                             | Purpose                                                                 | Status         |
@@ -24,7 +30,7 @@ success response.
 | [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies                                   | Runnable P1    |
 | [`build-vs-buy/`](./build-vs-buy/)               | Raw, hand-rolled, and Signet implementation baseline                    | Runnable       |
 | [`apps/`](./apps/)                               | App manifests, patches, task definitions, reset hooks, and oracles      | Saleor + reference fixture |
-| [`methodology/`](./methodology/)                 | Benchmark contract, KPIs, experimental design, and publication rules    | Initial design |
+| [`methodology/`](./methodology/)                 | Benchmark contract, coverage audit, ordered roadmap, and publication rules | Audit + roadmap |
 | [`results/`](./results/)                         | Reviewed summaries and benchmark cards; raw/private traces stay ignored | Initial design |
 
 ## Run the current safety lane

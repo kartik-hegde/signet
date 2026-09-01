@@ -1,15 +1,15 @@
 # Directional build-versus-buy baseline
 
-Generated: 2026-08-31T18:02:29.838Z
+Generated: 2026-09-01T01:22:58.179Z
 
 > This is one benchmark-authored implementation, not an independent implementer study.
 
 | Arm | Bespoke adapter SLOC | Safety score | Scenarios passed | Median invocation (ms) |
 |---|---:|---:|---:|---:|
-| Raw WebMCP | — | 51 | 1/3 | 0.4 |
-| Hand-rolled controls | 28 | 85 | 1/3 | 0.5 |
-| Signet + shipped memory store | 14 | 63.5 | 1/3 | 0.4 |
-| Signet + same durable store | 14 | 85 | 1/3 | 0.4 |
+| Raw WebMCP | — | 55.6 | 3/7 | 0.2 |
+| Hand-rolled controls | 29 | 92.7 | 4/7 | 0.2 |
+| Signet + shipped memory store | 17 | 90.3 | 5/7 | 0.4 |
+| Signet + same durable store | 17 | 95.2 | 6/7 | 0.5 |
 
 The hand-rolled and Signet arms use the same application operations, fault schedule,
 authoritative verifiers, and durable idempotency store. Only the execution adapter

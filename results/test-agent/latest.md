@@ -1,12 +1,12 @@
 # Signet Test Agent run
 
-Generated: 2026-08-31T18:02:22.835Z
+Generated: 2026-09-01T01:37:00.069Z
 
 > A local WebMCP-only agent test. Success is graded by an application-owned oracle, not agent narration or tool output.
 
 | Task | Oracle | Tool sequence | Duration (ms) | Tokens | Signet lifecycle |
 |---|---|---|---:|---:|---|
-| find-payment-recipient | PASS | search_payment_users | 4351 | 20511 | started → executed → succeeded |
+| find-payment-recipient | PASS | search_payment_users | 4723 | 20451 | started → executed → succeeded |
 
 The machine-readable result includes the discovered tool inventory, arguments, tool
 results, per-call timing, lifecycle events, final agent report, and authoritative

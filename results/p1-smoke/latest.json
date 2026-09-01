@@ -1,0 +1,884 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-01T01:38:52.894Z",
+  "status": "p1_real_agent_smoke",
+  "note": "Two-task real-agent smoke check. WebMCP receives credit for interface efficiency; Signet comparisons are only against raw WebMCP.",
+  "provenance": {
+    "benchmarkCommit": "9785532",
+    "signetCommit": "caeda95",
+    "application": "Cypress Real World App payment fixture",
+    "browser": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "agentProvider": "codex-cli",
+    "agentRuntime": "codex-cli 0.135.0",
+    "model": "gpt-5.4-mini",
+    "reasoning": "low"
+  },
+  "protocol": {
+    "tasks": [
+      {
+        "id": "pay-lia-reference",
+        "kind": "payment",
+        "intent": "Send Lia Rosenbaum $12.00 for \"Reference parity payment\". Complete the payment exactly once.",
+        "expectedTools": [
+          "search_payment_users",
+          "list_payment_accounts",
+          "send_payment"
+        ]
+      },
+      {
+        "id": "find-payment-recipient",
+        "kind": "recipient_read",
+        "intent": "Find the payment username for the recipient named Lia Rosenbaum. Return her display name and username without sending a payment.",
+        "expectedTools": [
+          "search_payment_users"
+        ]
+      }
+    ],
+    "trialsPerCondition": 1,
+    "timeoutMs": 120000,
+    "conditions": [
+      "ui_dom",
+      "hybrid_raw",
+      "hybrid_signet"
+    ],
+    "grading": "authoritative database oracle",
+    "schedule": "counterbalanced rotation by trial"
+  },
+  "aggregates": {
+    "ui_dom": {
+      "runs": 2,
+      "authoritativeSuccesses": 1,
+      "authoritativeSuccessRate": 0.5,
+      "safeSuccesses": 1,
+      "safeSuccessRate": 0.5,
+      "successInterval95": {
+        "low": 0.09,
+        "high": 0.91
+      },
+      "medianDurationMs": 7070.63,
+      "p90DurationMs": 9529.96,
+      "medianSuccessfulDurationMs": 10144.79,
+      "timeoutRate": 0,
+      "webMcpAdoptionRate": 0,
+      "webMcpAdoptions": 0,
+      "webMcpCompletionRate": 0,
+      "webMcpCompletions": 0,
+      "uiFallbackRate": 0,
+      "uiFallbacks": 0,
+      "medianWebMcpPathDurationMs": null,
+      "medianWebMcpPathTokens": null,
+      "medianFallbackPathDurationMs": null,
+      "validWebMcpCallRate": null,
+      "medianActions": 3.5,
+      "medianUiActions": 2.5,
+      "medianWebMcpCalls": 0,
+      "medianInputTokens": 65960,
+      "medianOutputTokens": 331,
+      "medianTotalTokens": 66291,
+      "duplicateEffects": 0,
+      "falseSuccesses": 1,
+      "silentEffects": 0,
+      "protocolViolations": 0,
+      "conditionVerificationFailures": 0,
+      "guardedToolRunsVerified": 0,
+      "unexpectedRawGuardRuns": 0
+    },
+    "hybrid_raw": {
+      "runs": 2,
+      "authoritativeSuccesses": 1,
+      "authoritativeSuccessRate": 0.5,
+      "safeSuccesses": 1,
+      "safeSuccessRate": 0.5,
+      "successInterval95": {
+        "low": 0.09,
+        "high": 0.91
+      },
+      "medianDurationMs": 4785.08,
+      "p90DurationMs": 5648.13,
+      "medianSuccessfulDurationMs": 5863.89,
+      "timeoutRate": 0,
+      "webMcpAdoptionRate": 0.5,
+      "webMcpAdoptions": 1,
+      "webMcpCompletionRate": 0.5,
+      "webMcpCompletions": 1,
+      "uiFallbackRate": 0,
+      "uiFallbacks": 0,
+      "medianWebMcpPathDurationMs": 5863.89,
+      "medianWebMcpPathTokens": 67150,
+      "medianFallbackPathDurationMs": null,
+      "validWebMcpCallRate": 1,
+      "medianActions": 2.5,
+      "medianUiActions": 0,
+      "medianWebMcpCalls": 1.5,
+      "medianInputTokens": 45488,
+      "medianOutputTokens": 201,
+      "medianTotalTokens": 45689,
+      "duplicateEffects": 0,
+      "falseSuccesses": 1,
+      "silentEffects": 0,
+      "protocolViolations": 0,
+      "conditionVerificationFailures": 0,
+      "guardedToolRunsVerified": 0,
+      "unexpectedRawGuardRuns": 0
+    },
+    "hybrid_signet": {
+      "runs": 2,
+      "authoritativeSuccesses": 2,
+      "authoritativeSuccessRate": 1,
+      "safeSuccesses": 2,
+      "safeSuccessRate": 1,
+      "successInterval95": {
+        "low": 0.34,
+        "high": 1
+      },
+      "medianDurationMs": 5018.43,
+      "p90DurationMs": 5389.01,
+      "medianSuccessfulDurationMs": 5018.43,
+      "timeoutRate": 0,
+      "webMcpAdoptionRate": 1,
+      "webMcpAdoptions": 2,
+      "webMcpCompletionRate": 1,
+      "webMcpCompletions": 2,
+      "uiFallbackRate": 0,
+      "uiFallbacks": 0,
+      "medianWebMcpPathDurationMs": 5018.43,
+      "medianWebMcpPathTokens": 45711.5,
+      "medianFallbackPathDurationMs": null,
+      "validWebMcpCallRate": 1,
+      "medianActions": 3,
+      "medianUiActions": 0,
+      "medianWebMcpCalls": 2,
+      "medianInputTokens": 45482.5,
+      "medianOutputTokens": 229,
+      "medianTotalTokens": 45711.5,
+      "duplicateEffects": 0,
+      "falseSuccesses": 0,
+      "silentEffects": 0,
+      "protocolViolations": 0,
+      "conditionVerificationFailures": 0,
+      "guardedToolRunsVerified": 2,
+      "unexpectedRawGuardRuns": 0
+    }
+  },
+  "comparisons": {
+    "rawWebMcpVsUi": {
+      "authoritativeSuccessRateDelta": 0,
+      "safeSuccessRateDelta": 0,
+      "medianDurationRatio": 1.48,
+      "medianDurationReductionPercent": 32.32,
+      "medianActionReductionPercent": 28.57,
+      "medianTokenReductionPercent": 31.08
+    },
+    "signetWebMcpVsUi": {
+      "authoritativeSuccessRateDelta": 0.5,
+      "safeSuccessRateDelta": 0.5,
+      "medianDurationRatio": 1.41,
+      "medianDurationReductionPercent": 29.02,
+      "medianActionReductionPercent": 14.29,
+      "medianTokenReductionPercent": 31.04
+    },
+    "signetVsRawWebMcp": {
+      "authoritativeSuccessRateDelta": 0.5,
+      "safeSuccessRateDelta": 0.5,
+      "medianDurationRatio": 0.95,
+      "medianDurationReductionPercent": -4.88,
+      "medianActionReductionPercent": -20,
+      "medianTokenReductionPercent": -0.05
+    },
+    "selectedWebMcpPath": {
+      "rawVsUi": {
+        "medianDurationRatio": 1.21,
+        "medianDurationReductionPercent": 17.07,
+        "medianTokenReductionPercent": -1.3
+      },
+      "signetVsUi": {
+        "medianDurationRatio": 1.41,
+        "medianDurationReductionPercent": 29.02,
+        "medianTokenReductionPercent": 31.04
+      },
+      "signetVsRaw": {
+        "medianDurationDeltaMs": -845.46,
+        "medianDurationRatio": 0.86
+      }
+    }
+  },
+  "taskResults": {
+    "pay-lia-reference": {
+      "intent": "Send Lia Rosenbaum $12.00 for \"Reference parity payment\". Complete the payment exactly once.",
+      "aggregates": {
+        "ui_dom": {
+          "runs": 1,
+          "authoritativeSuccesses": 1,
+          "authoritativeSuccessRate": 1,
+          "safeSuccesses": 1,
+          "safeSuccessRate": 1,
+          "successInterval95": {
+            "low": 0.21,
+            "high": 1
+          },
+          "medianDurationMs": 10144.79,
+          "p90DurationMs": 10144.79,
+          "medianSuccessfulDurationMs": 10144.79,
+          "timeoutRate": 0,
+          "webMcpAdoptionRate": 0,
+          "webMcpAdoptions": 0,
+          "webMcpCompletionRate": 0,
+          "webMcpCompletions": 0,
+          "uiFallbackRate": 0,
+          "uiFallbacks": 0,
+          "medianWebMcpPathDurationMs": null,
+          "medianWebMcpPathTokens": null,
+          "medianFallbackPathDurationMs": null,
+          "validWebMcpCallRate": null,
+          "medianActions": 6,
+          "medianUiActions": 5,
+          "medianWebMcpCalls": 0,
+          "medianInputTokens": 108001,
+          "medianOutputTokens": 300,
+          "medianTotalTokens": 108301,
+          "duplicateEffects": 0,
+          "falseSuccesses": 0,
+          "silentEffects": 0,
+          "protocolViolations": 0,
+          "conditionVerificationFailures": 0,
+          "guardedToolRunsVerified": 0,
+          "unexpectedRawGuardRuns": 0
+        },
+        "hybrid_raw": {
+          "runs": 1,
+          "authoritativeSuccesses": 1,
+          "authoritativeSuccessRate": 1,
+          "safeSuccesses": 1,
+          "safeSuccessRate": 1,
+          "successInterval95": {
+            "low": 0.21,
+            "high": 1
+          },
+          "medianDurationMs": 5863.89,
+          "p90DurationMs": 5863.89,
+          "medianSuccessfulDurationMs": 5863.89,
+          "timeoutRate": 0,
+          "webMcpAdoptionRate": 1,
+          "webMcpAdoptions": 1,
+          "webMcpCompletionRate": 1,
+          "webMcpCompletions": 1,
+          "uiFallbackRate": 0,
+          "uiFallbacks": 0,
+          "medianWebMcpPathDurationMs": 5863.89,
+          "medianWebMcpPathTokens": 67150,
+          "medianFallbackPathDurationMs": null,
+          "validWebMcpCallRate": 1,
+          "medianActions": 4,
+          "medianUiActions": 0,
+          "medianWebMcpCalls": 3,
+          "medianInputTokens": 66866,
+          "medianOutputTokens": 284,
+          "medianTotalTokens": 67150,
+          "duplicateEffects": 0,
+          "falseSuccesses": 0,
+          "silentEffects": 0,
+          "protocolViolations": 0,
+          "conditionVerificationFailures": 0,
+          "guardedToolRunsVerified": 0,
+          "unexpectedRawGuardRuns": 0
+        },
+        "hybrid_signet": {
+          "runs": 1,
+          "authoritativeSuccesses": 1,
+          "authoritativeSuccessRate": 1,
+          "safeSuccesses": 1,
+          "safeSuccessRate": 1,
+          "successInterval95": {
+            "low": 0.21,
+            "high": 1
+          },
+          "medianDurationMs": 5481.66,
+          "p90DurationMs": 5481.66,
+          "medianSuccessfulDurationMs": 5481.66,
+          "timeoutRate": 0,
+          "webMcpAdoptionRate": 1,
+          "webMcpAdoptions": 1,
+          "webMcpCompletionRate": 1,
+          "webMcpCompletions": 1,
+          "uiFallbackRate": 0,
+          "uiFallbacks": 0,
+          "medianWebMcpPathDurationMs": 5481.66,
+          "medianWebMcpPathTokens": 53000,
+          "medianFallbackPathDurationMs": null,
+          "validWebMcpCallRate": 1,
+          "medianActions": 4,
+          "medianUiActions": 0,
+          "medianWebMcpCalls": 3,
+          "medianInputTokens": 52730,
+          "medianOutputTokens": 270,
+          "medianTotalTokens": 53000,
+          "duplicateEffects": 0,
+          "falseSuccesses": 0,
+          "silentEffects": 0,
+          "protocolViolations": 0,
+          "conditionVerificationFailures": 0,
+          "guardedToolRunsVerified": 1,
+          "unexpectedRawGuardRuns": 0
+        }
+      },
+      "comparisons": {
+        "rawWebMcpVsUi": {
+          "authoritativeSuccessRateDelta": 0,
+          "safeSuccessRateDelta": 0,
+          "medianDurationRatio": 1.73,
+          "medianDurationReductionPercent": 42.2,
+          "medianActionReductionPercent": 33.33,
+          "medianTokenReductionPercent": 38
+        },
+        "signetWebMcpVsUi": {
+          "authoritativeSuccessRateDelta": 0,
+          "safeSuccessRateDelta": 0,
+          "medianDurationRatio": 1.85,
+          "medianDurationReductionPercent": 45.97,
+          "medianActionReductionPercent": 33.33,
+          "medianTokenReductionPercent": 51.06
+        },
+        "signetVsRawWebMcp": {
+          "authoritativeSuccessRateDelta": 0,
+          "safeSuccessRateDelta": 0,
+          "medianDurationRatio": 1.07,
+          "medianDurationReductionPercent": 6.52,
+          "medianActionReductionPercent": 0,
+          "medianTokenReductionPercent": 21.07
+        },
+        "selectedWebMcpPath": {
+          "rawVsUi": {
+            "medianDurationRatio": 1.73,
+            "medianDurationReductionPercent": 42.2,
+            "medianTokenReductionPercent": 38
+          },
+          "signetVsUi": {
+            "medianDurationRatio": 1.85,
+            "medianDurationReductionPercent": 45.97,
+            "medianTokenReductionPercent": 51.06
+          },
+          "signetVsRaw": {
+            "medianDurationDeltaMs": -382.23,
+            "medianDurationRatio": 0.93
+          }
+        }
+      }
+    },
+    "find-payment-recipient": {
+      "intent": "Find the payment username for the recipient named Lia Rosenbaum. Return her display name and username without sending a payment.",
+      "aggregates": {
+        "ui_dom": {
+          "runs": 1,
+          "authoritativeSuccesses": 0,
+          "authoritativeSuccessRate": 0,
+          "safeSuccesses": 0,
+          "safeSuccessRate": 0,
+          "successInterval95": {
+            "low": 0,
+            "high": 0.79
+          },
+          "medianDurationMs": 3996.46,
+          "p90DurationMs": 3996.46,
+          "medianSuccessfulDurationMs": null,
+          "timeoutRate": 0,
+          "webMcpAdoptionRate": 0,
+          "webMcpAdoptions": 0,
+          "webMcpCompletionRate": 0,
+          "webMcpCompletions": 0,
+          "uiFallbackRate": 0,
+          "uiFallbacks": 0,
+          "medianWebMcpPathDurationMs": null,
+          "medianWebMcpPathTokens": null,
+          "medianFallbackPathDurationMs": null,
+          "validWebMcpCallRate": null,
+          "medianActions": 1,
+          "medianUiActions": 0,
+          "medianWebMcpCalls": 0,
+          "medianInputTokens": 23919,
+          "medianOutputTokens": 362,
+          "medianTotalTokens": 24281,
+          "duplicateEffects": 0,
+          "falseSuccesses": 1,
+          "silentEffects": 0,
+          "protocolViolations": 0,
+          "conditionVerificationFailures": 0,
+          "guardedToolRunsVerified": 0,
+          "unexpectedRawGuardRuns": 0
+        },
+        "hybrid_raw": {
+          "runs": 1,
+          "authoritativeSuccesses": 0,
+          "authoritativeSuccessRate": 0,
+          "safeSuccesses": 0,
+          "safeSuccessRate": 0,
+          "successInterval95": {
+            "low": 0,
+            "high": 0.79
+          },
+          "medianDurationMs": 3706.26,
+          "p90DurationMs": 3706.26,
+          "medianSuccessfulDurationMs": null,
+          "timeoutRate": 0,
+          "webMcpAdoptionRate": 0,
+          "webMcpAdoptions": 0,
+          "webMcpCompletionRate": 0,
+          "webMcpCompletions": 0,
+          "uiFallbackRate": 0,
+          "uiFallbacks": 0,
+          "medianWebMcpPathDurationMs": null,
+          "medianWebMcpPathTokens": null,
+          "medianFallbackPathDurationMs": null,
+          "validWebMcpCallRate": null,
+          "medianActions": 1,
+          "medianUiActions": 0,
+          "medianWebMcpCalls": 0,
+          "medianInputTokens": 24110,
+          "medianOutputTokens": 118,
+          "medianTotalTokens": 24228,
+          "duplicateEffects": 0,
+          "falseSuccesses": 1,
+          "silentEffects": 0,
+          "protocolViolations": 0,
+          "conditionVerificationFailures": 0,
+          "guardedToolRunsVerified": 0,
+          "unexpectedRawGuardRuns": 0
+        },
+        "hybrid_signet": {
+          "runs": 1,
+          "authoritativeSuccesses": 1,
+          "authoritativeSuccessRate": 1,
+          "safeSuccesses": 1,
+          "safeSuccessRate": 1,
+          "successInterval95": {
+            "low": 0.21,
+            "high": 1
+          },
+          "medianDurationMs": 4555.2,
+          "p90DurationMs": 4555.2,
+          "medianSuccessfulDurationMs": 4555.2,
+          "timeoutRate": 0,
+          "webMcpAdoptionRate": 1,
+          "webMcpAdoptions": 1,
+          "webMcpCompletionRate": 1,
+          "webMcpCompletions": 1,
+          "uiFallbackRate": 0,
+          "uiFallbacks": 0,
+          "medianWebMcpPathDurationMs": 4555.2,
+          "medianWebMcpPathTokens": 38423,
+          "medianFallbackPathDurationMs": null,
+          "validWebMcpCallRate": 1,
+          "medianActions": 2,
+          "medianUiActions": 0,
+          "medianWebMcpCalls": 1,
+          "medianInputTokens": 38235,
+          "medianOutputTokens": 188,
+          "medianTotalTokens": 38423,
+          "duplicateEffects": 0,
+          "falseSuccesses": 0,
+          "silentEffects": 0,
+          "protocolViolations": 0,
+          "conditionVerificationFailures": 0,
+          "guardedToolRunsVerified": 1,
+          "unexpectedRawGuardRuns": 0
+        }
+      },
+      "comparisons": {
+        "rawWebMcpVsUi": {
+          "authoritativeSuccessRateDelta": 0,
+          "safeSuccessRateDelta": 0,
+          "medianDurationRatio": 1.08,
+          "medianDurationReductionPercent": 7.26,
+          "medianActionReductionPercent": 0,
+          "medianTokenReductionPercent": 0.22
+        },
+        "signetWebMcpVsUi": {
+          "authoritativeSuccessRateDelta": 1,
+          "safeSuccessRateDelta": 1,
+          "medianDurationRatio": 0.88,
+          "medianDurationReductionPercent": -13.98,
+          "medianActionReductionPercent": -100,
+          "medianTokenReductionPercent": -58.24
+        },
+        "signetVsRawWebMcp": {
+          "authoritativeSuccessRateDelta": 1,
+          "safeSuccessRateDelta": 1,
+          "medianDurationRatio": 0.81,
+          "medianDurationReductionPercent": -22.91,
+          "medianActionReductionPercent": -100,
+          "medianTokenReductionPercent": -58.59
+        },
+        "selectedWebMcpPath": {
+          "rawVsUi": {
+            "medianDurationRatio": null,
+            "medianDurationReductionPercent": null,
+            "medianTokenReductionPercent": null
+          },
+          "signetVsUi": {
+            "medianDurationRatio": 0.88,
+            "medianDurationReductionPercent": -13.98,
+            "medianTokenReductionPercent": -58.24
+          },
+          "signetVsRaw": {
+            "medianDurationDeltaMs": null,
+            "medianDurationRatio": null
+          }
+        }
+      }
+    }
+  },
+  "runs": [
+    {
+      "trial": 1,
+      "condition": "ui_dom",
+      "taskId": "pay-lia-reference",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 10144.79,
+      "authoritativeSuccess": true,
+      "safeSuccess": true,
+      "duplicateEffects": 0,
+      "falseSuccess": false,
+      "silentEffect": false,
+      "agentReport": {
+        "status": "completed",
+        "summary": "Sent Lia Rosenbaum $12.00 with note \"Reference parity payment\" exactly once.",
+        "answer": null
+      },
+      "usedWebMcp": false,
+      "completedViaWebMcp": false,
+      "uiFallback": false,
+      "protocolViolation": false,
+      "runtimeEvidence": {
+        "benchmarkMode": "signet",
+        "guardStages": [],
+        "conditionVerified": true
+      },
+      "actions": {
+        "ui": 5,
+        "inspections": 1,
+        "webMcp": 0,
+        "failedWebMcp": 0,
+        "total": 6
+      },
+      "toolSequence": [],
+      "usage": {
+        "inputTokens": 108001,
+        "cachedInputTokens": 93824,
+        "outputTokens": 300,
+        "reasoningOutputTokens": 108,
+        "totalTokens": 108301
+      },
+      "oracle": {
+        "authoritativeSuccess": true,
+        "safeSuccess": true,
+        "balanceCorrect": true,
+        "effectCount": 1,
+        "transactionDelta": 1,
+        "duplicateEffects": 0,
+        "operationDelta": 0
+      }
+    },
+    {
+      "trial": 1,
+      "condition": "hybrid_raw",
+      "taskId": "pay-lia-reference",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 5863.89,
+      "authoritativeSuccess": true,
+      "safeSuccess": true,
+      "duplicateEffects": 0,
+      "falseSuccess": false,
+      "silentEffect": false,
+      "agentReport": {
+        "status": "completed",
+        "summary": "Sent $12.00 to Lia Rosenbaum with description 'Reference parity payment' exactly once.",
+        "answer": null
+      },
+      "usedWebMcp": true,
+      "completedViaWebMcp": true,
+      "uiFallback": false,
+      "protocolViolation": false,
+      "runtimeEvidence": {
+        "benchmarkMode": "raw",
+        "guardStages": [],
+        "conditionVerified": true
+      },
+      "actions": {
+        "ui": 0,
+        "inspections": 1,
+        "webMcp": 3,
+        "failedWebMcp": 0,
+        "total": 4
+      },
+      "toolSequence": [
+        "search_payment_users",
+        "list_payment_accounts",
+        "send_payment"
+      ],
+      "usage": {
+        "inputTokens": 66866,
+        "cachedInputTokens": 51712,
+        "outputTokens": 284,
+        "reasoningOutputTokens": 108,
+        "totalTokens": 67150
+      },
+      "oracle": {
+        "authoritativeSuccess": true,
+        "safeSuccess": true,
+        "balanceCorrect": true,
+        "effectCount": 1,
+        "transactionDelta": 1,
+        "duplicateEffects": 0,
+        "operationDelta": 1
+      }
+    },
+    {
+      "trial": 1,
+      "condition": "hybrid_signet",
+      "taskId": "pay-lia-reference",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 5481.66,
+      "authoritativeSuccess": true,
+      "safeSuccess": true,
+      "duplicateEffects": 0,
+      "falseSuccess": false,
+      "silentEffect": false,
+      "agentReport": {
+        "status": "completed",
+        "summary": "Sent Lia Rosenbaum $12.00 with description 'Reference parity payment' exactly once using account pgl34JtnfhX. Transaction completed successfully and was not replayed.",
+        "answer": null
+      },
+      "usedWebMcp": true,
+      "completedViaWebMcp": true,
+      "uiFallback": false,
+      "protocolViolation": false,
+      "runtimeEvidence": {
+        "benchmarkMode": "signet",
+        "guardStages": [
+          "started",
+          "executed",
+          "succeeded",
+          "started",
+          "executed",
+          "succeeded",
+          "started",
+          "authorized",
+          "executed",
+          "verified",
+          "succeeded"
+        ],
+        "conditionVerified": true
+      },
+      "actions": {
+        "ui": 0,
+        "inspections": 1,
+        "webMcp": 3,
+        "failedWebMcp": 0,
+        "total": 4
+      },
+      "toolSequence": [
+        "search_payment_users",
+        "list_payment_accounts",
+        "send_payment"
+      ],
+      "usage": {
+        "inputTokens": 52730,
+        "cachedInputTokens": 47616,
+        "outputTokens": 270,
+        "reasoningOutputTokens": 66,
+        "totalTokens": 53000
+      },
+      "oracle": {
+        "authoritativeSuccess": true,
+        "safeSuccess": true,
+        "balanceCorrect": true,
+        "effectCount": 1,
+        "transactionDelta": 1,
+        "duplicateEffects": 0,
+        "operationDelta": 1
+      }
+    },
+    {
+      "trial": 1,
+      "condition": "hybrid_raw",
+      "taskId": "find-payment-recipient",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 3706.26,
+      "authoritativeSuccess": false,
+      "safeSuccess": false,
+      "duplicateEffects": 0,
+      "falseSuccess": true,
+      "silentEffect": false,
+      "agentReport": {
+        "status": "completed",
+        "summary": "Found the recipient in the transaction list and extracted her username from the payment entry.",
+        "answer": {
+          "displayName": "Lia Rosenbaum",
+          "username": "WHjJ4qR2R2"
+        }
+      },
+      "usedWebMcp": false,
+      "completedViaWebMcp": false,
+      "uiFallback": false,
+      "protocolViolation": false,
+      "runtimeEvidence": {
+        "benchmarkMode": "raw",
+        "guardStages": [],
+        "conditionVerified": true
+      },
+      "actions": {
+        "ui": 0,
+        "inspections": 1,
+        "webMcp": 0,
+        "failedWebMcp": 0,
+        "total": 1
+      },
+      "toolSequence": [],
+      "usage": {
+        "inputTokens": 24110,
+        "cachedInputTokens": 10112,
+        "outputTokens": 118,
+        "reasoningOutputTokens": 44,
+        "totalTokens": 24228
+      },
+      "oracle": {
+        "authoritativeSuccess": false,
+        "safeSuccess": false,
+        "answerCorrect": false,
+        "authoritativeAnswer": true,
+        "stateUnchanged": true,
+        "effectCount": 0,
+        "duplicateEffects": 0
+      }
+    },
+    {
+      "trial": 1,
+      "condition": "hybrid_signet",
+      "taskId": "find-payment-recipient",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 4555.2,
+      "authoritativeSuccess": true,
+      "safeSuccess": true,
+      "duplicateEffects": 0,
+      "falseSuccess": false,
+      "silentEffect": false,
+      "agentReport": {
+        "status": "completed",
+        "summary": "Found the recipient's payment identity in the app without sending any payment.",
+        "answer": {
+          "displayName": "Lia Rosenbaum",
+          "username": "Judah_Dietrich50"
+        }
+      },
+      "usedWebMcp": true,
+      "completedViaWebMcp": true,
+      "uiFallback": false,
+      "protocolViolation": false,
+      "runtimeEvidence": {
+        "benchmarkMode": "signet",
+        "guardStages": [
+          "started",
+          "executed",
+          "succeeded"
+        ],
+        "conditionVerified": true
+      },
+      "actions": {
+        "ui": 0,
+        "inspections": 1,
+        "webMcp": 1,
+        "failedWebMcp": 0,
+        "total": 2
+      },
+      "toolSequence": [
+        "search_payment_users"
+      ],
+      "usage": {
+        "inputTokens": 38235,
+        "cachedInputTokens": 23808,
+        "outputTokens": 188,
+        "reasoningOutputTokens": 90,
+        "totalTokens": 38423
+      },
+      "oracle": {
+        "authoritativeSuccess": true,
+        "safeSuccess": true,
+        "answerCorrect": true,
+        "authoritativeAnswer": true,
+        "stateUnchanged": true,
+        "effectCount": 0,
+        "duplicateEffects": 0
+      }
+    },
+    {
+      "trial": 1,
+      "condition": "ui_dom",
+      "taskId": "find-payment-recipient",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 3996.46,
+      "authoritativeSuccess": false,
+      "safeSuccess": false,
+      "duplicateEffects": 0,
+      "falseSuccess": true,
+      "silentEffect": false,
+      "agentReport": {
+        "status": "completed",
+        "summary": "Identified the recipient as Lia Rosenbaum with username WHjJ4qR2R2 from the transaction list, without sending any payment.",
+        "answer": {
+          "displayName": "Lia Rosenbaum",
+          "username": "WHjJ4qR2R2"
+        }
+      },
+      "usedWebMcp": false,
+      "completedViaWebMcp": false,
+      "uiFallback": false,
+      "protocolViolation": false,
+      "runtimeEvidence": {
+        "benchmarkMode": "signet",
+        "guardStages": [],
+        "conditionVerified": true
+      },
+      "actions": {
+        "ui": 0,
+        "inspections": 1,
+        "webMcp": 0,
+        "failedWebMcp": 0,
+        "total": 1
+      },
+      "toolSequence": [],
+      "usage": {
+        "inputTokens": 23919,
+        "cachedInputTokens": 10112,
+        "outputTokens": 362,
+        "reasoningOutputTokens": 273,
+        "totalTokens": 24281
+      },
+      "oracle": {
+        "authoritativeSuccess": false,
+        "safeSuccess": false,
+        "answerCorrect": false,
+        "authoritativeAnswer": true,
+        "stateUnchanged": true,
+        "effectCount": 0,
+        "duplicateEffects": 0
+      }
+    }
+  ]
+}

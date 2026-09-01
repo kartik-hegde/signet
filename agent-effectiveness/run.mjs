@@ -29,6 +29,7 @@ const cli = Object.fromEntries(
     }),
 );
 const testAgentMode = process.argv.includes("--test-agent");
+const smokeMode = process.argv.includes("--smoke");
 const appDir = resolve(root, "apps/cypress-realworld-app");
 const signetDir = resolve(root, process.env.SIGNET_DIR ?? "../signet");
 const taskDocument = JSON.parse(
@@ -59,8 +60,16 @@ const timeoutMs = positiveInteger(
   cli.timeout ?? process.env.P1_TIMEOUT_MS ?? "120000",
   "timeout",
 );
-const appUrl = "http://localhost:3000";
-const apiUrl = "http://localhost:3001";
+const frontendPort = process.env.BENCHMARK_APP_PORT ?? "3100";
+const backendPort = process.env.BENCHMARK_API_PORT ?? "3101";
+const appUrl = `http://localhost:${frontendPort}`;
+const apiUrl = `http://localhost:${backendPort}`;
+const applicationEnv = {
+  ...process.env,
+  PORT: frontendPort,
+  VITE_BACKEND_PORT: backendPort,
+  BACKEND_PORT: backendPort,
+};
 const mcpServer = resolve(root, "agent-effectiveness/mcp-server.mjs");
 const outputSchema = resolve(root, "agent-effectiveness/final.schema.json");
 const providerPath = resolve(
@@ -72,7 +81,7 @@ const providerPath = resolve(
 const provider = await import(pathToFileURL(providerPath).href);
 const appNode = process.env.P1_NODE ?? process.execPath;
 const runStamp = new Date().toISOString().replace(/[:.]/g, "-");
-const resultName = testAgentMode ? "test-agent" : "p1";
+const resultName = testAgentMode ? "test-agent" : smokeMode ? "p1-smoke" : "p1";
 const rawDir = cli.resume
   ? resolve(root, cli.resume)
   : resolve(root, `results/raw/${resultName}`, runStamp);
@@ -156,7 +165,7 @@ try {
     ),
   );
   process.stdout.write(
-    `\n${testAgentMode ? "SIGNET TEST AGENT" : "P1 REAL-AGENT PILOT"}\n${tasks.length} tasks × ${trialsPerCondition} trials × ${conditions.length} conditions · ${model} (${reasoning})\n\n`,
+    `\n${testAgentMode ? "SIGNET TEST AGENT" : smokeMode ? "P1 REAL-AGENT SMOKE" : "P1 REAL-AGENT PILOT"}\n${tasks.length} tasks × ${trialsPerCondition} trials × ${conditions.length} conditions · ${model} (${reasoning})\n\n`,
   );
 
   for (const entry of schedule) {
@@ -543,10 +552,16 @@ function buildScorecard(runs) {
   return {
     schemaVersion: 2,
     generatedAt: new Date().toISOString(),
-    status: testAgentMode ? "signet_test_agent" : "p1_real_agent_baseline",
+    status: testAgentMode
+      ? "signet_test_agent"
+      : smokeMode
+        ? "p1_real_agent_smoke"
+        : "p1_real_agent_baseline",
     note: testAgentMode
       ? "A local WebMCP-only agent test. Success is graded by an application-owned oracle, not agent narration or tool output."
-      : "Two-task real-agent reference baseline. WebMCP receives credit for interface efficiency; Signet comparisons are only against raw WebMCP.",
+      : smokeMode
+        ? "Two-task real-agent smoke check. WebMCP receives credit for interface efficiency; Signet comparisons are only against raw WebMCP."
+        : "Two-task real-agent reference baseline. WebMCP receives credit for interface efficiency; Signet comparisons are only against raw WebMCP.",
     provenance: {
       benchmarkCommit: gitRevision(root),
       signetCommit: gitRevision(signetDir),
@@ -790,7 +805,7 @@ function renderConsole(scorecard) {
     `Raw WebMCP vs UI: ${scorecard.comparisons.rawWebMcpVsUi.medianDurationRatio}x median speed, ${scorecard.comparisons.rawWebMcpVsUi.medianActionReductionPercent}% fewer actions\n` +
     `Signet vs UI:     ${scorecard.comparisons.signetWebMcpVsUi.medianDurationRatio}x median speed, ${scorecard.comparisons.signetWebMcpVsUi.medianActionReductionPercent}% fewer actions\n` +
     `Signet vs raw:    ${signedChange(scorecard.comparisons.signetVsRawWebMcp.medianDurationReductionPercent, "faster", "slower")} median duration\n\n` +
-    `Wrote results/p1/latest.json and results/p1/latest.md\n`
+    `Wrote results/${resultName}/latest.json and results/${resultName}/latest.md\n`
   );
 }
 
@@ -827,7 +842,7 @@ function renderMarkdown(scorecard) {
   const taskList = scorecard.protocol.tasks
     .map(({ id, intent }) => `- \`${id}\`: ${intent}`)
     .join("\n");
-  return `# P1 real-agent KPI scorecard
+  return `# P1 real-agent${smokeMode ? " smoke" : ""} KPI scorecard
 
 Generated: ${scorecard.generatedAt}
 
@@ -947,7 +962,7 @@ function startApplication() {
     ],
     {
       cwd: appDir,
-      env: { ...process.env, NODE_ENV: "test" },
+      env: { ...applicationEnv, NODE_ENV: "test" },
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
     },
@@ -971,7 +986,7 @@ function buildApplication() {
     [resolve(appDir, "node_modules/vite/bin/vite.js"), "build"],
     {
       cwd: appDir,
-      env: { ...process.env, NODE_ENV: "test" },
+      env: { ...applicationEnv, NODE_ENV: "test" },
       encoding: "utf8",
     },
   );

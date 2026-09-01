@@ -7,10 +7,11 @@
     "directory": "../saleor-storefront-signet",
     "upstream": "https://github.com/saleor/storefront.git",
     "revision": "56f021d42196eaa78b997df010430d8ea7842e99",
-    "integrationRevision": "65dd4f6562f64493ec786d90c12eaecf919e9e5f",
+    "integrationRevision": "d82ff357c6f2e561898dc6533dd539e05287926c",
     "patches": [
       "patches/0001-feat-add-Signet-guarded-Saleor-checkout-tools.patch",
-      "patches/0002-test-harden-Signet-checkout-integration.patch"
+      "patches/0002-test-harden-Signet-checkout-integration.patch",
+      "patches/0003-fix-keep-repeatable-checkout-setters-retryable.patch"
     ],
     "license": "FSL-1.1-ALv2"
   },
@@ -23,7 +24,7 @@
   },
   "signet": {
     "directory": "../signet",
-    "revision": "87318dde1fbcb8a6677f4a49a8bd1d01b1165394"
+    "revision": "caeda953cc0a83fbd3277f2ccee722b96e92b551"
   },
   "ports": {
     "storefront": 3000,

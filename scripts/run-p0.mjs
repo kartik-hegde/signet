@@ -20,11 +20,20 @@ const signetDir = resolve(root, process.env.SIGNET_DIR ?? "../signet");
 const appResultPath = resolve(appDir, "cypress/results/reference-comparison.json");
 const resultDir = resolve(root, "results/p0");
 const skipApp = process.argv.includes("--skip-app");
+const frontendPort = process.env.BENCHMARK_APP_PORT ?? "3100";
+const backendPort = process.env.BENCHMARK_API_PORT ?? "3101";
+const appUrl = `http://localhost:${frontendPort}`;
+const appEnv = {
+  ...process.env,
+  PORT: frontendPort,
+  VITE_BACKEND_PORT: backendPort,
+  BACKEND_PORT: backendPort,
+};
 
 linkSignetCheckout();
 
 if (!skipApp) {
-  run("npx", ["--yes", "--package=node@24", "--package=yarn@1.22.22", "yarn", "--cwd", appDir, "build"]);
+  run("npx", ["--yes", "--package=node@24", "--package=yarn@1.22.22", "yarn", "--cwd", appDir, "build"], appEnv);
   run("npx", [
     "--yes",
     "--package=node@24",
@@ -34,9 +43,9 @@ if (!skipApp) {
     appDir,
     "start-server-and-test",
     "start:webmcp:ci",
-    "http://localhost:3000",
+    appUrl,
     "test:benchmark:p0",
-  ]);
+  ], appEnv);
 }
 
 const appResult = JSON.parse(readFileSync(appResultPath, "utf8"));
@@ -103,8 +112,8 @@ writeFileSync(resolve(resultDir, "latest.json"), `${JSON.stringify(scorecard, nu
 writeFileSync(resolve(resultDir, "latest.md"), renderMarkdown(scorecard));
 process.stdout.write(renderConsole(scorecard));
 
-function run(command, args) {
-  const result = spawnSync(command, args, { cwd: root, stdio: "inherit", env: process.env });
+function run(command, args, env = process.env) {
+  const result = spawnSync(command, args, { cwd: root, stdio: "inherit", env });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
@@ -151,6 +160,7 @@ function round(value) {
 function renderConsole(result) {
   const { runs, comparisons } = result.effectiveness;
   const safety = Object.fromEntries(result.safety.scores.map((entry) => [entry.arm, entry]));
+  const scenarioCount = result.safety.scenarios.length;
   return (
     `\nP0 KPI SCORECARD\n\n` +
     `Effectiveness: send-payment (authoritative database success: 3/3)\n` +
@@ -161,10 +171,10 @@ function renderConsole(result) {
     `${comparisons.signetWebMcpVsUi.durationSpeedup}x vs UI\n` +
     `  Signet overhead    ${comparisons.signetVsRawWebMcp.addedDurationMs} ms   ` +
     `${comparisons.signetVsRawWebMcp.additionalHttpRequests} additional HTTP requests\n\n` +
-    `Execution safety: 3 deterministic scenarios\n` +
-    `  Raw WebMCP         ${safety.A1_raw.overall}/100   ${safety.A1_raw.scenariosPassed}/3 passed\n` +
-    `  Signet shipped     ${safety.A3a_signet_memory.overall}/100   ${safety.A3a_signet_memory.scenariosPassed}/3 passed\n` +
-    `  Signet + durable*  ${safety.A3b_signet_durable.overall}/100   ${safety.A3b_signet_durable.scenariosPassed}/3 passed\n\n` +
+    `Execution safety: ${scenarioCount} deterministic scenarios\n` +
+    `  Raw WebMCP         ${safety.A1_raw.overall}/100   ${safety.A1_raw.scenariosPassed}/${scenarioCount} passed\n` +
+    `  Signet shipped     ${safety.A3a_signet_memory.overall}/100   ${safety.A3a_signet_memory.scenariosPassed}/${scenarioCount} passed\n` +
+    `  Signet + durable*  ${safety.A3b_signet_durable.overall}/100   ${safety.A3b_signet_durable.scenariosPassed}/${scenarioCount} passed\n\n` +
     `* Durable store is supplied by the benchmark harness, not shipped by Signet.\n` +
     `Directional driver result only; real-agent repeated trials are the next phase.\n` +
     `Wrote results/p0/latest.json and results/p0/latest.md\n`

@@ -1,7 +1,10 @@
 /// <reference types="webmcp-types" />
 
 import { guard } from "../../../../.local/signet/src/index";
-import { MemoryIdempotencyStore } from "../../../../.local/signet/src/testing";
+import {
+  MemoryIdempotencyStore,
+  MemoryOperationJournal,
+} from "../../../../.local/signet/src/testing";
 import { backendPort } from "../utils/portUtils";
 
 type ToolInput<T extends object> = T & Record<string, unknown>;
@@ -89,6 +92,7 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
   if (!modelContext) return registration;
 
   const idempotencyStore = new MemoryIdempotencyStore();
+  const operationJournal = new MemoryOperationJournal();
 
   const searchUsers = async (
     input: ToolInput<{ query: string }>,
@@ -163,6 +167,7 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
           ].join(":"),
         store: idempotencyStore,
       },
+      journal: { store: operationJournal },
       verify: async ({ input, output, context, signal }) => {
         const authoritative = await requestJson<Omit<PaymentResponse, "replayed">>(
           `/payments/${encodeURIComponent(input.operationId)}`,
@@ -255,6 +260,13 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
     console.error("Failed to register payment tools", error);
   });
 
-  registration.signal.addEventListener("abort", () => idempotencyStore.clear(), { once: true });
+  registration.signal.addEventListener(
+    "abort",
+    () => {
+      idempotencyStore.clear();
+      operationJournal.clear();
+    },
+    { once: true }
+  );
   return registration;
 }
