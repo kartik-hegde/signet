@@ -4,11 +4,11 @@ The tutorials move from one browser-local function to a production-shaped operat
 Each one ends with observable evidence: a registered native tool, an execution trace,
 and—when the tool changes data—an authoritative application result.
 
-| Codelab                                                   | What you build or run                           | What it teaches                                                                                            | Time          |
-| --------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------- |
-| [1. First agent call](./first-agent-call)                 | A React page with `get_greeting`                | Registration, Chrome discovery, manual invocation, and an agent bridge                                     | 15 minutes    |
-| [2. Authenticated payment](../guide/real-browser-example) | The repository's React and Express payment app  | Page lifecycle, trusted context, authorization, idempotency, recovery, verification, and a database oracle | 30–45 minutes |
-| [3. Cal.diy booking](./cal-diy)                           | A real booking through a local Cal.diy checkout | Discovery-before-mutation, human confirmation, ambiguous-outcome recovery, and a Postgres oracle           | 45–90 minutes |
+| Codelab                                                   | What you build or run                           | What it teaches                                                                                                  | Time          |
+| --------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------- |
+| [1. First agent call](./first-agent-call)                 | A React page with `get_greeting`                | Registration, Chrome discovery, manual invocation, and an agent bridge                                           | 15 minutes    |
+| [2. Authenticated payment](../guide/real-browser-example) | The repository's React and Express payment app  | The complete loop: controls, browser and agent Trials, database grading, baselines, iteration, and change checks | 45–60 minutes |
+| [3. Cal.diy booking](./cal-diy)                           | A real booking through a local Cal.diy checkout | Discovery-before-mutation, human confirmation, ambiguous-outcome recovery, and a Postgres oracle                 | 45–90 minutes |
 
 Start with the first codelab even if you already know React. It establishes the three
 systems involved in every example:
