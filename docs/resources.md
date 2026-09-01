@@ -20,7 +20,7 @@ and contributing to the project.
 The repository includes a coding-agent skill that describes the supported integration
 contract and production boundaries without requiring an agent to inspect library internals.
 
-- [Signet WebMCP skill](https://github.com/kartik-hegde/signet/tree/main/skills/signet-webmcp)
+- [Signet WebMCP skill](https://github.com/kartik-hegde/signet/tree/main/packages/webmcp/skills/signet-webmcp)
 - [Agent integration contract](https://github.com/kartik-hegde/signet/blob/main/AGENTS.md)
 
 ## Inspect the project
@@ -36,3 +36,13 @@ The monorepo keeps benchmark methodology, runnable harnesses, and reviewed evide
 beside the SDK so every claim can be traced to the tested implementation.
 
 - [Signet benchmarks](https://github.com/kartik-hegde/signet/tree/main/benchmarks)
+
+An interactive trace player replays that recorded evidence in the browser, including the
+lost-response and concurrent-overwrite faults:
+
+```sh
+npm run bench:p0   # refresh evidence
+npm run demo       # open http://127.0.0.1:4173/demo/
+```
+
+It reads `evidence/p0/latest.json` at runtime and hardcodes no scores.
