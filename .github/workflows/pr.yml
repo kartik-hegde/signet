@@ -1,0 +1,208 @@
+name: PR
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      sdk: ${{ steps.classify.outputs.sdk }}
+      compatibility: ${{ steps.classify.outputs.compatibility }}
+      safety: ${{ steps.classify.outputs.safety }}
+      reference: ${{ steps.classify.outputs.reference }}
+      eval: ${{ steps.classify.outputs.eval }}
+      evidence: ${{ steps.classify.outputs.evidence }}
+      docs: ${{ steps.classify.outputs.docs }}
+      integrations: ${{ steps.classify.outputs.integrations }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+      - run: node --test tooling/test/*.test.mjs
+      - id: classify
+        run: node tooling/classify-changes.mjs
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+
+  sdk:
+    needs: changes
+    if: needs.changes.outputs.sdk == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run validate
+      - run: npm pack --dry-run --workspace=@signet/webmcp
+      - run: npm pack --dry-run --workspace=@signet/eval
+
+  compatibility:
+    needs: changes
+    if: needs.changes.outputs.compatibility == 'true'
+    strategy:
+      matrix:
+        node-version: [20, 22, 24]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm run smoke
+
+  eval:
+    needs: changes
+    if: needs.changes.outputs.eval == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:eval
+      - run: npm run format:check:repo
+
+  safety:
+    needs: changes
+    if: needs.changes.outputs.safety == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run bench:safety:artifact
+      - run: node benchmarks/build-vs-buy/run.mjs --safety=.artifacts/safety.json --output=.artifacts/build-vs-buy
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: safety-results
+          if-no-files-found: error
+          path: |
+            .artifacts/safety.json
+            .artifacts/build-vs-buy/
+
+  reference:
+    needs: changes
+    if: needs.changes.outputs.reference == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:reference:install
+      - run: npm run test:reference
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reference-e2e-results
+          if-no-files-found: ignore
+          path: |
+            fixtures/cypress-realworld-app/cypress/results/
+            fixtures/cypress-realworld-app/cypress/screenshots/
+            fixtures/cypress-realworld-app/cypress/videos/
+
+  evidence:
+    needs: changes
+    if: needs.changes.outputs.evidence == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+      - run: npm run evidence:validate
+      - run: npm run test:eval
+
+  docs:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run docs:build
+
+  integrations:
+    needs: changes
+    if: needs.changes.outputs.integrations == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+      - run: node tooling/validate-integrations.mjs
+
+  required:
+    name: Required
+    if: always()
+    needs:
+      [
+        changes,
+        sdk,
+        compatibility,
+        eval,
+        safety,
+        reference,
+        evidence,
+        docs,
+        integrations,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Verify selected lanes
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          SDK_NEEDED: ${{ needs.changes.outputs.sdk }}
+          SDK_RESULT: ${{ needs.sdk.result }}
+          COMPATIBILITY_NEEDED: ${{ needs.changes.outputs.compatibility }}
+          COMPATIBILITY_RESULT: ${{ needs.compatibility.result }}
+          EVAL_NEEDED: ${{ needs.changes.outputs.eval }}
+          EVAL_RESULT: ${{ needs.eval.result }}
+          SAFETY_NEEDED: ${{ needs.changes.outputs.safety }}
+          SAFETY_RESULT: ${{ needs.safety.result }}
+          REFERENCE_NEEDED: ${{ needs.changes.outputs.reference }}
+          REFERENCE_RESULT: ${{ needs.reference.result }}
+          EVIDENCE_NEEDED: ${{ needs.changes.outputs.evidence }}
+          EVIDENCE_RESULT: ${{ needs.evidence.result }}
+          DOCS_NEEDED: ${{ needs.changes.outputs.docs }}
+          DOCS_RESULT: ${{ needs.docs.result }}
+          INTEGRATIONS_NEEDED: ${{ needs.changes.outputs.integrations }}
+          INTEGRATIONS_RESULT: ${{ needs.integrations.result }}
+        run: node tooling/verify-required.mjs

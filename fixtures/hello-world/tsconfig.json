@@ -1,0 +1,7 @@
+{
+  "extends": "../../packages/webmcp/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src"]
+}

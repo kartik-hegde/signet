@@ -1,0 +1,37 @@
+{
+  "name": "@signet/eval",
+  "version": "0.0.0",
+  "description": "Portable cases and local evaluation tools for agent-ready websites.",
+  "type": "module",
+  "bin": {
+    "signet": "./cli.mjs"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs"
+    }
+  },
+  "files": [
+    "*.d.ts",
+    "*.mjs",
+    "schemas"
+  ],
+  "engines": {
+    "node": ">=22.5"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kartik-hegde/signet.git",
+    "directory": "packages/eval"
+  },
+  "keywords": [
+    "webmcp",
+    "agents",
+    "evals",
+    "browser",
+    "evidence"
+  ]
+}

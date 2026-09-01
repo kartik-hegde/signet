@@ -1,0 +1,672 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-01T03:07:53.990Z",
+  "status": "p0_directional",
+  "note": "Deterministic application drivers establish parity and directional overhead. They are not an LLM-agent speed claim.",
+  "provenance": {
+    "benchmarkCommit": "88188e3",
+    "signetCommit": "1903fe7",
+    "application": "Cypress Real World App payment fixture"
+  },
+  "effectiveness": {
+    "task": "send-payment",
+    "authoritativeSuccess": {
+      "ui": true,
+      "webmcpRaw": true,
+      "webmcpSignet": true
+    },
+    "runs": {
+      "ui": {
+        "task": "send-payment",
+        "mode": "ui",
+        "durationMs": 1051.8,
+        "interactionCount": 6,
+        "toolCalls": 0,
+        "httpRequests": 3,
+        "mutationRequests": 1
+      },
+      "webmcp_raw": {
+        "task": "send-payment",
+        "mode": "webmcp_raw",
+        "durationMs": 34.7,
+        "interactionCount": 3,
+        "toolCalls": 3,
+        "httpRequests": 3,
+        "mutationRequests": 1
+      },
+      "webmcp_signet": {
+        "task": "send-payment",
+        "mode": "webmcp_signet",
+        "durationMs": 48.4,
+        "interactionCount": 3,
+        "toolCalls": 3,
+        "httpRequests": 5,
+        "mutationRequests": 1
+      }
+    },
+    "comparisons": {
+      "rawWebMcpVsUi": {
+        "durationSpeedup": 30.31,
+        "durationReductionPercent": 96.7,
+        "interactionReductionPercent": 50
+      },
+      "signetWebMcpVsUi": {
+        "durationSpeedup": 21.73,
+        "durationReductionPercent": 95.4,
+        "interactionReductionPercent": 50
+      },
+      "signetVsRawWebMcp": {
+        "durationRatio": 1.39,
+        "addedDurationMs": 13.7,
+        "additionalHttpRequests": 2
+      }
+    }
+  },
+  "safety": {
+    "scenarios": [
+      "retry-after-lost-response",
+      "retry-after-reload",
+      "concurrent-same-operation-key",
+      "stale-precondition",
+      "invented-argument",
+      "retry-after-upstream-error-on-idempotent-operation",
+      "concurrent-notes-overwrite"
+    ],
+    "scores": [
+      {
+        "arm": "A1_raw",
+        "overall": 55.6,
+        "correctness": 74.2,
+        "honesty": 0,
+        "scenariosPassed": 3,
+        "scenariosRun": 7,
+        "medianInvocationMs": 0.2,
+        "counters": {
+          "duplicate_effects": 3,
+          "false_success": 0,
+          "silent_effect": 0,
+          "lost_updates": 1,
+          "needless_indeterminate": 0,
+          "stale_precondition_accepted": 0,
+          "invented_argument_accepted": 0,
+          "indeterminate_disclosed": 0,
+          "lost_update_disclosed": 0
+        }
+      },
+      {
+        "arm": "A2_handrolled",
+        "overall": 92.7,
+        "correctness": 90.3,
+        "honesty": 100,
+        "scenariosPassed": 4,
+        "scenariosRun": 7,
+        "medianInvocationMs": 0.2,
+        "counters": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0,
+          "lost_updates": 1,
+          "needless_indeterminate": 2,
+          "stale_precondition_accepted": 0,
+          "invented_argument_accepted": 0,
+          "indeterminate_disclosed": 2,
+          "lost_update_disclosed": 1
+        }
+      },
+      {
+        "arm": "A3a_signet_memory",
+        "overall": 90.3,
+        "correctness": 87.1,
+        "honesty": 100,
+        "scenariosPassed": 5,
+        "scenariosRun": 7,
+        "medianInvocationMs": 0.4,
+        "counters": {
+          "duplicate_effects": 1,
+          "false_success": 0,
+          "silent_effect": 0,
+          "lost_updates": 1,
+          "needless_indeterminate": 0,
+          "stale_precondition_accepted": 0,
+          "invented_argument_accepted": 0,
+          "indeterminate_disclosed": 1,
+          "lost_update_disclosed": 1
+        }
+      },
+      {
+        "arm": "A3b_signet_durable",
+        "overall": 95.2,
+        "correctness": 93.5,
+        "honesty": 100,
+        "scenariosPassed": 6,
+        "scenariosRun": 7,
+        "medianInvocationMs": 0.7,
+        "counters": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0,
+          "lost_updates": 1,
+          "needless_indeterminate": 0,
+          "stale_precondition_accepted": 0,
+          "invented_argument_accepted": 0,
+          "indeterminate_disclosed": 1,
+          "lost_update_disclosed": 1
+        }
+      }
+    ],
+    "trials": [
+      {
+        "scenario": "retry-after-lost-response",
+        "arm": "A1_raw",
+        "counts": {
+          "duplicate_effects": 1,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "retry-after-lost-response",
+        "arm": "A2_handrolled",
+        "counts": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 1
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "unknown",
+            "error": "IndeterminateError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "retry-after-lost-response",
+        "arm": "A3a_signet_memory",
+        "counts": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "retry-after-lost-response",
+        "arm": "A3b_signet_durable",
+        "counts": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "retry-after-reload",
+        "arm": "A1_raw",
+        "counts": {
+          "duplicate_effects": 1,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "failure",
+            "error": "LostResponseError"
+          },
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "retry-after-reload",
+        "arm": "A2_handrolled",
+        "counts": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 1
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "failure",
+            "error": "LostResponseError"
+          },
+          {
+            "step": "book-tickets",
+            "reported": "unknown",
+            "error": "IndeterminateError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "retry-after-reload",
+        "arm": "A3a_signet_memory",
+        "counts": {
+          "duplicate_effects": 1,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 1
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "unknown",
+            "error": "OutcomeUnknownError"
+          },
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "retry-after-reload",
+        "arm": "A3b_signet_durable",
+        "counts": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0,
+          "indeterminate_disclosed": 1
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "unknown",
+            "error": "OutcomeUnknownError"
+          },
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "concurrent-same-operation-key",
+        "arm": "A1_raw",
+        "counts": {
+          "duplicate_effects": 1,
+          "false_success": 0,
+          "silent_effect": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          },
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "concurrent-same-operation-key",
+        "arm": "A2_handrolled",
+        "counts": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          },
+          {
+            "step": "book-tickets",
+            "reported": "unknown",
+            "error": "IndeterminateError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "concurrent-same-operation-key",
+        "arm": "A3a_signet_memory",
+        "counts": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          },
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "concurrent-same-operation-key",
+        "arm": "A3b_signet_durable",
+        "counts": {
+          "duplicate_effects": 0,
+          "false_success": 0,
+          "silent_effect": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          },
+          {
+            "step": "book-tickets",
+            "reported": "success"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "stale-precondition",
+        "arm": "A1_raw",
+        "counts": {
+          "stale_precondition_accepted": 0,
+          "needless_indeterminate": 0
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "failure",
+            "error": "StalePreconditionError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "stale-precondition",
+        "arm": "A2_handrolled",
+        "counts": {
+          "stale_precondition_accepted": 0,
+          "needless_indeterminate": 1
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "unknown",
+            "error": "IndeterminateError"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "stale-precondition",
+        "arm": "A3a_signet_memory",
+        "counts": {
+          "stale_precondition_accepted": 0,
+          "needless_indeterminate": 0
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "failure",
+            "error": "StalePreconditionError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "stale-precondition",
+        "arm": "A3b_signet_durable",
+        "counts": {
+          "stale_precondition_accepted": 0,
+          "needless_indeterminate": 0
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "failure",
+            "error": "StalePreconditionError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "invented-argument",
+        "arm": "A1_raw",
+        "counts": {
+          "invented_argument_accepted": 0,
+          "false_success": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "failure",
+            "error": "TypeError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "invented-argument",
+        "arm": "A2_handrolled",
+        "counts": {
+          "invented_argument_accepted": 0,
+          "false_success": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "failure",
+            "error": "TypeError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "invented-argument",
+        "arm": "A3a_signet_memory",
+        "counts": {
+          "invented_argument_accepted": 0,
+          "false_success": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "failure",
+            "error": "TypeError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "invented-argument",
+        "arm": "A3b_signet_durable",
+        "counts": {
+          "invented_argument_accepted": 0,
+          "false_success": 0
+        },
+        "reports": [
+          {
+            "step": "book-tickets",
+            "reported": "failure",
+            "error": "TypeError"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "retry-after-upstream-error-on-idempotent-operation",
+        "arm": "A1_raw",
+        "counts": {
+          "duplicate_effects": 0,
+          "silent_effect": 0,
+          "needless_indeterminate": 0
+        },
+        "reports": [
+          {
+            "step": "cancel-booking",
+            "reported": "success"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "retry-after-upstream-error-on-idempotent-operation",
+        "arm": "A2_handrolled",
+        "counts": {
+          "duplicate_effects": 0,
+          "silent_effect": 0,
+          "needless_indeterminate": 1
+        },
+        "reports": [
+          {
+            "step": "cancel-booking",
+            "reported": "unknown",
+            "error": "IndeterminateError"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "retry-after-upstream-error-on-idempotent-operation",
+        "arm": "A3a_signet_memory",
+        "counts": {
+          "duplicate_effects": 0,
+          "silent_effect": 0,
+          "needless_indeterminate": 0
+        },
+        "reports": [
+          {
+            "step": "cancel-booking",
+            "reported": "success"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "retry-after-upstream-error-on-idempotent-operation",
+        "arm": "A3b_signet_durable",
+        "counts": {
+          "duplicate_effects": 0,
+          "silent_effect": 0,
+          "needless_indeterminate": 0
+        },
+        "reports": [
+          {
+            "step": "cancel-booking",
+            "reported": "success"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "concurrent-notes-overwrite",
+        "arm": "A1_raw",
+        "counts": {
+          "lost_updates": 1,
+          "lost_update_disclosed": 0
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "success"
+          },
+          {
+            "step": "update-booking-notes",
+            "reported": "success"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "concurrent-notes-overwrite",
+        "arm": "A2_handrolled",
+        "counts": {
+          "lost_updates": 1,
+          "lost_update_disclosed": 1
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "success"
+          },
+          {
+            "step": "update-booking-notes",
+            "reported": "unknown",
+            "error": "VerificationError"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "concurrent-notes-overwrite",
+        "arm": "A3a_signet_memory",
+        "counts": {
+          "lost_updates": 1,
+          "lost_update_disclosed": 1
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "success"
+          },
+          {
+            "step": "update-booking-notes",
+            "reported": "unknown",
+            "error": "VerificationError"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "scenario": "concurrent-notes-overwrite",
+        "arm": "A3b_signet_durable",
+        "counts": {
+          "lost_updates": 1,
+          "lost_update_disclosed": 1
+        },
+        "reports": [
+          {
+            "step": "update-booking-notes",
+            "reported": "success"
+          },
+          {
+            "step": "update-booking-notes",
+            "reported": "unknown",
+            "error": "VerificationError"
+          }
+        ],
+        "passed": false
+      }
+    ],
+    "scoringVersion": "5370abf7"
+  }
+}

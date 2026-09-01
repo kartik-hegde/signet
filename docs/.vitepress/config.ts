@@ -18,12 +18,12 @@ export default defineConfig({
       { text: "Tutorials", link: "/tutorials/" },
       {
         text: "Examples",
-        link: "https://github.com/kartik-hegde/signet/tree/main/examples",
+        link: "https://github.com/kartik-hegde/signet/tree/main/fixtures",
       },
       { text: "Resources", link: "/resources" },
       {
         text: "Benchmarks",
-        link: "https://github.com/kartik-hegde/signet-benchmarks",
+        link: "https://github.com/kartik-hegde/signet/tree/main/benchmarks",
       },
     ],
     sidebar: [

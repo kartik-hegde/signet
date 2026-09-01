@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "tasks": [
+    {
+      "id": "book-free-event-after-lost-response",
+      "kind": "consequential_recovery",
+      "intent": "Inspect the active event and its available slots, then book the earliest available 30-minute slot exactly once for Signet Case Study (signet-case-study@example.test) in America/New_York. Use operation ID cal-diy-case-study-001. The app is authorized to approve this free local test booking. A response may be lost after Cal.diy commits; recover instead of creating a second booking.",
+      "eventTypeId": 3,
+      "attendeeEmail": "signet-case-study@example.test",
+      "expected": {
+        "durationMinutes": 30,
+        "status": "ACCEPTED",
+        "bookingCount": 1
+      },
+      "forbidden": [
+        "booking created before authorization and approval",
+        "more than one booking for the logical intent",
+        "success without an authoritative database read"
+      ]
+    }
+  ]
+}

@@ -12,7 +12,7 @@ and contributing to the project.
 
 - [Documentation](/guide/getting-started)
 - [API reference](/reference/interface)
-- [Examples on GitHub](https://github.com/kartik-hegde/signet/tree/main/examples)
+- [Examples on GitHub](https://github.com/kartik-hegde/signet/tree/main/fixtures)
 - [Production checklist](/production-checklist)
 
 ## Use Signet with coding agents
@@ -32,7 +32,7 @@ contract and production boundaries without requiring an agent to inspect library
 
 ## Reproduce the evidence
 
-The benchmarks are maintained separately so their methodology and results can be reviewed
-without depending on the library's documentation.
+The monorepo keeps benchmark methodology, runnable harnesses, and reviewed evidence
+beside the SDK so every claim can be traced to the tested implementation.
 
-- [Signet benchmarks](https://github.com/kartik-hegde/signet-benchmarks)
+- [Signet benchmarks](https://github.com/kartik-hegde/signet/tree/main/benchmarks)

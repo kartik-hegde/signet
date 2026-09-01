@@ -1,0 +1,70 @@
+name: Release packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package to verify or publish
+        type: choice
+        options: [webmcp, eval, both]
+        default: both
+      publish:
+        description: Publish after protected-environment approval
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run validate
+        if: inputs.package == 'webmcp' || inputs.package == 'both'
+      - run: npm run test:eval
+        if: inputs.package == 'eval' || inputs.package == 'both'
+      - run: mkdir -p .artifacts/release
+      - run: npm pack --workspace=@signet/webmcp --pack-destination=.artifacts/release
+        if: inputs.package == 'webmcp' || inputs.package == 'both'
+      - run: npm pack --workspace=@signet/eval --pack-destination=.artifacts/release
+        if: inputs.package == 'eval' || inputs.package == 'both'
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-packages-${{ github.run_id }}
+          path: .artifacts/release/
+          if-no-files-found: error
+
+  publish:
+    if: inputs.publish
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run build
+        if: inputs.package == 'webmcp' || inputs.package == 'both'
+      - run: npm publish --workspace=@signet/webmcp --access public --provenance
+        if: inputs.package == 'webmcp' || inputs.package == 'both'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --workspace=@signet/eval --access public --provenance
+        if: inputs.package == 'eval' || inputs.package == 'both'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

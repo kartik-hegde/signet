@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-01T03:06:12.711Z",
+  "status": "directional_single_implementation",
+  "note": "This is one benchmark-authored implementation, not an independent implementer study.",
+  "provenance": {
+    "benchmarkCommit": "88188e3",
+    "signetCommit": "1903fe7",
+    "safetyScoringVersion": "5370abf7"
+  },
+  "implementation": {
+    "handrolledBespokeSloc": 29,
+    "signetAdapterSloc": 17
+  },
+  "conformance": {
+    "raw": {
+      "arm": "A1_raw",
+      "overall": 55.6,
+      "correctness": 74.2,
+      "honesty": 0,
+      "scenariosPassed": 3,
+      "scenariosRun": 7,
+      "medianInvocationMs": 0.2,
+      "counters": {
+        "duplicate_effects": 3,
+        "false_success": 0,
+        "silent_effect": 0,
+        "lost_updates": 1,
+        "needless_indeterminate": 0,
+        "stale_precondition_accepted": 0,
+        "invented_argument_accepted": 0,
+        "indeterminate_disclosed": 0,
+        "lost_update_disclosed": 0
+      }
+    },
+    "handrolled": {
+      "arm": "A2_handrolled",
+      "overall": 92.7,
+      "correctness": 90.3,
+      "honesty": 100,
+      "scenariosPassed": 4,
+      "scenariosRun": 7,
+      "medianInvocationMs": 0.2,
+      "counters": {
+        "duplicate_effects": 0,
+        "false_success": 0,
+        "silent_effect": 0,
+        "lost_updates": 1,
+        "needless_indeterminate": 2,
+        "stale_precondition_accepted": 0,
+        "invented_argument_accepted": 0,
+        "indeterminate_disclosed": 2,
+        "lost_update_disclosed": 1
+      }
+    },
+    "signetShippedStore": {
+      "arm": "A3a_signet_memory",
+      "overall": 90.3,
+      "correctness": 87.1,
+      "honesty": 100,
+      "scenariosPassed": 5,
+      "scenariosRun": 7,
+      "medianInvocationMs": 0.5,
+      "counters": {
+        "duplicate_effects": 1,
+        "false_success": 0,
+        "silent_effect": 0,
+        "lost_updates": 1,
+        "needless_indeterminate": 0,
+        "stale_precondition_accepted": 0,
+        "invented_argument_accepted": 0,
+        "indeterminate_disclosed": 1,
+        "lost_update_disclosed": 1
+      }
+    },
+    "signetWithDurableStore": {
+      "arm": "A3b_signet_durable",
+      "overall": 95.2,
+      "correctness": 93.5,
+      "honesty": 100,
+      "scenariosPassed": 6,
+      "scenariosRun": 7,
+      "medianInvocationMs": 0.6,
+      "counters": {
+        "duplicate_effects": 0,
+        "false_success": 0,
+        "silent_effect": 0,
+        "lost_updates": 1,
+        "needless_indeterminate": 0,
+        "stale_precondition_accepted": 0,
+        "invented_argument_accepted": 0,
+        "indeterminate_disclosed": 1,
+        "lost_update_disclosed": 1
+      }
+    }
+  }
+}

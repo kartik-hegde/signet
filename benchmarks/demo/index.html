@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07110f" />
+    <meta
+      name="description"
+      content="A live benchmark story: WebMCP makes agents fast. Signet makes consequential actions trustworthy."
+    />
+    <title>Signet — The fast path you can trust</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="site-header">
+      <a class="brand" href="/demo/" aria-label="Signet demo home">
+        <span class="brand-mark" aria-hidden="true"><i></i></span>
+        <span>Signet</span>
+      </a>
+      <nav class="view-switcher" aria-label="Demo views">
+        <button class="view-button is-active" data-view-target="race">Speed</button>
+        <button class="view-button" data-view-target="safety">Trust</button>
+      </nav>
+      <div class="live-pill"><span></span> Recorded benchmark</div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">A consequential browser-agent action</p>
+          <h1>The fast path<br /><em>you can trust.</em></h1>
+        </div>
+        <p class="hero-copy">
+          One payment. Three execution paths. Every result checked against the same
+          application database—not the agent's own answer.
+        </p>
+      </section>
+
+      <section class="task-strip" aria-label="Benchmark task">
+        <div class="task-icon" aria-hidden="true">↗</div>
+        <div>
+          <span class="task-label">Customer request</span>
+          <strong>Send Lia Rosenbaum $12.00 for “Reference parity payment.”</strong>
+        </div>
+        <div class="task-facts">
+          <span>Authenticated</span><span>State-changing</span><span>Real database</span>
+        </div>
+      </section>
+
+      <section class="view-panel is-active" data-view="race" aria-labelledby="race-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">01 / Same goal, different interface</p>
+            <h2 id="race-title">Watch the work disappear.</h2>
+          </div>
+          <button class="run-button" id="run-race">
+            <span class="play-icon">▶</span><span class="run-label">Run comparison</span>
+          </button>
+        </div>
+
+        <div class="race-grid">
+          <article class="execution-card ui-card" data-lane="ui">
+            <header class="card-header">
+              <div>
+                <span class="lane-number">01</span>
+                <h3>UI agent</h3>
+              </div>
+              <span class="method-pill">Click + type</span>
+            </header>
+            <div class="app-window">
+              <div class="browser-bar"><i></i><i></i><i></i><span>rwa.local/pay</span></div>
+              <div class="payment-shell">
+                <div class="mini-nav"><b>RWA</b><span>◌</span></div>
+                <div class="balance-row"><span>Personal balance</span><b>$1,428.00</b></div>
+                <div class="recipient-row">
+                  <span class="avatar lia">LR</span>
+                  <span><small>Paying</small><b>Lia Rosenbaum</b></span>
+                  <strong>$12</strong>
+                </div>
+                <ol class="execution-log" aria-label="UI execution steps"></ol>
+              </div>
+            </div>
+            <div class="progress-track"><span></span></div>
+            <footer class="card-metrics">
+              <div><span>Recorded time</span><strong data-metric="duration">—</strong></div>
+              <div><span>Agent actions</span><strong data-metric="actions">—</strong></div>
+              <span class="result-chip" data-result>Ready</span>
+            </footer>
+          </article>
+
+          <article class="execution-card raw-card" data-lane="webmcp_raw">
+            <header class="card-header">
+              <div>
+                <span class="lane-number">02</span>
+                <h3>Raw WebMCP</h3>
+              </div>
+              <span class="method-pill">Structured tools</span>
+            </header>
+            <div class="app-window tool-window">
+              <div class="browser-bar"><i></i><i></i><i></i><span>document.modelContext</span></div>
+              <div class="tool-shell">
+                <div class="tool-heading"><span>Tools discovered</span><b>3</b></div>
+                <ol class="execution-log" aria-label="Raw WebMCP execution steps"></ol>
+                <div class="database-pulse"><span></span><b>Application database</b><small>authoritative state</small></div>
+              </div>
+            </div>
+            <div class="progress-track"><span></span></div>
+            <footer class="card-metrics">
+              <div><span>Recorded time</span><strong data-metric="duration">—</strong></div>
+              <div><span>Tool calls</span><strong data-metric="actions">—</strong></div>
+              <span class="result-chip" data-result>Ready</span>
+            </footer>
+          </article>
+
+          <article class="execution-card signet-card" data-lane="webmcp_signet">
+            <header class="card-header">
+              <div>
+                <span class="lane-number">03</span>
+                <h3>WebMCP + Signet</h3>
+              </div>
+              <span class="method-pill signet-pill">Guarded</span>
+            </header>
+            <div class="app-window tool-window">
+              <div class="browser-bar"><i></i><i></i><i></i><span>guard(send_payment)</span></div>
+              <div class="tool-shell">
+                <div class="guard-rail"><span>Context</span><span>Authorize</span><span>Execute</span><span>Verify</span></div>
+                <ol class="execution-log" aria-label="Signet execution steps"></ol>
+                <div class="database-pulse verified"><span></span><b>Verified state</b><small>sender −$12 · Lia +$12</small></div>
+              </div>
+            </div>
+            <div class="progress-track"><span></span></div>
+            <footer class="card-metrics">
+              <div><span>Recorded time</span><strong data-metric="duration">—</strong></div>
+              <div><span>Tool calls</span><strong data-metric="actions">—</strong></div>
+              <span class="result-chip" data-result>Ready</span>
+            </footer>
+          </article>
+        </div>
+
+        <div class="race-verdict" id="race-verdict" aria-live="polite">
+          <div><span class="verdict-kicker">Recorded result</span><strong>Press run to replay the benchmark.</strong></div>
+          <div class="verdict-numbers">
+            <span><b id="signet-speedup">—</b> faster than UI</span>
+            <span><b id="interaction-cut">—</b> fewer agent actions</span>
+            <span><b>3 / 3</b> database checks passed</span>
+          </div>
+          <button class="text-button" data-view-target="safety">Now break the network →</button>
+        </div>
+      </section>
+
+      <section class="view-panel" data-view="safety" aria-labelledby="safety-title">
+        <div class="section-heading safety-heading">
+          <div>
+            <p class="eyebrow">02 / Same action, hostile conditions</p>
+            <h2 id="safety-title">Speed is only useful if it’s safe.</h2>
+          </div>
+          <div class="score-pair">
+            <span>Raw safety <b id="raw-score">—</b></span>
+            <span>Guarded safety <b id="guarded-score">—</b></span>
+          </div>
+        </div>
+
+        <div class="scenario-picker" role="group" aria-label="Failure scenario">
+          <button class="scenario-button is-active" data-scenario="retry-after-lost-response">
+            <span>01</span> Response lost after commit
+          </button>
+          <button class="scenario-button" data-scenario="concurrent-notes-overwrite">
+            <span>02</span> Concurrent overwrite
+          </button>
+          <button class="scenario-button" data-scenario="retry-after-upstream-error-on-idempotent-operation">
+            <span>03</span> Already-safe control
+          </button>
+        </div>
+
+        <div class="fault-stage">
+          <div class="fault-copy">
+            <span class="fault-label">Injected fault</span>
+            <h3 id="fault-title">The payment commits. The response disappears.</h3>
+            <p id="fault-description">
+              The agent cannot tell whether the action worked, so it retries the same intent.
+            </p>
+            <button class="run-button fault-button" id="run-fault">
+              <span class="spark-icon">ϟ</span><span>Inject fault</span>
+            </button>
+          </div>
+          <div class="fault-line" aria-hidden="true"><span></span><i>connection reset</i></div>
+          <div class="fault-comparison">
+            <article class="outcome-card raw-outcome">
+              <header><span>Raw handler</span><b id="raw-outcome-status">Waiting</b></header>
+              <div class="state-stack" id="raw-state"></div>
+              <footer><span>Caller reports</span><strong id="raw-report">—</strong></footer>
+            </article>
+            <article class="outcome-card guarded-outcome">
+              <header><span>Signet + durable store</span><b id="guarded-outcome-status">Waiting</b></header>
+              <div class="state-stack" id="guarded-state"></div>
+              <footer><span>Caller reports</span><strong id="guarded-report">—</strong></footer>
+            </article>
+          </div>
+        </div>
+
+        <div class="trust-verdict">
+          <div class="trust-mark"><span class="brand-mark"><i></i></span></div>
+          <div>
+            <span class="verdict-kicker">The division of labor</span>
+            <h3>WebMCP is the speed. <em>Signet is the trust.</em></h3>
+            <p>
+              Native tools expose application capabilities. Signet adds reusable authorization,
+              idempotency, verification, cancellation, and observability around consequential calls.
+            </p>
+          </div>
+          <div class="trust-metrics">
+            <span><b id="correctness-score">—</b> correctness</span>
+            <span><b id="honesty-score">—</b> honesty</span>
+          </div>
+        </div>
+        <p class="method-note">
+          Safety values come from deterministic fault injection and an independent database oracle.
+          The durable-store arm demonstrates Signet with an application-owned store; that adapter is
+          not currently shipped by Signet.
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>Signet benchmark · Cypress Real World App · <b id="result-date">loading evidence…</b></span>
+      <div>
+        <a href="/evidence/p0/latest.md">View scorecard</a>
+        <a href="/methodology/benchmark-design.md">Read methodology</a>
+        <a href="https://github.com/kartik-hegde/signet">Reproduce on GitHub ↗</a>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">Benchmark evidence loaded</div>
+  </body>
+</html>

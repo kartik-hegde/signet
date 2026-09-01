@@ -4,7 +4,7 @@ In this codelab you will run a small React website, expose one read-only functio
 native WebMCP tool, inspect it in Chrome, and give a browser-connected agent a prompt
 that causes the tool to run.
 
-The finished example is in `examples/hello-world`. It has no application backend and
+The finished example is in `fixtures/hello-world`. It has no application backend and
 needs no API key. Vite only serves the browser files; `get_greeting` executes in the
 page.
 

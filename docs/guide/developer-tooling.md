@@ -29,3 +29,29 @@ The dependency-free browser overlay displays current tool schemas, annotations,
 exposure state, and lifecycle timings. It captures no argument or result values and
 makes no network requests. Import it only in development code so bundlers can exclude
 the entry point from production.
+
+## Evaluation change checks
+
+`@signet/eval` turns application-owned Cases and oracle-graded Trial Evidence into a
+repeatable change check:
+
+```sh
+signet eval scenarios/checkout.eval.mjs \
+  --trials 5 \
+  --against .signet/baselines/checkout.report.json
+```
+
+Signet writes both the normal evaluation report and a `check.json`/`check.md` pair. The
+check works at Case-by-condition granularity, detects reduced trial coverage and Case
+definition drift, and never lets an aggregate gain conceal a newly unsafe workflow.
+The default safe-success tolerance is zero; set `--max-safe-regression` deliberately for
+probabilistic agents. Latency and token gates are opt-in through
+`--max-duration-ratio` and `--max-token-ratio`. GitHub Actions runs automatically add
+the Markdown diagnosis to the job summary.
+
+To review already-completed runs without spending more provider capacity:
+
+```sh
+signet check evidence/candidate/report.json \
+  --against evidence/baseline/report.json
+```
