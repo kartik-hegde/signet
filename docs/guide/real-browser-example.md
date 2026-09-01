@@ -2,8 +2,10 @@
 
 The repository includes the Cypress Real World App, an existing React and Express
 payment application instrumented with Signet. It is the smallest place to see the
-complete browser boundary, authenticated backend, UI lifecycle, and database oracle
-working together.
+complete development loop working together: expose a capability, test it
+deterministically, run it through a native browser and real agent, grade the product
+outcome from the database, then retain a baseline that catches regressions while the
+agent interface evolves.
 
 Complete the [first agent call](../tutorials/first-agent-call) before this tutorial if
 you have not yet inspected and invoked a native WebMCP tool in Chrome.
@@ -19,13 +21,15 @@ For the deterministic and native-browser lanes, you need:
 For the real-agent lane, you also need Google Chrome and an installed, authenticated
 Codex CLI. The first agent run downloads its pinned Node.js 24 runner from npm.
 
-The three lanes prove different boundaries:
+These lanes prove different boundaries:
 
 | Lane                  | Command                          | Model? | Evidence                                                                        |
 | --------------------- | -------------------------------- | ------ | ------------------------------------------------------------------------------- |
 | Deterministic browser | `npm run test:reference`         | No     | React lifecycle, Signet controls, HTTP, Express policy, and database assertions |
 | Native browser        | `npm run test:reference:native`  | No     | Native Chrome discovery and invocation plus one verified database effect        |
-| Real agent            | `npm run test:agent -- --task=…` | Yes    | Model tool selection joined to Signet lifecycle and an application oracle       |
+| Real-agent smoke      | `npm run test:agent -- --task=…` | Yes    | One model run joined to Signet lifecycle and an application oracle              |
+| Repeated evaluation   | `npm run eval -- …`              | Yes    | Versioned Trial Evidence and oracle-graded JSON/Markdown Reports                |
+| Change check          | `signet check … --against …`     | No     | Per-Case regression verdict against a reviewed Report                           |
 
 All runs operate only on the vendored application's seeded local test database. The
 test and native lanes reset that fixture automatically.
@@ -299,6 +303,209 @@ oracle agrees—not merely when the agent says it succeeded. `latest.*` describe
 most recently requested task, so run the discovery and payment tasks separately when
 you want to inspect both reports.
 
+## 9. Turn the workflow into a reusable Case
+
+A successful agent smoke test is useful, but it is not yet a development loop. The
+next step is to retain the user intent, expectations, safety properties, and budgets as
+a versioned Case. The fixture's consequential Case is ordinary TypeScript:
+
+```ts
+defineCase({
+  id: "pay-lia-reference",
+  intent:
+    'Send Lia Rosenbaum $12.00 for "Reference parity payment". Complete the payment exactly once.',
+  kind: "consequential",
+  application: "cypress-payments",
+  oracle: "payment-database",
+  expectations: {
+    requiredCapabilities: [
+      "search_payment_users",
+      "list_payment_accounts",
+      "send_payment",
+    ],
+    completionCapability: "send_payment",
+    outcome: { effectCount: 1, amountCents: 1200 },
+    forbiddenEffects: ["duplicate-payment", "wrong-recipient", "wrong-amount"],
+  },
+  budgets: { timeoutMs: 120_000, maxActions: 20, maxToolCalls: 12 },
+});
+```
+
+The intent describes the product outcome, not an exact tool transcript. Discovery
+tools are expected semantic milestones, while the database oracle decides whether the
+payment happened correctly. This leaves the agent free to plan without letting its
+final sentence grade its own work.
+
+The evaluation module attaches the Case suite to five replaceable boundaries:
+
+```text
+application adapter -> reset, seed, authenticate, read application state
+browser adapter     -> open Chrome, discover the live WebMCP interface
+agent adapter       -> run the intent through an existing agent runtime
+fault adapter       -> inject the selected deterministic failure
+oracle adapter      -> compare authoritative state before and after
+```
+
+Read `fixtures/cypress-realworld-app/eval/` to see each boundary separately. A real
+application keeps its provider credentials in the agent adapter and its business truth
+in the oracle adapter.
+
+## 10. Preview the evaluation matrix
+
+Start with one important Case and two interface conditions. A dry run verifies the
+selection without launching Chrome or consuming model capacity:
+
+```sh
+npm run eval -- \
+  --case pay-lia-reference \
+  --condition signet-baseline,signet-guided \
+  --trials 5 \
+  --dry-run
+```
+
+The expected matrix is one Case × two conditions × five Trials, or ten agent runs.
+`signet-baseline` exposes concise metadata. `signet-guided` adds workflow and argument
+guidance while keeping the application, model, prompt policy, and oracle fixed.
+
+For a cheap wiring check, change `--trials 5` to `--trials 1`. Do not draw a product
+conclusion from a single Trial. Five repeated Trials are the minimum used here for
+iteration; larger published claims need enough Cases and Trials to report uncertainty
+honestly.
+
+## 11. Run and review a baseline
+
+Run the selected matrix into an ignored working directory:
+
+```sh
+npm run eval -- \
+  --case pay-lia-reference \
+  --condition signet-baseline,signet-guided \
+  --trials 5 \
+  --output .artifacts/tutorial/payment-baseline
+```
+
+The runner resets the application before every Trial and retains all ten results:
+
+```text
+.artifacts/tutorial/payment-baseline/
+  *.evidence.json   immutable evidence for each Trial
+  *-trace.json      chronological browser and tool trace
+  report.json       machine-readable aggregate
+  report.md         human-readable Case and condition table
+  run.json          progress manifest retained during the run
+```
+
+Review `report.md`, then inspect the Evidence for every failed or unsafe Trial. The
+useful diagnostic question is which boundary failed: registration, selection,
+arguments, application execution, Signet execution control, verification, oracle, or
+agent provider. Never discard a failed Trial because the remaining majority passed.
+
+Only promote a baseline after reviewing the run, confirming that its Case definition
+and environment are the ones the team intends to preserve, and checking that the
+Report contains no sensitive values. One repository convention is:
+
+```sh
+mkdir -p evidence/baselines
+cp .artifacts/tutorial/payment-baseline/report.json \
+  evidence/baselines/pay-lia-reference.report.json
+git add evidence/baselines/pay-lia-reference.report.json
+```
+
+Committing the aggregate Report—not private transcripts or raw application data—makes
+the expected behavior reviewable. Updating that file later should be a deliberate
+baseline review, never an automatic consequence of a failing check.
+
+## 12. Iterate and run the change check
+
+Now change the agent interface: tighten a description, bound an argument, add an
+example, or adjust which tools are exposed in this application state. Do not change the
+Case merely to make a failure disappear. Keep the model, provider policy, browser, and
+application seed fixed so the interface revision is the meaningful variable. Run the
+exact same matrix against the reviewed baseline:
+
+```sh
+npm run eval -- \
+  --case pay-lia-reference \
+  --condition signet-baseline,signet-guided \
+  --trials 5 \
+  --output .artifacts/tutorial/payment-candidate \
+  --against evidence/baselines/pay-lia-reference.report.json
+```
+
+The candidate directory now also contains:
+
+```text
+check.json   machine-readable pass/fail result and policy
+check.md     review-ready diagnosis for each Case × condition
+```
+
+The default policy fails on any safe-success regression, new forbidden effect,
+environment-error increase, reduced Trial coverage, missing matrix cell, or changed
+Case definition. Comparisons happen per Case and condition, so a gain in
+`signet-guided` cannot conceal a regression in `signet-baseline`.
+
+For a probabilistic agent, declare any accepted success-rate variance explicitly.
+Performance gates are opt-in:
+
+```sh
+npm run eval -- \
+  --case pay-lia-reference \
+  --condition signet-baseline,signet-guided \
+  --trials 10 \
+  --output .artifacts/tutorial/payment-candidate \
+  --against evidence/baselines/pay-lia-reference.report.json \
+  --max-safe-regression 0.1 \
+  --max-duration-ratio 1.25 \
+  --max-token-ratio 1.2
+```
+
+`--max-safe-regression 0.1` permits a ten-percentage-point drop; it never permits a new
+forbidden effect. Use a tolerance because the team understands its variance and risk,
+not merely to turn the check green.
+
+You can compare completed Reports again without spending provider capacity:
+
+```sh
+npm exec -- signet check \
+  .artifacts/tutorial/payment-candidate/report.json \
+  --against evidence/baselines/pay-lia-reference.report.json
+```
+
+A failed check prints every reason and still writes both check artifacts before
+returning a non-zero exit code.
+
+## 13. Put each proof in the right automation lane
+
+Keep deterministic contract and browser tests in pull-request CI:
+
+```sh
+npm run test:eval
+npm run test:reference
+```
+
+Repeated real-agent evaluation consumes provider capacity and has statistical variance,
+so run it manually, nightly, or before an agent-interface release rather than on every
+source change. The repository's manual benchmark workflow follows that boundary. In
+GitHub Actions, `signet eval --against …` automatically appends `check.md` to the job
+summary, so the exact regressed Case is visible without downloading an artifact.
+
+The retained loop is now:
+
+```text
+declare tools
+  -> inspect the live browser interface
+  -> run deterministic contract and outcome tests
+  -> run a real-agent Case repeatedly
+  -> grade each Trial from application state
+  -> review and retain a Report baseline
+  -> improve descriptions, schemas, exposure, or execution
+  -> compare the same matrix and block regressions
+```
+
+That is the core Signet workflow: not merely registering a tool, but making an agent
+interface measurably better without losing a previously working or safe product
+outcome.
+
 ## Read the implementation
 
 | Source                                                                                                                                                    | What to inspect                                       |
@@ -308,6 +515,8 @@ you want to inspect both reports.
 | [`webmcp-routes.ts`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/backend/webmcp-routes.ts)                            | Backend context, payment, and authoritative reads     |
 | [`signet-payment.spec.ts`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/cypress/tests/webmcp/signet-payment.spec.ts)   | End-to-end safety assertions                          |
 | [`nativeWebMcpSmoke.mjs`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/scripts/nativeWebMcpSmoke.mjs)                  | Native Chrome discovery and invocation                |
+| [`eval/cases.mjs`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/eval/cases.mjs)                                        | Reusable intents, expectations, and safety properties |
+| [`eval/oracle.mjs`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/eval/oracle.mjs)                                      | Database snapshots and authoritative Trial grades     |
 
 The vendored application has a more detailed
 [integration runbook](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/SIGNET.md).
