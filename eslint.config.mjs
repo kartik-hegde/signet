@@ -13,7 +13,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["test/**/*.ts"],
+    files: ["packages/webmcp/test/**/*.ts"],
     rules: {
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-call": "off",
@@ -23,7 +23,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/testing.ts"],
+    files: ["packages/webmcp/src/testing.ts"],
     rules: {
       // AbortSignal.reason is intentionally forwarded without changing identity.
       "@typescript-eslint/prefer-promise-reject-errors": "off",

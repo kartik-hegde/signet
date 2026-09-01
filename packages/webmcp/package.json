@@ -50,7 +50,7 @@
     "tutorial:test": "npm run build && vitest run --root ../.. fixtures/hello-world/src/greeting.test.ts",
     "format:check": "prettier --check . --ignore-unknown --ignore-path ../../.gitignore",
     "lint": "npm run build && npm run lint:source",
-    "lint:source": "eslint 'src/**/*.ts' 'test/**/*.ts' 'recipes/**/*.ts' '../../fixtures/hello-world/src/**/*.{ts,tsx}' examples-native-webmcp.ts",
+    "lint:source": "cd ../.. && eslint --config eslint.config.mjs 'packages/webmcp/src/**/*.ts' 'packages/webmcp/test/**/*.ts' 'packages/webmcp/recipes/**/*.ts' 'fixtures/hello-world/src/**/*.{ts,tsx}' packages/webmcp/examples-native-webmcp.ts",
     "package:check": "publint --strict",
     "smoke": "node test/package-smoke.mjs",
     "test": "vitest run",

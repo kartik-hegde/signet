@@ -16,7 +16,7 @@
     "typecheck": "npm run typecheck --workspace=@signet/webmcp",
     "lint": "npm run lint --workspace=@signet/webmcp",
     "format:check": "npm run format:check --workspace=@signet/webmcp && npm run format:check:repo",
-    "format:check:repo": "prettier --check packages/eval tooling .github/workflows package.json README.md AGENTS.md --ignore-unknown",
+    "format:check:repo": "prettier --check packages/eval tooling .github/workflows eslint.config.mjs package.json README.md AGENTS.md --ignore-unknown",
     "package:check": "npm run package:check --workspace=@signet/webmcp",
     "smoke": "npm run smoke --workspace=@signet/webmcp",
     "validate": "npm run validate --workspace=@signet/webmcp",
