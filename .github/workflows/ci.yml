@@ -35,6 +35,9 @@ jobs:
       - name: Reference application types
         run: npm --prefix apps/cypress-realworld-app run types
 
+      - name: Reference application unit tests
+        run: npm --prefix apps/cypress-realworld-app run test:unit:ci
+
       - name: Deterministic safety suite
         run: npm run bench:safety
         env:
@@ -49,3 +52,11 @@ jobs:
         run: npm run bench:p0
         env:
           SIGNET_DIR: .signet-source
+
+      - name: Full WebMCP browser regression
+        working-directory: apps/cypress-realworld-app
+        run: node_modules/.bin/start-server-and-test start:webmcp:ci http://localhost:3100 test:webmcp
+        env:
+          PORT: "3100"
+          VITE_BACKEND_PORT: "3101"
+          BACKEND_PORT: "3101"
