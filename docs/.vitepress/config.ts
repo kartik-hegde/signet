@@ -95,6 +95,7 @@ export default defineConfig({
           { text: "Production checklist", link: "/production-checklist" },
           { text: "Design contract", link: "/design" },
           { text: "Observability spec", link: "/specs/observability" },
+          { text: "EDA-MCP spec", link: "/specs/eda-mcp" },
           { text: "Ecosystem research", link: "/ecosystem" },
           { text: "Product tracker", link: "/pm" },
         ],
