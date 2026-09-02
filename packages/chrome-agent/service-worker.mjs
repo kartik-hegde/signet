@@ -1,9 +1,23 @@
-void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+void configureAction();
 
-chrome.runtime.onInstalled.addListener(() => {
-  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+chrome.runtime.onInstalled.addListener(() => void configureAction());
+chrome.runtime.onStartup.addListener(() => void configureAction());
+
+chrome.action.onClicked.addListener((tab) => {
+  const panelContext = tab.windowId
+    ? { windowId: tab.windowId }
+    : { tabId: tab.id };
+  void chrome.sidePanel
+    .open(panelContext)
+    .then(() =>
+      chrome.runtime.sendMessage({
+        type: "signet:refresh-tools",
+        tabId: tab.id,
+      }),
+    )
+    .catch(() => undefined);
 });
 
-chrome.runtime.onStartup.addListener(() => {
-  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-});
+async function configureAction() {
+  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+}

@@ -22,6 +22,11 @@ packages/chrome-agent/dist
 Pin Signet Agent. Clicking its toolbar button grants access to the current tab and
 opens the side panel.
 
+Tool discovery refreshes automatically as a page finishes loading. Use the refresh
+button beside **Tools available** for tools registered later. If the panel says it needs
+page access after navigating to another site, click the Signet toolbar button once on
+that site; Chrome intentionally revokes `activeTab` access across origins.
+
 ## Try it without credentials
 
 Start the included page and deterministic Chat Completions-compatible demo provider:

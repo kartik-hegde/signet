@@ -84,27 +84,9 @@ summary:focus-visible {
   background: var(--paper);
 }
 
-.wordmark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 15px;
-  letter-spacing: -0.01em;
-}
-.brand-mark {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  color: var(--proof);
-  font-weight: 750;
-  font-size: 13px;
-}
 .icon-button,
-.text-button {
+.text-button,
+.refresh-button {
   display: grid;
   place-items: center;
   min-width: 36px;
@@ -116,7 +98,8 @@ summary:focus-visible {
   color: var(--graphite);
 }
 .icon-button:hover,
-.text-button:hover {
+.text-button:hover,
+.refresh-button:hover {
   background: var(--raised);
   color: var(--ink);
 }
@@ -128,6 +111,9 @@ summary:focus-visible {
   stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.app-header .icon-button {
+  justify-self: end;
 }
 .app-header .icon-button svg path:first-child {
   fill: none;
@@ -273,6 +259,36 @@ summary strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.tools-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.refresh-button {
+  min-width: 30px;
+  width: 30px;
+  height: 30px;
+}
+.refresh-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.refresh-button.is-refreshing svg {
+  animation: refresh-spin 0.8s linear infinite;
+}
+.refresh-button:disabled {
+  cursor: wait;
+}
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .tool-list,
 .trace-list {
