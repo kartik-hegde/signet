@@ -6,8 +6,11 @@ the active page through a model provider the user configures.
 ## Data handled
 
 - The active page's title, URL, WebMCP tool definitions, and tool results are processed
-  locally in the extension. The title and URL are displayed locally and are not sent to
-  the model provider.
+  locally in the extension and are not sent to the model provider.
+- Website access is optional and requested once from the user. It lets the extension
+  check normal HTTP and HTTPS pages for WebMCP tools as the user navigates. Signet does
+  not use that permission to read page DOM content, cookies, browsing history, or
+  screenshots.
 - When the user starts a run, the prompt, WebMCP tool definitions, and tool results are
   sent to the model endpoint selected by the user. The configured provider's own privacy
   terms apply to that transmission.

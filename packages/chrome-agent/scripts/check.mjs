@@ -7,6 +7,7 @@ const manifest = JSON.parse(
   await readFile(join(root, "manifest.json"), "utf8"),
 );
 const expectedPermissions = ["activeTab", "scripting", "sidePanel", "storage"];
+const expectedOptionalHostPermissions = ["http://*/*", "https://*/*"];
 
 if (manifest.manifest_version !== 3) {
   throw new Error("Signet Agent must use Manifest V3.");
@@ -20,6 +21,12 @@ if (
 }
 if (manifest.host_permissions) {
   throw new Error("Provider origins must remain optional permissions.");
+}
+if (
+  JSON.stringify(manifest.optional_host_permissions) !==
+  JSON.stringify(expectedOptionalHostPermissions)
+) {
+  throw new Error("Website and provider access must remain optional.");
 }
 if (manifest.side_panel?.default_path !== "sidepanel.html") {
   throw new Error("The side panel entry point is missing.");
@@ -49,6 +56,7 @@ for (const file of [
   "service-worker.mjs",
   "sidepanel.css",
   "sidepanel.mjs",
+  "website-access.mjs",
 ]) {
   await access(join(root, file));
 }

@@ -19,13 +19,13 @@ Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and
 packages/chrome-agent/dist
 ```
 
-Pin Signet Agent. Clicking its toolbar button grants access to the current tab and
-opens the side panel.
+Pin Signet Agent and click its toolbar button to open the side panel. The first time,
+choose **Allow website access** beside **Tools available** and approve Chrome's prompt.
+This single optional grant lets Signet discover tools as you navigate between normal
+HTTP and HTTPS pages; it does not cover Chrome's internal pages.
 
 Tool discovery refreshes automatically as a page finishes loading. Use the refresh
-button beside **Tools available** for tools registered later. If the panel says it needs
-page access after navigating to another site, click the Signet toolbar button once on
-that site; Chrome intentionally revokes `activeTab` access across origins.
+button beside **Tools available** for tools registered later.
 
 ## Try it without credentials
 
@@ -83,8 +83,8 @@ account and an **Unlisted** item, then:
 1. Upload the generated ZIP.
 2. Use “Inspect and invoke the WebMCP tools exposed by the active page” as the single
    purpose.
-3. Explain `activeTab`, `scripting`, `sidePanel`, `storage`, and optional provider-origin
-   access in the Privacy practices form.
+3. Explain `activeTab`, `scripting`, `sidePanel`, `storage`, and the optional website
+   access used to discover WebMCP tools and reach the configured provider.
 4. Host and link the text in [PRIVACY.md](./PRIVACY.md), and disclose that prompts, tool
    definitions, and results go only to the provider selected by the user.
 5. Add screenshots of tool discovery and the two-call demo trace, choose Unlisted

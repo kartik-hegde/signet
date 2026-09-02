@@ -75,10 +75,8 @@ summary:focus-visible {
 
 .app-header {
   height: 60px;
-  display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  display: flex;
   align-items: center;
-  gap: 8px;
   padding: 0 16px;
   border-bottom: 1px solid var(--line);
   background: var(--paper);
@@ -113,10 +111,7 @@ summary:focus-visible {
   stroke-linejoin: round;
 }
 .app-header .icon-button {
-  justify-self: end;
-}
-.app-header .icon-button svg path:first-child {
-  fill: none;
+  margin-left: auto;
 }
 .text-button {
   display: block;
@@ -169,20 +164,6 @@ h2 {
   margin: 0;
   font-size: 27px;
 }
-.page-context {
-  max-width: 520px;
-  margin: 18px 0 0;
-  color: var(--faint);
-  font-size: 14px;
-  line-height: 1.5;
-}
-.page-context.is-ready {
-  color: var(--proof);
-}
-.page-context.is-error {
-  color: var(--faint);
-}
-
 .conversation {
   padding: 32px 0 40px;
 }
@@ -215,6 +196,11 @@ h2 {
 .tools-disclosure,
 .trace-disclosure {
   border-top: 1px solid var(--line);
+}
+.tools-disclosure {
+  width: calc(100% - 32px);
+  max-width: 688px;
+  margin: 0 auto;
 }
 .trace-disclosure {
   border-bottom: 1px solid var(--line);
@@ -264,6 +250,18 @@ summary strong {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.access-button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+}
+.access-button:hover {
+  border-color: var(--ink);
 }
 .refresh-button {
   min-width: 30px;
@@ -369,7 +367,7 @@ pre {
   bottom: 0;
   width: calc(100% - 32px);
   max-width: 688px;
-  margin: 24px auto 16px;
+  margin: 8px auto 16px;
   padding: 14px;
   border: 1px solid var(--line-strong);
   border-radius: 14px;
@@ -533,6 +531,9 @@ select {
   .composer {
     width: calc(100% - 24px);
     margin-bottom: 12px;
+  }
+  .tools-disclosure {
+    width: calc(100% - 24px);
   }
   .hero {
     min-height: 48vh;

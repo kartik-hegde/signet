@@ -9,6 +9,7 @@ import {
   endpointOriginPattern,
   PROVIDER_PRESETS,
 } from "./provider.mjs";
+import { hasWebsiteAccess, requestWebsiteAccess } from "./website-access.mjs";
 
 const elements = {
   answer: document.querySelector("#answer-message"),
@@ -23,7 +24,6 @@ const elements = {
   main: document.querySelector("#main-view"),
   model: document.querySelector("#model-input"),
   newRun: document.querySelector("#new-run-button"),
-  pageContext: document.querySelector("#page-context"),
   prompt: document.querySelector("#prompt-input"),
   promptForm: document.querySelector("#prompt-form"),
   promptMessage: document.querySelector("#prompt-message"),
@@ -42,6 +42,7 @@ const elements = {
   trace: document.querySelector("#trace-disclosure"),
   traceList: document.querySelector("#trace-list"),
   traceState: document.querySelector("#trace-state"),
+  websiteAccess: document.querySelector("#website-access-button"),
 };
 
 const state = {
@@ -55,9 +56,11 @@ const state = {
   starting: false,
   refreshTimers: [],
   refreshVersion: 0,
+  websiteAccess: false,
 };
 
 await loadSettings();
+await updateWebsiteAccess();
 
 elements.settingsButton.addEventListener("click", openSettings);
 elements.closeSettings.addEventListener("click", closeSettings);
@@ -70,6 +73,11 @@ elements.refresh.addEventListener("click", (event) => {
   event.preventDefault();
   event.stopPropagation();
   startDiscoveryCycle();
+});
+elements.websiteAccess.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  void allowWebsiteAccess();
 });
 elements.promptForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -123,8 +131,6 @@ function clearDiscoveryRetries() {
 
 async function refreshPage() {
   const version = ++state.refreshVersion;
-  elements.pageContext.className = "page-context";
-  elements.pageContext.textContent = "Checking this page for WebMCP tools…";
   elements.toolsState.textContent = "Checking…";
   elements.refresh.disabled = true;
   elements.refresh.classList.add("is-refreshing");
@@ -139,18 +145,11 @@ async function refreshPage() {
     if (version !== state.refreshVersion) return;
     state.tools = Array.isArray(page.tools) ? page.tools : [];
     renderTools();
-    const title = page.title || tab.title || "Current page";
     if (!page.supported) {
-      elements.pageContext.textContent = `No WebMCP tools detected on ${title}`;
-      elements.pageContext.classList.add("is-error");
       elements.toolsState.textContent = "Not detected";
       return;
     }
-    elements.pageContext.textContent = state.tools.length
-      ? `${state.tools.length} tool${state.tools.length === 1 ? "" : "s"} ready on ${title}`
-      : `No WebMCP tools detected on ${title}`;
     if (state.tools.length) {
-      elements.pageContext.classList.add("is-ready");
       elements.toolsState.textContent = "Updated now";
       clearDiscoveryRetries();
     } else {
@@ -161,10 +160,8 @@ async function refreshPage() {
     state.tools = [];
     renderTools();
     const needsAccess = pageAccessRequired(error);
-    elements.pageContext.textContent = needsAccess
-      ? "Click the Signet toolbar icon to allow access to this page."
-      : "WebMCP could not be checked on this page.";
-    elements.pageContext.classList.add("is-error");
+    if (needsAccess && !state.websiteAccess)
+      elements.websiteAccess.hidden = false;
     elements.toolsState.textContent = needsAccess
       ? "Needs access"
       : "Unavailable";
@@ -173,6 +170,26 @@ async function refreshPage() {
       elements.refresh.disabled = false;
       elements.refresh.classList.remove("is-refreshing");
     }
+  }
+}
+
+async function updateWebsiteAccess() {
+  state.websiteAccess = await hasWebsiteAccess();
+  elements.websiteAccess.hidden = state.websiteAccess;
+}
+
+async function allowWebsiteAccess() {
+  elements.websiteAccess.disabled = true;
+  elements.toolsState.textContent = "Waiting for permission…";
+  try {
+    state.websiteAccess = await requestWebsiteAccess();
+    elements.websiteAccess.hidden = state.websiteAccess;
+    if (state.websiteAccess) startDiscoveryCycle();
+    else elements.toolsState.textContent = "Access not allowed";
+  } catch (error) {
+    elements.toolsState.textContent = error?.message ?? "Access unavailable";
+  } finally {
+    elements.websiteAccess.disabled = false;
   }
 }
 

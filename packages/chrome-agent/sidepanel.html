@@ -9,7 +9,6 @@
   <body>
     <header class="app-header">
       <button class="text-button" id="new-run-button" hidden>New</button>
-      <span></span>
       <button
         class="icon-button"
         id="settings-button"
@@ -17,8 +16,9 @@
         aria-label="Open settings"
       >
         <svg aria-hidden="true" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3" />
           <path
-            d="M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5Zm8 3.5-.1-1.1 2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.9-1.1L15.3 3h-4l-.4 2.9A8 8 0 0 0 9 7L6.6 6 4.6 9.4l2 1.5a8 8 0 0 0 0 2.2l-2 1.5 2 3.4L9 17a8 8 0 0 0 1.9 1.1l.4 2.9h4l.4-2.9a8 8 0 0 0 1.9-1.1l2.4 1 2-3.4-2-1.5.1-1.1Z"
+            d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.37a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.09 14H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.63 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.63h.01A1.7 1.7 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.54 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.37 9v.01A1.7 1.7 0 0 0 20.91 10H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"
           />
         </svg>
       </button>
@@ -28,9 +28,6 @@
       <section class="workspace">
         <div class="hero" id="hero">
           <h1>What do you want to do today?</h1>
-          <p class="page-context" id="page-context">
-            Checking this page for WebMCP tools…
-          </p>
         </div>
 
         <section
@@ -43,34 +40,6 @@
           <div class="answer-message" id="answer-message"></div>
         </section>
 
-        <details class="tools-disclosure" id="tools-disclosure">
-          <summary>
-            <span
-              ><strong>Tools available</strong>
-              <span class="count" id="tool-count">0</span></span
-            >
-            <span class="tools-actions">
-              <span class="tools-state" id="tools-state" role="status"
-                >Checking…</span
-              >
-              <button
-                class="refresh-button"
-                id="refresh-button"
-                type="button"
-                aria-label="Refresh available tools"
-                title="Refresh available tools"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />
-                </svg>
-              </button>
-            </span>
-          </summary>
-          <div class="tool-list" id="tool-list">
-            <p class="empty-state">No tools found.</p>
-          </div>
-        </details>
-
         <details class="trace-disclosure" id="trace-disclosure" hidden>
           <summary>
             <span
@@ -82,6 +51,42 @@
           <div class="trace-list" id="trace-list"></div>
         </details>
       </section>
+
+      <details class="tools-disclosure" id="tools-disclosure">
+        <summary>
+          <span
+            ><strong>Tools available</strong>
+            <span class="count" id="tool-count">0</span></span
+          >
+          <span class="tools-actions">
+            <button
+              class="access-button"
+              id="website-access-button"
+              type="button"
+              hidden
+            >
+              Allow website access
+            </button>
+            <span class="tools-state" id="tools-state" role="status"
+              >Checking…</span
+            >
+            <button
+              class="refresh-button"
+              id="refresh-button"
+              type="button"
+              aria-label="Refresh available tools"
+              title="Refresh available tools"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />
+              </svg>
+            </button>
+          </span>
+        </summary>
+        <div class="tool-list" id="tool-list">
+          <p class="empty-state">No tools found.</p>
+        </div>
+      </details>
 
       <form class="composer" id="prompt-form">
         <label class="sr-only" for="prompt-input">Prompt</label>
