@@ -140,7 +140,7 @@ test("stops a runaway tool loop at the configured limit", async () => {
       return true;
     },
   );
-  assert.equal(DEFAULT_MAX_STEPS, 16);
+  assert.equal(DEFAULT_MAX_STEPS, 1_000);
 });
 
 test("returns retryable tool failures to the model for correction", async () => {

@@ -38,6 +38,12 @@
           aria-live="polite"
         >
           <div class="prompt-message" id="prompt-message"></div>
+          <div
+            class="agent-activity"
+            id="agent-activity"
+            role="status"
+            hidden
+          ></div>
           <div class="answer-message" id="answer-message"></div>
         </section>
       </section>
@@ -99,7 +105,20 @@
           ></textarea>
           <div class="composer-footer">
             <span class="run-status" id="run-status" role="status">Ready</span>
-            <button class="stop-button" id="stop-button" type="button" hidden>
+            <button
+              class="model-summary-button"
+              id="model-summary-button"
+              type="button"
+              aria-label="Change active model"
+              title="Change active model"
+            ></button>
+            <button
+              class="stop-button"
+              id="stop-button"
+              type="button"
+              aria-label="Stop agent"
+              hidden
+            >
               Stop
             </button>
             <button
@@ -161,14 +180,23 @@
             type="url"
             placeholder="https://provider.example/v1/chat/completions"
         /></label>
-        <label
-          >API key <span class="muted">kept only for this Chrome session</span>
+        <label id="api-key-field"
+          >API key <span class="muted">session-only by default</span>
           <input
             id="api-key-input"
             type="password"
             autocomplete="off"
             placeholder="Paste your API key"
           />
+        </label>
+        <label class="consent-row" id="remember-key-row">
+          <input id="remember-key-input" type="checkbox" />
+          <span
+            >Remember on this device
+            <span class="muted" id="api-key-storage-note"
+              >Cleared when Chrome or Signet restarts.</span
+            ></span
+          >
         </label>
         <label class="consent-row">
           <input id="data-consent-input" type="checkbox" />

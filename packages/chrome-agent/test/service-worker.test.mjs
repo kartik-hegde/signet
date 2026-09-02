@@ -3,7 +3,7 @@ import test from "node:test";
 
 test("toolbar click grants the active tab gesture, opens the panel, and refreshes tools", async () => {
   const actionListeners = [];
-  const calls = { behavior: [], open: [], messages: [] };
+  const calls = { behavior: [], open: [], messages: [], accessLevels: [] };
   globalThis.chrome = {
     action: {
       onClicked: {
@@ -27,6 +27,13 @@ test("toolbar click grants the active tab gesture, opens the panel, and refreshe
         calls.behavior.push(behavior);
       },
     },
+    storage: {
+      local: {
+        async setAccessLevel(options) {
+          calls.accessLevels.push(options);
+        },
+      },
+    },
   };
 
   await import(`../service-worker.mjs?test=${Date.now()}`);
@@ -35,6 +42,7 @@ test("toolbar click grants the active tab gesture, opens the panel, and refreshe
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   assert.deepEqual(calls.behavior, [{ openPanelOnActionClick: false }]);
+  assert.deepEqual(calls.accessLevels, [{ accessLevel: "TRUSTED_CONTEXTS" }]);
   assert.deepEqual(calls.open, [{ windowId: 9 }]);
   assert.deepEqual(calls.messages, [
     { type: "signet:refresh-tools", tabId: 7 },

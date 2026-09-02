@@ -19,5 +19,8 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 async function configureAction() {
+  await chrome.storage.local.setAccessLevel({
+    accessLevel: "TRUSTED_CONTEXTS",
+  });
   await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
 }

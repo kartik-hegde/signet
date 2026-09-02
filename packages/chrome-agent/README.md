@@ -55,9 +55,11 @@ results—not the page DOM, screenshot, cookies, or browsing history. The main v
 prompt-first; tool definitions are expandable before a run and call details appear only
 after a run begins.
 
-The endpoint and model name are stored in `chrome.storage.local`. The API key is kept in
-`chrome.storage.session` and disappears when the Chrome session ends. Provider origin
-access is requested only when its endpoint is saved or used.
+The endpoint and model name are stored in `chrome.storage.local`. By default, the API
+key stays in in-memory `chrome.storage.session` and disappears when Chrome or the
+extension restarts. Developers can explicitly choose **Remember on this device** to
+store it in Chrome's unencrypted local extension storage. Provider origin access is
+requested only when its endpoint is saved or used.
 
 Remote endpoints must use HTTPS. Plain HTTP is accepted only for local loopback providers.
 See [PRIVACY.md](./PRIVACY.md) for the complete disclosure.
@@ -99,8 +101,8 @@ Each later upload must increment `version` in `manifest.json` before packaging.
   valid origin-trial token, or testers must enable the applicable experimental Chrome
   feature. The bundled demo includes a local compatibility boundary.
 - The page must expose `document.modelContext.getTools()` and `executeTool()`.
-- Calls are sequential, capped at 16 model turns to prevent unintended loops, and time
-  out after 45 seconds.
+- Calls are sequential, have an emergency ceiling of 1,000 model turns, and time out
+  after 45 seconds. Stop remains available throughout a run.
 - Stop aborts the model request and the active page tool call.
 - Conversations and tool results are not persisted.
 - This is a developer agent, not a general browser automation or DOM-control product.

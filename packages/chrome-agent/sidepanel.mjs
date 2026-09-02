@@ -1,4 +1,5 @@
 import { runAgent } from "./agent-core.mjs";
+import { loadApiKey, saveApiKey } from "./api-key-storage.mjs";
 import {
   abortWebMcpTool,
   executeWebMcpTool,
@@ -13,8 +14,11 @@ import { renderMarkdown } from "./markdown.mjs";
 import { hasWebsiteAccess, requestWebsiteAccess } from "./website-access.mjs";
 
 const elements = {
+  activity: document.querySelector("#agent-activity"),
   answer: document.querySelector("#answer-message"),
   apiKey: document.querySelector("#api-key-input"),
+  apiKeyField: document.querySelector("#api-key-field"),
+  apiKeyStorageNote: document.querySelector("#api-key-storage-note"),
   callCount: document.querySelector("#call-count"),
   closeSettings: document.querySelector("#close-settings-button"),
   conversation: document.querySelector("#conversation"),
@@ -24,12 +28,15 @@ const elements = {
   hero: document.querySelector("#hero"),
   main: document.querySelector("#main-view"),
   model: document.querySelector("#model-input"),
+  modelSummary: document.querySelector("#model-summary-button"),
   newRun: document.querySelector("#new-run-button"),
   prompt: document.querySelector("#prompt-input"),
   promptForm: document.querySelector("#prompt-form"),
   promptMessage: document.querySelector("#prompt-message"),
   provider: document.querySelector("#provider-input"),
   refresh: document.querySelector("#refresh-button"),
+  rememberKey: document.querySelector("#remember-key-input"),
+  rememberKeyRow: document.querySelector("#remember-key-row"),
   run: document.querySelector("#run-button"),
   runStatus: document.querySelector("#run-status"),
   saveSettings: document.querySelector("#save-settings-button"),
@@ -66,9 +73,13 @@ await updateWebsiteAccess();
 
 elements.settingsButton.addEventListener("click", openSettings);
 elements.closeSettings.addEventListener("click", closeSettings);
-elements.provider.addEventListener("change", () =>
-  applyProvider(elements.provider.value, true),
-);
+elements.provider.addEventListener("change", () => {
+  applyProvider(elements.provider.value, true);
+  updateModelSummary();
+});
+elements.model.addEventListener("input", updateModelSummary);
+elements.modelSummary.addEventListener("click", openSettings);
+elements.rememberKey.addEventListener("change", updateKeyStorageNote);
 elements.saveSettings.addEventListener("click", () => void saveSettings());
 elements.newRun.addEventListener("click", resetRun);
 elements.refresh.addEventListener("click", (event) => {
@@ -232,6 +243,7 @@ async function startRun() {
     if (began) {
       elements.answer.textContent = message;
       elements.answer.classList.add("is-error");
+      elements.activity.hidden = true;
       elements.traceState.textContent = stopped ? "Stopped" : "Failed";
     } else {
       elements.runStatus.textContent = message;
@@ -261,6 +273,7 @@ function beginRun(prompt) {
   elements.promptMessage.textContent = prompt;
   elements.answer.textContent = "";
   elements.answer.className = "answer-message";
+  setActivity("Planning the next step…");
   elements.newRun.hidden = false;
 }
 
@@ -269,6 +282,7 @@ function resetRun() {
   elements.hero.hidden = false;
   elements.conversation.hidden = true;
   elements.trace.hidden = true;
+  elements.activity.hidden = true;
   elements.newRun.hidden = true;
   elements.runStatus.textContent = "Ready";
   elements.prompt.focus();
@@ -298,19 +312,30 @@ async function invokePageTool(call) {
 
 function handleAgentEvent(event) {
   if (event.type === "model_started") {
-    elements.runStatus.textContent =
-      event.step === 1 ? "Planning…" : "Continuing…";
+    const status =
+      event.step === 1 ? "Planning the next step…" : "Reviewing tool results…";
+    elements.runStatus.textContent = status;
+    setActivity(status);
     elements.traceState.textContent = elements.runStatus.textContent;
   } else if (event.type === "tool_started") {
-    elements.runStatus.textContent = `Calling ${event.call.name}…`;
+    const toolName = readableToolName(event.call.name);
+    elements.runStatus.textContent = `Running ${toolName}…`;
+    setActivity(`Running ${toolName}…`);
     elements.traceState.textContent = elements.runStatus.textContent;
     appendToolCall(event.call);
   } else if (event.type === "tool_completed") {
     completeToolCall(event.call, event.result);
+    const toolName = readableToolName(event.call.name);
+    const status = event.result.ok
+      ? `${toolName} completed. Reviewing the result…`
+      : `${toolName} failed. Deciding whether to retry…`;
+    elements.runStatus.textContent = status;
+    setActivity(status);
   } else if (event.type === "assistant_completed") {
     elements.runStatus.textContent = "Complete";
     elements.traceState.textContent =
       state.callCount === 1 ? "1 tool call" : `${state.callCount} tool calls`;
+    elements.activity.hidden = true;
     renderMarkdown(elements.answer, event.content, { baseUrl: state.pageUrl });
   }
 }
@@ -413,12 +438,15 @@ function closeSettings() {
 function applyProvider(provider, resetModel) {
   const preset = PROVIDER_PRESETS[provider] ?? PROVIDER_PRESETS.custom;
   elements.endpointField.hidden = provider !== "custom";
+  elements.apiKeyField.hidden = provider === "demo";
+  elements.rememberKeyRow.hidden = provider === "demo";
   if (provider !== "custom" || resetModel)
     elements.endpoint.value = preset.endpoint;
   if (resetModel) elements.model.value = preset.model;
   elements.apiKey.placeholder = preset.keyRequired
     ? `Paste your ${preset.label} API key`
     : "Optional";
+  updateModelSummary();
 }
 
 async function saveSettings() {
@@ -439,7 +467,11 @@ async function saveSettings() {
         dataConsent: true,
       },
     });
-    await chrome.storage.session.set({ signetAgentKey: settings.apiKey });
+    const keyState = await saveApiKey(settings.apiKey, {
+      remember: elements.rememberKey.checked,
+    });
+    elements.rememberKey.checked = keyState.remembered;
+    updateKeyStorageNote();
     elements.settingsStatus.textContent = "Saved";
     closeSettings();
   } catch (error) {
@@ -448,8 +480,10 @@ async function saveSettings() {
 }
 
 async function loadSettings() {
-  const local = await chrome.storage.local.get("signetAgent");
-  const session = await chrome.storage.session.get("signetAgentKey");
+  const [local, keyState] = await Promise.all([
+    chrome.storage.local.get("signetAgent"),
+    loadApiKey(),
+  ]);
   const stored = local.signetAgent ?? {};
   const provider =
     stored.provider ?? inferProvider(stored.endpoint) ?? "openai";
@@ -459,7 +493,10 @@ async function loadSettings() {
   elements.endpoint.value = stored.endpoint || preset.endpoint;
   elements.model.value = stored.model || preset.model;
   elements.dataConsent.checked = stored.dataConsent === true;
-  elements.apiKey.value = session.signetAgentKey ?? "";
+  elements.apiKey.value = keyState.apiKey;
+  elements.rememberKey.checked = keyState.remembered;
+  updateKeyStorageNote();
+  updateModelSummary();
 }
 
 async function currentSettings() {
@@ -516,8 +553,10 @@ async function runInPage(func, args = []) {
 
 function setRunning(running) {
   elements.run.disabled = running;
+  elements.run.hidden = running;
   elements.stop.hidden = !running;
   elements.settingsButton.disabled = running;
+  elements.modelSummary.disabled = running;
   elements.newRun.disabled = running;
   elements.refresh.disabled = running;
   if (
@@ -525,6 +564,28 @@ function setRunning(running) {
     !["Complete", "Failed", "Stopped"].includes(elements.runStatus.textContent)
   )
     elements.runStatus.textContent = "Ready";
+}
+
+function updateModelSummary() {
+  const preset = PROVIDER_PRESETS[elements.provider.value];
+  const provider = preset?.label ?? "Custom";
+  const model = elements.model.value.trim() || "Choose model";
+  elements.modelSummary.textContent = `${provider} · ${model}`;
+}
+
+function updateKeyStorageNote() {
+  elements.apiKeyStorageNote.textContent = elements.rememberKey.checked
+    ? "Stored locally by Chrome; not encrypted."
+    : "Cleared when Chrome or Signet restarts.";
+}
+
+function setActivity(message) {
+  elements.activity.textContent = message;
+  elements.activity.hidden = false;
+}
+
+function readableToolName(name) {
+  return String(name).replaceAll(/[_-]+/g, " ");
 }
 
 function textElement(tag, className, text) {

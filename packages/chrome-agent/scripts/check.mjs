@@ -65,6 +65,7 @@ if ((html.match(/class="app-brand"/g) ?? []).length !== 1) {
 
 for (const file of [
   "agent-core.mjs",
+  "api-key-storage.mjs",
   "markdown.mjs",
   "page-bridge.mjs",
   "provider.mjs",

@@ -14,8 +14,10 @@ the active page through a model provider the user configures.
 - When the user starts a run, the prompt, WebMCP tool definitions, and tool results are
   sent to the model endpoint selected by the user. The configured provider's own privacy
   terms apply to that transmission.
-- The model endpoint and model name are stored locally in Chrome. The API key is stored
-  only in `chrome.storage.session` and is cleared when the Chrome session ends.
+- The model endpoint and model name are stored locally in Chrome. By default, the API
+  key is kept in in-memory `chrome.storage.session`. If the user explicitly enables
+  **Remember on this device**, the key is placed in Chrome's unencrypted local extension
+  storage until that option is disabled or the extension is removed.
 - Prompts, conversations, tool calls, and tool results are not persisted by the extension.
 
 Signet does not operate a backend for this extension and does not receive, collect, sell,
