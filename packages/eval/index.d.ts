@@ -61,10 +61,7 @@ export function defineSuite(definition: SignetSuite): SignetSuite;
 export function validateCase(value: unknown): SignetCase;
 
 export type TrialStatus =
-  | "completed"
-  | "failed"
-  | "timed_out"
-  | "environment_error";
+  "completed" | "failed" | "timed_out" | "environment_error";
 export type FailureCategory =
   | "environment"
   | "registration"
