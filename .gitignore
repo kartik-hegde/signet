@@ -6,6 +6,7 @@ docs/.vitepress/cache/
 docs/.vitepress/dist/
 .DS_Store
 *.log
+*.zip
 .worktrees/
 .external/
 .artifacts/

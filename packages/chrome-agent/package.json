@@ -8,8 +8,10 @@
     "build": "node scripts/build.mjs",
     "check": "node scripts/check.mjs",
     "demo": "node demo/server.mjs",
+    "lint": "cd ../.. && eslint --config eslint.config.mjs packages/chrome-agent --ignore-pattern 'packages/chrome-agent/dist/**'",
+    "package": "npm run build && node scripts/package.mjs",
     "test": "node --test test/*.test.mjs",
-    "validate": "npm run check && npm test && npm run build"
+    "validate": "npm run check && npm run lint && npm test && npm run package"
   },
   "engines": {
     "node": ">=20"

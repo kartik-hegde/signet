@@ -13,6 +13,7 @@ const elements = {
   apiKey: document.querySelector("#api-key-input"),
   clear: document.querySelector("#clear-button"),
   connectionMessage: document.querySelector("#connection-message"),
+  dataConsent: document.querySelector("#data-consent-input"),
   endpoint: document.querySelector("#endpoint-input"),
   model: document.querySelector("#model-input"),
   pageTitle: document.querySelector("#page-title"),
@@ -305,8 +306,13 @@ async function saveSettings() {
     const model = elements.model.value.trim();
     endpointOriginPattern(endpoint);
     if (!model) throw new Error("Enter a model name.");
+    if (!elements.dataConsent.checked) {
+      throw new Error("Confirm the data disclosure before connecting.");
+    }
     await ensureEndpointPermission(endpoint);
-    await chrome.storage.local.set({ signetAgent: { endpoint, model } });
+    await chrome.storage.local.set({
+      signetAgent: { endpoint, model, dataConsent: true },
+    });
     await chrome.storage.session.set({
       signetAgentKey: elements.apiKey.value.trim(),
     });
@@ -322,9 +328,12 @@ async function loadSettings() {
   const session = await chrome.storage.session.get("signetAgentKey");
   elements.endpoint.value = local.signetAgent?.endpoint ?? "";
   elements.model.value = local.signetAgent?.model ?? "";
+  elements.dataConsent.checked = local.signetAgent?.dataConsent === true;
   elements.apiKey.value = session.signetAgentKey ?? "";
   elements.settings.hidden = Boolean(
-    elements.endpoint.value && elements.model.value,
+    elements.endpoint.value &&
+    elements.model.value &&
+    elements.dataConsent.checked,
   );
 }
 
@@ -332,10 +341,10 @@ async function currentSettings() {
   const endpoint = elements.endpoint.value.trim();
   const model = elements.model.value.trim();
   const apiKey = elements.apiKey.value.trim();
-  if (!endpoint || !model) {
+  if (!endpoint || !model || !elements.dataConsent.checked) {
     elements.settings.hidden = false;
     throw new Error(
-      "Connect a model provider in Settings before running a prompt.",
+      "Connect a model provider and confirm the data disclosure before running a prompt.",
     );
   }
   return { endpoint, model, apiKey };

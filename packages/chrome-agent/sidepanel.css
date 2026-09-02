@@ -46,6 +46,20 @@ textarea {
   font: inherit;
 }
 
+.consent-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.consent-row input {
+  margin: 3px 0 0;
+  accent-color: var(--green);
+}
+
 button {
   cursor: pointer;
 }

@@ -38,36 +38,31 @@ test("invokes the currently exposed tool", async () => {
     getTools: async () => [tool],
     executeTool: async (selected, input) => {
       assert.equal(selected, tool);
-      assert.deepEqual(JSON.parse(input), {});
-      return { items: [] };
+      assert.equal(input, "{}");
+      return '{"items":[]}';
     },
   });
 
   const result = await executeWebMcpTool("inspect_cart", {}, "call_1", 500);
 
-  assert.deepEqual(result, { ok: true, value: { items: [] } });
+  assert.deepEqual(result, { ok: true, value: '{"items":[]}' });
 });
 
-test("does not retry a failed execution with a second input transport", async () => {
-  const tool = { name: "inspect_cart" };
-  let invocations = 0;
+test("serializes structured arguments for Chrome's execution boundary", async () => {
+  const tool = { name: "add_cart_item" };
   installPage({
     getTools: async () => [tool],
-    executeTool: async () => {
-      invocations += 1;
-      throw new Error("Outcome is unknown.");
-    },
+    executeTool: async (_selected, input) => input,
   });
 
   const result = await executeWebMcpTool(
-    "inspect_cart",
-    { store: "nyc" },
-    "call_native",
+    "add_cart_item",
+    { sku: "notebook", quantity: 2 },
+    "call_2",
     500,
   );
 
-  assert.equal(result.ok, false);
-  assert.equal(invocations, 1);
+  assert.equal(result.value, '{"sku":"notebook","quantity":2}');
 });
 
 test("aborts an active page call", async () => {

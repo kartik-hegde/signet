@@ -68,22 +68,23 @@ const tools = [
 
 const fallbackModelContext = {
   async getTools() {
-    return tools.map(({ execute: _execute, ...tool }) => ({
-      ...tool,
+    return tools.map((tool) => ({
+      name: tool.name,
+      title: tool.title,
+      description: tool.description,
       inputSchema: JSON.stringify(tool.inputSchema),
+      annotations: tool.annotations,
       origin: location.origin,
     }));
   },
   async executeTool(tool, input, options = {}) {
     options.signal?.throwIfAborted();
+    const parsedInput = typeof input === "string" ? JSON.parse(input) : input;
     const implementation = tools.find(
       (candidate) => candidate.name === tool.name,
     );
     if (!implementation) throw new Error(`Tool unavailable: ${tool.name}`);
-    return await implementation.execute(
-      typeof input === "string" ? JSON.parse(input) : input,
-      options,
-    );
+    return JSON.stringify(await implementation.execute(parsedInput, options));
   },
 };
 

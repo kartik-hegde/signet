@@ -29,6 +29,18 @@ const html = await readFile(join(root, "sidepanel.html"), "utf8");
 if (/<script[^>]+src=["']https?:/i.test(html)) {
   throw new Error("Manifest V3 forbids remotely hosted extension scripts.");
 }
+if (/<script(?![^>]+src=)[^>]*>/i.test(html)) {
+  throw new Error("Extension pages must not contain inline scripts.");
+}
+
+const sidePanelScript = await readFile(join(root, "sidepanel.mjs"), "utf8");
+for (const [, id] of sidePanelScript.matchAll(
+  /querySelector\("#([\w-]+)"\)/g,
+)) {
+  if (!html.includes(`id="${id}"`)) {
+    throw new Error(`sidepanel.mjs references missing element #${id}.`);
+  }
+}
 
 for (const file of [
   "agent-core.mjs",
@@ -39,6 +51,14 @@ for (const file of [
   "sidepanel.mjs",
 ]) {
   await access(join(root, file));
+}
+
+for (const size of [16, 32, 48, 128]) {
+  const path = `icons/icon-${size}.png`;
+  if (manifest.icons?.[size] !== path) {
+    throw new Error(`Manifest icon ${size} is missing.`);
+  }
+  await access(join(root, path));
 }
 
 console.log("Signet Agent manifest and privacy boundary are valid.");
