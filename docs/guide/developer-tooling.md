@@ -35,6 +35,21 @@ in development code so bundlers can exclude the entry point from production.
 
 ## Evaluation change checks
 
+Install `@signet/eval` as a development dependency to get all three terminal workflows:
+
+```sh
+npm install --save-dev @signet/eval
+npx signet agent --help
+npx signet eval --help
+npx signet check --help
+```
+
+`signet agent` runs a prompt or saved task against a page's live WebMCP inventory in a
+fresh headless Chrome profile. Use it for terminal and CI testing; the Chrome extension
+is a separate interactive tool. Follow the
+[headless-agent codelab](../tutorials/headless-agent-testing) and use the
+[CLI reference](../reference/cli) for suite hooks and every option.
+
 `@signet/eval` turns application-owned Cases and oracle-graded Trial Evidence into a
 repeatable change check:
 

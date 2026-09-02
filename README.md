@@ -44,4 +44,6 @@ npm run test:reference
 
 See [`packages/webmcp/README.md`](packages/webmcp/README.md) for SDK usage,
 [`packages/chrome-agent/README.md`](packages/chrome-agent/README.md) for the Chrome
-agent, and [`benchmarks/README.md`](benchmarks/README.md) for benchmark methodology.
+agent, [`docs/tutorials/headless-agent-testing.md`](docs/tutorials/headless-agent-testing.md)
+for the terminal testing workflow, and [`benchmarks/README.md`](benchmarks/README.md)
+for benchmark methodology.

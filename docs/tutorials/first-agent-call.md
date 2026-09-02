@@ -146,58 +146,49 @@ the `execute_tool get_greeting` root span and its `signet.validate` and `signet.
 children. Stop the container with <kbd>Ctrl+C</kbd>; its in-memory traces are
 deliberately disposable.
 
-## 5. Let an agent call it
+## 5. Let the Signet Agent call it
 
-An AI model needs an agent runtime with browser tools. One current option is
-[Chrome DevTools MCP](https://developer.chrome.com/docs/devtools/agents/get-started/configuration),
-whose experimental WebMCP category provides `list_webmcp_tools` and
-`execute_webmcp_tool`.
+`@signet/eval` installs the `signet` terminal command. Its agent runner launches a
+fresh headless Chrome profile, discovers the page's exact WebMCP inventory, and lets a
+tool-capable model work on your prompt. The repository already includes the package as
+a workspace, so no additional install is needed for this codelab. In your own
+application, install it with `npm install --save-dev @signet/eval`.
 
-Add the Chrome DevTools MCP server to your agent client's MCP configuration. The exact
-configuration file belongs to the client, but the server entry has this shape:
+Keep `npm run tutorial:dev` running. In another terminal, put your model provider key
+in an environment variable and run:
 
-```json
-{
-  "mcpServers": {
-    "chrome-devtools": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "chrome-devtools-mcp@latest",
-        "--isolated",
-        "--categoryExperimentalWebmcp=true",
-        "--chrome-arg=--enable-features=WebMCP"
-      ]
-    }
-  }
-}
+```sh
+export SIGNET_AGENT_API_KEY="<provider-key>"
+
+npx signet agent \
+  --url http://localhost:4173 \
+  --prompt "Call get_greeting with an empty object and report its message." \
+  --endpoint https://provider.example/v1/chat/completions \
+  --model tool-capable-model \
+  --output .artifacts/first-agent-call.json
 ```
 
-These flags were checked against the current `chrome-devtools-mcp` CLI. The WebMCP
-category requires Chrome 150 or newer. `--isolated` gives this codelab a temporary
-Chrome profile, which is removed when the MCP server exits.
-
-Restart the agent client after changing its MCP configuration. The MCP server launches
-its own Chrome instance; it does not reuse the manually configured Chrome window from
-step 3. Keep model credentials in the agent runtime, never in the website. Some clients
-use a subscription login; others require a provider API key.
-
-Keep `npm run tutorial:dev` running, then give the agent this prompt:
-
-```text
-Open http://localhost:4173. List the WebMCP tools exposed by the page, call
-get_greeting with an empty object, and report its message.
-```
+Replace the endpoint and model with a Chat Completions-compatible provider that
+supports tool calls. The key is sent only to that endpoint and is not written to the
+Evidence file.
 
 Expected evidence:
 
-1. the agent navigates its Chrome instance to the local page;
-2. `list_webmcp_tools` reports `get_greeting`;
-3. `execute_webmcp_tool` returns `Hello, world!`; and
-4. the Signet inspector shows a succeeded call with `validate` and `execute` latency.
+1. the temporary browser opens `http://localhost:4173`;
+2. the initial inventory contains `get_greeting`;
+3. the model selects `get_greeting` and the page returns `Hello, world!`;
+4. the command prints `PASSED` and exits successfully; and
+5. `.artifacts/first-agent-call.json` records the inventory, call name, answer, timing,
+   browser provenance, and interface-contract grade without tool payloads.
 
-The [Chrome DevTools MCP tool reference](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/tool-reference.md)
-documents the current experimental category and tool names.
+This ad-hoc grade proves that the browser-to-tool path completed. For mutations, grade
+the resulting database or another system of record instead. The
+[headless agent testing codelab](./headless-agent-testing) turns this command into a
+saved multi-Trial suite with reset and authoritative oracle hooks.
+
+If you prefer to drive an already-open tab interactively, install Signet's Chrome
+extension separately. Chrome DevTools MCP is another independent agent-runtime option;
+neither is bundled with `@signet/eval`.
 
 ## 6. Prove it without a model
 
@@ -216,12 +207,14 @@ The expected summary is one passing test.
 ## What to change next
 
 Replace `execute` with a read from your application, add a bounded input schema, and
-keep the tool mounted only where that data is available. Then continue to the
+keep the tool mounted only where that data is available. Next, turn the prompt into a
+[headless agent regression suite](./headless-agent-testing), then continue to the
 [authenticated payment codelab](../guide/real-browser-example), where identity,
 permissions, retries, and authoritative verification matter.
 
 If the manually opened page remains `unsupported`, check that both Chrome flags are
 enabled, Chrome was relaunched, and the page was loaded after the native API became
-available. If the agent cannot see `list_webmcp_tools`, check that it restarted after
-the MCP configuration change and that its Chrome version is 150 or newer. Signet does
-not poll for a bridge injected after initialization.
+available. If the headless runner times out waiting for tools, confirm the page loads
+from a fresh profile and that Chrome supports WebMCP. Set `CHROME_PATH` when Chrome or
+Chromium is not installed in a standard location. Signet does not poll for a bridge
+injected after initialization.
