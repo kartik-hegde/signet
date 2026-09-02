@@ -76,9 +76,24 @@ test("committed Trial Evidence is held to the versioned schema", () => {
         trial: { ...evidence().trial, status: "mystery" },
       }),
     );
+    // Detection must not key off a field the document could be malformed in, or a
+    // broken document would escape validation by being broken in exactly that field.
+    const { definitionHash: _dropped, ...caseWithoutHash } = evidence().case;
+    writeFileSync(
+      path.join(root, "eval", "unhashed.json"),
+      JSON.stringify({ ...evidence(), case: caseWithoutHash }),
+    );
     const result = validateEvidenceTree(root);
-    assert.equal(result.trialEvidence, 2);
-    assert.match(result.failures[0], /Unsupported Trial status/);
+    assert.equal(result.trialEvidence, 3);
+    assert.equal(result.failures.length, 2);
+    assert.ok(
+      result.failures.some((failure) =>
+        /Unsupported Trial status/.test(failure),
+      ),
+    );
+    assert.ok(
+      result.failures.some((failure) => /definitionHash/.test(failure)),
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

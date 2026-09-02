@@ -50,6 +50,7 @@ export interface SignetSuite {
   readonly description?: string;
 }
 
+export const CASE_KINDS: readonly CaseKind[];
 export const CASE_SCHEMA_VERSION: 1;
 export function defineCase<
   Parameters extends Record<string, unknown> = Record<string, unknown>,
@@ -111,6 +112,7 @@ export interface ArgumentQuality extends QualityDimension {
 
 export interface ContinuationQuality extends QualityDimension {
   readonly toolErrors: number;
+  readonly observedErrors: number;
   readonly continuedErrors: number;
   readonly continuationRate: number | null;
   readonly continued: boolean | null;
@@ -373,6 +375,7 @@ export interface InterfaceQualityAggregate {
   readonly continuation: {
     readonly scoredTrials: number;
     readonly toolErrors: number;
+    readonly observedErrors: number;
     readonly continuedErrors: number;
     readonly continuationRate: number | null;
   };

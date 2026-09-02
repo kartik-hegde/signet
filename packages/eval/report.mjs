@@ -119,7 +119,7 @@ export function renderMarkdownReport(report) {
   const qualityRows = Object.entries(report.conditions)
     .map(([name, value]) => {
       const quality = value.interfaceQuality;
-      return `| ${name} | ${scored(quality.selection.accuracy, quality.selection.scoredTrials)} | ${scored(quality.arguments.accuracy, quality.arguments.scoredTrials)} | ${scored(quality.arguments.validity, quality.arguments.evaluatedCalls)} | ${scored(quality.continuation.continuationRate, quality.continuation.toolErrors)} | ${scored(quality.surface.fullWebMcpRate, quality.surface.scoredTrials)} | ${scored(quality.surface.uiFallbackRate, quality.surface.scoredTrials)} | ${scored(quality.discovery.completeRate, quality.discovery.scoredTrials)} | ${quality.budgets.exceededTrials} |`;
+      return `| ${name} | ${scored(quality.selection.accuracy, quality.selection.scoredTrials)} | ${scored(quality.arguments.accuracy, quality.arguments.scoredTrials)} | ${scored(quality.arguments.validity, quality.arguments.evaluatedCalls)} | ${scored(quality.continuation.continuationRate, quality.continuation.observedErrors)} | ${scored(quality.surface.fullWebMcpRate, quality.surface.scoredTrials)} | ${scored(quality.surface.uiFallbackRate, quality.surface.scoredTrials)} | ${scored(quality.discovery.completeRate, quality.discovery.scoredTrials)} | ${quality.budgets.exceededTrials} |`;
     })
     .join("\n");
   const comparisonRows = Object.entries(report.comparisons)
@@ -251,6 +251,9 @@ function aggregateQuality(values) {
   const evaluatedCalls = sum(argumentUse.map((item) => item.evaluatedCalls));
   const validCalls = sum(argumentUse.map((item) => item.validCalls));
   const toolErrors = sum(continuation.map((item) => item.toolErrors));
+  // Only errors the agent could be observed reacting to belong in the denominator; a
+  // trailing error on a clean exit is undetermined, not a continuation failure.
+  const observedErrors = sum(continuation.map((item) => item.observedErrors));
   const continuedErrors = sum(continuation.map((item) => item.continuedErrors));
 
   return {
@@ -294,8 +297,9 @@ function aggregateQuality(values) {
     continuation: {
       scoredTrials: continuation.length,
       toolErrors,
+      observedErrors,
       continuedErrors,
-      continuationRate: rate(continuedErrors, toolErrors),
+      continuationRate: rate(continuedErrors, observedErrors),
     },
     surface: {
       scoredTrials: surface.length,

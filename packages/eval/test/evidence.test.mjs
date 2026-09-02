@@ -3,12 +3,14 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  CASE_KINDS,
   FAILURE_CATEGORIES,
   TRIAL_STATUSES,
   createEvidence,
   defineCase,
   hashCase,
   scoreInterfaceQuality,
+  validateEvidence,
 } from "../index.mjs";
 
 const caseDefinition = defineCase({
@@ -132,5 +134,70 @@ test("createEvidence rejects an unknown interface-quality schema version", () =>
     () =>
       createEvidence({ ...evidenceInput(), quality: { schemaVersion: 99 } }),
     /Unsupported interface-quality schema version/,
+  );
+});
+
+test("the runtime validator enforces every field the schema requires", async () => {
+  const schema = JSON.parse(
+    await readFile(
+      new URL("../schemas/evidence.v1.schema.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  // A minimal envelope check would let a document satisfy the runtime validator and
+  // still violate the published schema. Drive the omissions from the schema itself so
+  // the two cannot drift apart silently.
+  const complete = createEvidence(evidenceInput());
+  const paths = [
+    ...schema.required.map((field) => [field]),
+    ...["caseReference", "trial", "agent", "redaction"].flatMap((definition) =>
+      schema.$defs[definition].required.map((field) => [
+        {
+          caseReference: "case",
+          trial: "trial",
+          agent: "agent",
+          redaction: "redaction",
+        }[definition],
+        field,
+      ]),
+    ),
+    ...schema.$defs.provenance.required.map((component) => [
+      "provenance",
+      component,
+    ]),
+    ["oracle", "adapter"],
+  ];
+
+  for (const path of paths) {
+    if (path[0] === "schemaVersion") continue;
+    const candidate = structuredClone(complete);
+    let parent = candidate;
+    for (const key of path.slice(0, -1)) parent = parent[key];
+    delete parent[path.at(-1)];
+    assert.throws(
+      () => validateEvidence(candidate),
+      TypeError,
+      `validateEvidence accepted Evidence missing ${path.join(".")}`,
+    );
+  }
+});
+
+test("Case kinds stay aligned across the Case, the Evidence, and the schema", async () => {
+  const schema = JSON.parse(
+    await readFile(
+      new URL("../schemas/evidence.v1.schema.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.deepEqual(schema.$defs.caseReference.properties.kind.enum, [
+    ...CASE_KINDS,
+  ]);
+  assert.throws(
+    () =>
+      validateEvidence({
+        ...createEvidence(evidenceInput()),
+        case: { ...createEvidence(evidenceInput()).case, kind: "mystery" },
+      }),
+    /Unsupported Case kind/,
   );
 });

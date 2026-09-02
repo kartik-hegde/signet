@@ -22,6 +22,10 @@ const NOT_APPLICABLE = Object.freeze({
   capabilityUnavailable:
     "The condition did not expose every required capability, so selection is not scoreable.",
   noArguments: "No inventory-schema tool call carried scoreable arguments.",
+  unknownSurface:
+    "Without a published inventory there is no way to tell a real capability from an invented one.",
+  undeterminedContinuation:
+    "Every tool error was the run's last action, so continuation is unobservable.",
   noToolErrors: "The interface returned no tool errors.",
   noActions: "The trial recorded no agent actions.",
   noBudgets: "The Case declares no action budgets.",
@@ -52,7 +56,12 @@ export function scoreInterfaceQuality({
 
   markKnownCalls(trace.calls, inventoryByName);
   const discovery = scoreDiscovery(expectations, inventoryByName);
-  const selection = scoreSelection(expectations, discovery, trace);
+  const selection = scoreSelection(
+    expectations,
+    discovery,
+    trace,
+    inventoryByName.size > 0,
+  );
   const argumentUse = scoreArguments(trace, inventoryByName);
   const continuation = scoreContinuation(trace, agent, status);
   const surface = scoreSurface(trace, discovery);
@@ -110,7 +119,7 @@ function scoreDiscovery(expectations, inventoryByName) {
  * Did the agent choose the declared capabilities, and only capabilities that exist?
  * Calling a tool absent from the inventory is an interface-legibility failure.
  */
-function scoreSelection(expectations, discovery, trace) {
+function scoreSelection(expectations, discovery, trace, inventoryPublished) {
   const required = requiredCapabilities(expectations);
   const completion = expectations.completionCapability;
   const called = new Set(trace.calls.map(({ tool }) => tool));
@@ -139,7 +148,15 @@ function scoreSelection(expectations, discovery, trace) {
       accurate: null,
     };
   }
-  if (discovery.applicable && !discovery.complete) {
+  if (!inventoryPublished) {
+    return {
+      ...base,
+      applicable: false,
+      reason: NOT_APPLICABLE.unknownSurface,
+      accurate: null,
+    };
+  }
+  if (!discovery.complete) {
     return {
       ...base,
       applicable: false,
@@ -217,17 +234,36 @@ function scoreContinuation(trace, agent, status) {
       continued: null,
     };
   }
-  const finishedCleanly = status === "completed" && agent?.timedOut !== true;
-  const lastActionSequence = trace.lastActionSequence;
-  const continuedErrors = errors.filter(
-    ({ sequence }) => sequence < lastActionSequence || finishedCleanly,
+  // Continuation is only observable when the agent acted again. An error that was
+  // the run's last action is undetermined if the run then ended cleanly — the trace
+  // cannot say whether the agent concluded deliberately, as a negative Case wants, or
+  // gave up — and counts against the interface only when the run did not survive it.
+  const survived = status === "completed" && agent?.timedOut !== true;
+  const observed = errors.filter(
+    ({ sequence }) => sequence < trace.lastActionSequence || !survived,
+  );
+  const continuedErrors = observed.filter(
+    ({ sequence }) => sequence < trace.lastActionSequence,
   ).length;
+  if (observed.length === 0) {
+    return {
+      applicable: false,
+      reason: NOT_APPLICABLE.undeterminedContinuation,
+      toolErrors: errors.length,
+      observedErrors: 0,
+      continuedErrors: 0,
+      continuationRate: null,
+      continued: null,
+      errorTools: unique(errors.map(({ tool }) => tool)),
+    };
+  }
   return {
     applicable: true,
     toolErrors: errors.length,
+    observedErrors: observed.length,
     continuedErrors,
-    continuationRate: continuedErrors / errors.length,
-    continued: continuedErrors === errors.length,
+    continuationRate: continuedErrors / observed.length,
+    continued: continuedErrors === observed.length,
     errorTools: unique(errors.map(({ tool }) => tool)),
   };
 }
@@ -398,13 +434,14 @@ export function validateAgainstSchema(value, schema, path = "") {
     );
     if (!matched) problems.push(`${label} matches no anyOf branch`);
   }
+  // Exclusivity is not decidable here: branches that differ only by a keyword this
+  // validator ignores all "match", so counting them would invent a violation. Require
+  // one matching branch and leave true oneOf exclusivity to the application.
   if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
-    const matches = schema.oneOf.filter(
+    const matched = schema.oneOf.some(
       (branch) => validateAgainstSchema(value, branch, path).length === 0,
-    ).length;
-    if (matches !== 1) {
-      problems.push(`${label} matches ${matches} oneOf branches, expected one`);
-    }
+    );
+    if (!matched) problems.push(`${label} matches no oneOf branch`);
   }
   if (schema.const !== undefined && !sameValue(value, schema.const)) {
     problems.push(`${label} must equal ${JSON.stringify(schema.const)}`);

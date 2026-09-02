@@ -50,14 +50,19 @@ trace:
 | Discovery    | Did the condition publish every capability the Case requires?          |
 | Selection    | Did the agent call those capabilities, and only tools that exist?      |
 | Arguments    | Were the recorded arguments valid against the published `inputSchema`? |
-| Continuation | After a tool error, did the agent keep working?                        |
+| Continuation | After a tool error, did the agent act again?                           |
 | Surface      | Did the run complete through WebMCP alone, or fall back to the DOM?    |
 | Budgets      | Did the run stay inside the Case's action and tool-call budgets?       |
 
-Each dimension reports whether it applied. A UI-only arm never publishes the WebMCP
-capabilities a Case requires, so its selection accuracy reads as unscored rather than
-zero — a condition boundary must never look like an interface defect. Metrics are
-recorded per Trial under `quality` and aggregated per condition under
+Each dimension reports whether it applied, and nothing is scored from what the trace
+cannot show. A UI-only arm never publishes the WebMCP capabilities a Case requires, so
+its selection accuracy reads as unscored rather than zero — a condition boundary must
+never look like an interface defect. Selection is likewise unscored when no inventory
+was published, since nothing then distinguishes a real capability from an invented one.
+A tool error that was the run's last action is undetermined when the run ended cleanly:
+the trace cannot tell a deliberate stop after an expected refusal from giving up. It
+counts against the interface only when the run did not survive it. Metrics are recorded
+per Trial under `quality` and aggregated per condition under
 `aggregate.interfaceQuality`.
 
 Agent adapters supply the trace by emitting three event types, exported as
@@ -89,13 +94,16 @@ one workflow cannot hide a regression in another. By default it rejects:
 
 - any safe-success or authoritative-success regression;
 - a drop in selection accuracy or argument validity;
+- a metric the baseline measured that the candidate no longer scores;
 - an increased timeout rate;
 - new forbidden effects or environment errors;
 - missing Cases, conditions, or trial coverage; and
 - a changed Case definition that would make the comparison invalid.
 
 A metric the baseline never measured is left ungated rather than treated as a
-regression, so reports written before a metric existed stay comparable.
+regression, so reports written before a metric existed stay comparable. The reverse is
+not waved through: a candidate that stops scoring a metric the baseline did measure
+would hide that metric's own regression, so it is reported.
 
 Agent evaluations are probabilistic, so teams can declare an explicit tolerance while
 keeping safety failures strict:

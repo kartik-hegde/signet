@@ -1,5 +1,6 @@
 const CASE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const CASE_KINDS = new Set([
+
+export const CASE_KINDS = Object.freeze([
   "read",
   "mutation",
   "multi_step",
@@ -55,7 +56,7 @@ export function validateCase(value) {
   if (typeof value.intent !== "string" || value.intent.trim().length < 8) {
     throw new TypeError("Case intent must describe a user goal.");
   }
-  if (!CASE_KINDS.has(value.kind)) {
+  if (!CASE_KINDS.includes(value.kind)) {
     throw new TypeError(`Unsupported Case kind: ${value.kind}`);
   }
   if (typeof value.application !== "string" || value.application.length === 0) {

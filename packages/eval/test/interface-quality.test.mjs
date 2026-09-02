@@ -347,3 +347,78 @@ test("an argument the trace could not record is left unscored, not failed", () =
   assert.equal(quality.arguments.invalidCalls, 0);
   assert.equal(quality.selection.accurate, true);
 });
+
+test("a tool error the agent never acted on is undetermined, not continued", () => {
+  // The trace cannot distinguish a deliberate stop after an expected refusal from
+  // giving up, so a trailing error is only counted when the run failed to survive it.
+  const stopped = score({
+    events: trace([
+      event("webmcp_call", {
+        tool: "send_payment",
+        input: { recipientId: "u1", amountCents: 1200 },
+        ok: false,
+      }),
+    ]),
+  });
+  assert.equal(stopped.continuation.applicable, false);
+  assert.equal(stopped.continuation.toolErrors, 1);
+  assert.equal(stopped.continuation.continuationRate, null);
+
+  const derailed = score({
+    status: "timed_out",
+    agent: { timedOut: true },
+    events: trace([
+      event("webmcp_call", {
+        tool: "send_payment",
+        input: { recipientId: "u1", amountCents: 1200 },
+        ok: false,
+      }),
+    ]),
+  });
+  assert.equal(derailed.continuation.applicable, true);
+  assert.equal(derailed.continuation.continuationRate, 0);
+});
+
+test("selection is unscored when no inventory says which tools were real", () => {
+  const quality = score({
+    inventory: [],
+    events: trace([
+      event("webmcp_call", {
+        tool: "search_payment_users",
+        input: { query: "Lia" },
+        ok: true,
+      }),
+      event("webmcp_call", { tool: "totally_invented", input: {}, ok: false }),
+      event("webmcp_call", {
+        tool: "send_payment",
+        input: { recipientId: "u1", amountCents: 1200 },
+        ok: true,
+      }),
+    ]),
+  });
+  assert.equal(quality.selection.applicable, false);
+  assert.equal(quality.selection.accurate, null);
+  assert.match(quality.selection.reason, /without a published inventory/i);
+});
+
+test("oneOf never invents a failure this validator cannot adjudicate", () => {
+  // Both branches differ only by a keyword the subset ignores, so both "match".
+  assert.deepEqual(
+    validateAgainstSchema(
+      { amount: 1 },
+      {
+        oneOf: [
+          { type: "object", format: "legacy" },
+          { type: "object", format: "current" },
+        ],
+      },
+    ),
+    [],
+  );
+  assert.deepEqual(
+    validateAgainstSchema("text", {
+      oneOf: [{ type: "object" }, { type: "array" }],
+    }),
+    ["input matches no oneOf branch"],
+  );
+});

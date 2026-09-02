@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
+import { CASE_KINDS } from "./case.mjs";
 import { INTERFACE_QUALITY_SCHEMA_VERSION } from "./interface-quality.mjs";
 
 export const EVIDENCE_SCHEMA_VERSION = 1;
@@ -72,10 +73,18 @@ export function validateEvidence(value) {
   if (!/^[a-f0-9]{64}$/.test(value.case.definitionHash ?? "")) {
     throw new TypeError("Evidence case.definitionHash must be a SHA-256 hash.");
   }
+  requireString(value.case.intent, "case.intent");
+  if (!CASE_KINDS.includes(value.case.kind)) {
+    throw new TypeError(`Unsupported Case kind: ${value.case.kind}`);
+  }
   if (!isRecord(value.trial))
     throw new TypeError("Evidence trial must be an object.");
   requireString(value.trial.id, "trial.id");
+  if (!Number.isSafeInteger(value.trial.index) || value.trial.index < 1) {
+    throw new TypeError("Evidence trial.index must be a positive integer.");
+  }
   requireString(value.trial.condition, "trial.condition");
+  requireDate(value.trial.startedAt, "trial.startedAt");
   if (!TRIAL_STATUSES.includes(value.trial.status)) {
     throw new TypeError(`Unsupported Trial status: ${value.trial.status}`);
   }
@@ -85,20 +94,44 @@ export function validateEvidence(value) {
   if (!isRecord(value.provenance)) {
     throw new TypeError("Evidence provenance must be an object.");
   }
+  // Every result must name the components that produced it, or it cannot be traced
+  // back to the code under evaluation.
+  for (const component of ["application", "browser", "agent", "oracle"]) {
+    if (!isRecord(value.provenance[component])) {
+      throw new TypeError(
+        `Evidence provenance.${component} must be an object.`,
+      );
+    }
+    requireString(value.provenance[component].id, `provenance.${component}.id`);
+  }
   if (!Array.isArray(value.inventory) || !Array.isArray(value.events)) {
     throw new TypeError("Evidence inventory and events must be arrays.");
   }
   if (!isRecord(value.agent))
     throw new TypeError("Evidence agent must be an object.");
+  requireString(value.agent.provider, "agent.provider");
+  requireString(value.agent.model, "agent.model");
+  if (typeof value.agent.timedOut !== "boolean") {
+    throw new TypeError("Evidence agent.timedOut must be a boolean.");
+  }
+  if (!isRecord(value.agent.usage)) {
+    throw new TypeError("Evidence agent.usage must be an object.");
+  }
   if (!isRecord(value.oracle) || !isRecord(value.oracle.grade)) {
     throw new TypeError("Evidence oracle grade must be an object.");
   }
+  requireString(value.oracle.adapter, "oracle.adapter");
   if (
     typeof value.oracle.grade.authoritativeSuccess !== "boolean" ||
     typeof value.oracle.grade.safeSuccess !== "boolean"
   ) {
     throw new TypeError(
       "Evidence oracle grade must contain boolean success fields.",
+    );
+  }
+  if (!Array.isArray(value.oracle.grade.forbiddenEffects)) {
+    throw new TypeError(
+      "Evidence oracle grade.forbiddenEffects must be an array.",
     );
   }
   if (value.quality !== undefined) {
@@ -120,6 +153,33 @@ export function validateEvidence(value) {
         `Unsupported failure category: ${value.failure?.category}`,
       );
     }
+    requireString(value.failure.message, "failure.message");
+  }
+  if (!Array.isArray(value.artifacts)) {
+    throw new TypeError("Evidence artifacts must be an array.");
+  }
+  for (const [index, artifact] of value.artifacts.entries()) {
+    if (!isRecord(artifact))
+      throw new TypeError(`Evidence artifacts[${index}] must be an object.`);
+    requireString(artifact.kind, `artifacts[${index}].kind`);
+    requireString(artifact.path, `artifacts[${index}].path`);
+  }
+  if (!isRecord(value.redaction)) {
+    throw new TypeError("Evidence redaction must be an object.");
+  }
+  requireString(value.redaction.policy, "redaction.policy");
+  if (
+    !Number.isSafeInteger(value.redaction.version) ||
+    value.redaction.version < 1
+  ) {
+    throw new TypeError(
+      "Evidence redaction.version must be a positive integer.",
+    );
+  }
+  if (typeof value.redaction.containsSensitiveData !== "boolean") {
+    throw new TypeError(
+      "Evidence redaction.containsSensitiveData must be a boolean.",
+    );
   }
   return value;
 }

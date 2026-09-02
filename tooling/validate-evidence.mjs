@@ -9,9 +9,9 @@ import { validateEvidence } from "../packages/eval/index.mjs";
 /**
  * Check every committed evidence document.
  *
- * Published summaries use their own report shapes, so only Trial Evidence — the
- * documents that carry a Case definition hash — is held to the versioned schema. That
- * keeps a result traceable to the exact Case and code that produced it.
+ * Published summaries keep their own report shapes, so only Trial Evidence is held to
+ * the versioned envelope. That keeps a result traceable to the exact Case and code
+ * that produced it.
  */
 export function validateEvidenceTree(root = resolve("evidence")) {
   const files = walk(root).filter((file) => file.endsWith(".json"));
@@ -40,13 +40,24 @@ export function validateEvidenceTree(root = resolve("evidence")) {
   return { files: files.length, trialEvidence, failures };
 }
 
+/**
+ * Recognize a document that is meant to be Trial Evidence, not one that already is.
+ * Keying off a well-formed field would let a malformed document escape validation by
+ * being malformed in exactly that field, so detection uses the envelope's identity and
+ * shape and leaves conformance to the validator.
+ */
 function isTrialEvidence(value) {
+  if (Array.isArray(value) || typeof value !== "object" || value === null) {
+    return false;
+  }
   return (
-    !Array.isArray(value) &&
-    typeof value.case === "object" &&
-    value.case !== null &&
-    typeof value.case.definitionHash === "string"
+    "evidenceId" in value ||
+    (isRecord(value.case) && isRecord(value.trial) && isRecord(value.oracle))
   );
+}
+
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function walk(directory) {

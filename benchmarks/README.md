@@ -49,14 +49,17 @@ policy rather than hidden scoring rules.
 Every Trial also records how well the published interface served the agent, separately
 from whether the task succeeded: whether the condition exposed the capabilities the Case
 requires, whether the agent selected them, whether its arguments validated against the
-published `inputSchema`, whether it continued after a tool error, whether it finished
+published `inputSchema`, whether it acted again after a tool error, whether it finished
 through WebMCP alone or fell back to the DOM, and whether it stayed inside the Case's
 budgets. These land in `report.md` under **Interface quality** and gate the next
 revision through `--max-selection-regression` and `--max-argument-regression`.
 
-A dimension is scored only where it applies. A UI-only arm never publishes the WebMCP
-capabilities a Case requires, so it reports no selection accuracy instead of zero;
-attributing a condition boundary to the interface would misattribute the result.
+A dimension is scored only where it applies, and never from what the trace cannot show.
+A UI-only arm never publishes the WebMCP capabilities a Case requires, so it reports no
+selection accuracy instead of zero; attributing a condition boundary to the interface
+would misattribute the result. A tool error that was the run's last action is likewise
+undetermined when the run ended cleanly, because the trace cannot separate a deliberate
+stop after an expected refusal from giving up.
 
 The current audit and ordered next steps are in
 [`methodology/benchmark-roadmap.md`](./methodology/benchmark-roadmap.md). The main

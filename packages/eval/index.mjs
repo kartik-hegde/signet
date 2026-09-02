@@ -1,4 +1,5 @@
 export {
+  CASE_KINDS,
   CASE_SCHEMA_VERSION,
   defineCase,
   defineSuite,

@@ -368,9 +368,13 @@ function normalizePolicy(policy) {
 }
 
 /**
- * Compare one rate, but only when both reports measured it. A metric the baseline
- * never scored — an older report, or a condition that never exposed the capability —
- * is left unmeasured rather than gated into a false regression.
+ * Compare one rate.
+ *
+ * A metric the baseline never scored — an older report, or a condition that never
+ * exposed the capability — is left unmeasured rather than gated into a false
+ * regression. Losing a metric the baseline did measure is the opposite case: the
+ * candidate stopped being scoreable, which hides the very regression this gate exists
+ * to catch, so it is reported rather than skipped.
  */
 function rateRegression({
   baseline,
@@ -382,8 +386,14 @@ function rateRegression({
   condition,
   higherIsWorse = false,
 }) {
-  if (typeof baseline !== "number" || typeof candidate !== "number")
-    return null;
+  if (typeof baseline !== "number") return null;
+  if (typeof candidate !== "number") {
+    return issue(
+      `${code.replace(/_(regressed|increased)$/, "")}_unmeasured`,
+      `${caseId} × ${condition} no longer measures ${label}; the baseline scored ${rounded(baseline * 100)}%. A metric that stops being scoreable hides its own regression.`,
+      { caseId, condition },
+    );
+  }
   const drop = higherIsWorse ? candidate - baseline : baseline - candidate;
   if (drop <= allowance + Number.EPSILON) return null;
   return issue(

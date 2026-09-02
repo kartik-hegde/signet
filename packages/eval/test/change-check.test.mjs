@@ -402,3 +402,36 @@ test("an increased timeout rate is a regression", () => {
     check.regressions.some(({ code }) => code === "timeout_rate_increased"),
   );
 });
+
+test("a candidate that stops measuring a metric cannot hide behind it", () => {
+  const measured = report([scoredTrial({ index: 1 })]);
+  // The same run scored by a build that no longer measures interface quality.
+  const unmeasured = structuredClone(measured);
+  for (const item of Object.values(unmeasured.cases)) {
+    for (const aggregate of Object.values(item.conditions)) {
+      delete aggregate.interfaceQuality;
+    }
+  }
+  const check = buildChangeCheck({
+    baseline: measured,
+    candidate: unmeasured,
+  });
+  assert.equal(check.status, "fail");
+  assert.ok(
+    check.regressions.some(
+      ({ code }) => code === "selection_accuracy_unmeasured",
+    ),
+  );
+  assert.match(
+    check.regressions.find(
+      ({ code }) => code === "selection_accuracy_unmeasured",
+    ).message,
+    /no longer measures selection accuracy/,
+  );
+
+  // The reverse — a baseline that predates the metric — stays comparable.
+  assert.equal(
+    buildChangeCheck({ baseline: unmeasured, candidate: measured }).status,
+    "pass",
+  );
+});
