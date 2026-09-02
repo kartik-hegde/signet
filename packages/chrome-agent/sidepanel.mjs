@@ -9,6 +9,7 @@ import {
   endpointOriginPattern,
   PROVIDER_PRESETS,
 } from "./provider.mjs";
+import { renderMarkdown } from "./markdown.mjs";
 import { hasWebsiteAccess, requestWebsiteAccess } from "./website-access.mjs";
 
 const elements = {
@@ -57,6 +58,7 @@ const state = {
   refreshTimers: [],
   refreshVersion: 0,
   websiteAccess: false,
+  pageUrl: undefined,
 };
 
 await loadSettings();
@@ -143,6 +145,7 @@ async function refreshPage() {
     state.tabId = tab.id;
     const page = await runInPage(inspectWebMcpPage);
     if (version !== state.refreshVersion) return;
+    state.pageUrl = page.url;
     state.tools = Array.isArray(page.tools) ? page.tools : [];
     renderTools();
     if (!page.supported) {
@@ -308,7 +311,7 @@ function handleAgentEvent(event) {
     elements.runStatus.textContent = "Complete";
     elements.traceState.textContent =
       state.callCount === 1 ? "1 tool call" : `${state.callCount} tool calls`;
-    elements.answer.textContent = event.content;
+    renderMarkdown(elements.answer, event.content, { baseUrl: state.pageUrl });
   }
 }
 

@@ -119,9 +119,11 @@ summary:focus-visible {
 }
 
 #main-view {
-  min-height: calc(100vh - 60px);
+  height: calc(100vh - 60px);
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .workspace {
   width: 100%;
@@ -129,6 +131,8 @@ summary:focus-visible {
   margin: 0 auto;
   padding: 24px 24px 0;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .hero {
   min-height: clamp(280px, 54vh, 600px);
@@ -183,7 +187,7 @@ h2 {
     serif;
   font-size: 21px;
   line-height: 1.55;
-  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .answer-message:empty::after {
   content: "Working…";
@@ -191,16 +195,86 @@ h2 {
 }
 .answer-message.is-error {
   color: var(--error);
+  white-space: pre-wrap;
+}
+.answer-message > :first-child {
+  margin-top: 0;
+}
+.answer-message > :last-child {
+  margin-bottom: 0;
+}
+.answer-message p,
+.answer-message ul,
+.answer-message ol,
+.answer-message blockquote,
+.answer-message pre {
+  margin: 0 0 1em;
+}
+.answer-message h1,
+.answer-message h2,
+.answer-message h3,
+.answer-message h4,
+.answer-message h5,
+.answer-message h6 {
+  margin: 1.3em 0 0.55em;
+  font: inherit;
+  font-weight: 600;
+}
+.answer-message h1,
+.answer-message h2 {
+  font-size: 1.25em;
+}
+.answer-message h3,
+.answer-message h4,
+.answer-message h5,
+.answer-message h6 {
+  font-size: 1em;
+}
+.answer-message ul,
+.answer-message ol {
+  padding-left: 1.35em;
+}
+.answer-message li {
+  margin: 0.35em 0;
+}
+.answer-message a {
+  color: var(--call);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.answer-message code {
+  padding: 0.08em 0.3em;
+  border-radius: 3px;
+  background: var(--raised);
+  font:
+    0.82em ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.answer-message pre code {
+  padding: 0;
+  background: transparent;
+  font-size: inherit;
+}
+.answer-message blockquote {
+  padding-left: 14px;
+  border-left: 2px solid var(--line-strong);
+  color: var(--graphite);
+}
+.answer-message hr {
+  margin: 1.4em 0;
+  border: 0;
+  border-top: 1px solid var(--line);
 }
 
 .tools-disclosure,
 .trace-disclosure {
-  border-top: 1px solid var(--line);
-}
-.tools-disclosure {
   width: calc(100% - 32px);
   max-width: 688px;
   margin: 0 auto;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
 }
 .trace-disclosure {
   border-bottom: 1px solid var(--line);
@@ -290,7 +364,9 @@ summary strong {
 }
 .tool-list,
 .trace-list {
+  max-height: 30vh;
   padding: 0 0 16px;
+  overflow-y: auto;
 }
 .empty-state {
   margin: 0;
@@ -362,9 +438,11 @@ pre {
   word-break: break-word;
 }
 
+.control-dock {
+  flex: none;
+  background: var(--paper);
+}
 .composer {
-  position: sticky;
-  bottom: 0;
   width: calc(100% - 32px);
   max-width: 688px;
   margin: 8px auto 16px;

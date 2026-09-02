@@ -7,6 +7,7 @@ const output = join(root, "dist");
 const iconOutput = join(output, "icons");
 const files = [
   "agent-core.mjs",
+  "markdown.mjs",
   "manifest.json",
   "page-bridge.mjs",
   "provider.mjs",

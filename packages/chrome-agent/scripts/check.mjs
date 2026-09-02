@@ -49,8 +49,18 @@ for (const [, id] of sidePanelScript.matchAll(
   }
 }
 
+const dockStart = html.indexOf('<div class="control-dock">');
+const mainEnd = html.indexOf("</main>");
+for (const id of ["tools-disclosure", "trace-disclosure", "prompt-form"]) {
+  const position = html.indexOf(`id="${id}"`);
+  if (dockStart < 0 || position < dockStart || position > mainEnd) {
+    throw new Error(`#${id} must remain in the persistent control dock.`);
+  }
+}
+
 for (const file of [
   "agent-core.mjs",
+  "markdown.mjs",
   "page-bridge.mjs",
   "provider.mjs",
   "service-worker.mjs",
