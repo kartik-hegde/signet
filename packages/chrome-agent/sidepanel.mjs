@@ -8,6 +8,8 @@ import {
 import {
   createModelProvider,
   endpointOriginPattern,
+  modelConfigurationError,
+  modelConfigurationSummary,
   PROVIDER_PRESETS,
 } from "./provider.mjs";
 import { renderMarkdown } from "./markdown.mjs";
@@ -22,7 +24,6 @@ const elements = {
   callCount: document.querySelector("#call-count"),
   closeSettings: document.querySelector("#close-settings-button"),
   conversation: document.querySelector("#conversation"),
-  dataConsent: document.querySelector("#data-consent-input"),
   endpoint: document.querySelector("#endpoint-input"),
   endpointField: document.querySelector("#endpoint-field"),
   hero: document.querySelector("#hero"),
@@ -49,7 +50,6 @@ const elements = {
   toolsState: document.querySelector("#tools-state"),
   trace: document.querySelector("#trace-disclosure"),
   traceList: document.querySelector("#trace-list"),
-  traceState: document.querySelector("#trace-state"),
   websiteAccess: document.querySelector("#website-access-button"),
 };
 
@@ -71,14 +71,16 @@ const state = {
 await loadSettings();
 await updateWebsiteAccess();
 
-elements.settingsButton.addEventListener("click", openSettings);
+elements.settingsButton.addEventListener("click", () => openSettings());
 elements.closeSettings.addEventListener("click", closeSettings);
 elements.provider.addEventListener("change", () => {
   applyProvider(elements.provider.value, true);
   updateModelSummary();
 });
 elements.model.addEventListener("input", updateModelSummary);
-elements.modelSummary.addEventListener("click", openSettings);
+elements.endpoint.addEventListener("input", updateModelSummary);
+elements.apiKey.addEventListener("input", updateModelSummary);
+elements.modelSummary.addEventListener("click", () => openSettings());
 elements.rememberKey.addEventListener("change", updateKeyStorageNote);
 elements.saveSettings.addEventListener("click", () => void saveSettings());
 elements.newRun.addEventListener("click", resetRun);
@@ -244,7 +246,6 @@ async function startRun() {
       elements.answer.textContent = message;
       elements.answer.classList.add("is-error");
       elements.activity.hidden = true;
-      elements.traceState.textContent = stopped ? "Stopped" : "Failed";
     } else {
       elements.runStatus.textContent = message;
     }
@@ -267,7 +268,6 @@ function beginRun(prompt) {
   elements.traceList.replaceChildren();
   elements.trace.hidden = false;
   elements.trace.open = false;
-  elements.traceState.textContent = "Starting…";
   elements.hero.hidden = true;
   elements.conversation.hidden = false;
   elements.promptMessage.textContent = prompt;
@@ -284,7 +284,7 @@ function resetRun() {
   elements.trace.hidden = true;
   elements.activity.hidden = true;
   elements.newRun.hidden = true;
-  elements.runStatus.textContent = "Ready";
+  elements.runStatus.textContent = "";
   elements.prompt.focus();
 }
 
@@ -314,14 +314,10 @@ function handleAgentEvent(event) {
   if (event.type === "model_started") {
     const status =
       event.step === 1 ? "Planning the next step…" : "Reviewing tool results…";
-    elements.runStatus.textContent = status;
     setActivity(status);
-    elements.traceState.textContent = elements.runStatus.textContent;
   } else if (event.type === "tool_started") {
     const toolName = readableToolName(event.call.name);
-    elements.runStatus.textContent = `Running ${toolName}…`;
     setActivity(`Running ${toolName}…`);
-    elements.traceState.textContent = elements.runStatus.textContent;
     appendToolCall(event.call);
   } else if (event.type === "tool_completed") {
     completeToolCall(event.call, event.result);
@@ -329,12 +325,9 @@ function handleAgentEvent(event) {
     const status = event.result.ok
       ? `${toolName} completed. Reviewing the result…`
       : `${toolName} failed. Deciding whether to retry…`;
-    elements.runStatus.textContent = status;
     setActivity(status);
   } else if (event.type === "assistant_completed") {
-    elements.runStatus.textContent = "Complete";
-    elements.traceState.textContent =
-      state.callCount === 1 ? "1 tool call" : `${state.callCount} tool calls`;
+    elements.runStatus.textContent = "";
     elements.activity.hidden = true;
     renderMarkdown(elements.answer, event.content, { baseUrl: state.pageUrl });
   }
@@ -424,15 +417,16 @@ function completeToolCall(call, result) {
   state.callStartedAt.delete(call.id);
 }
 
-function openSettings() {
+function openSettings(message = "") {
   elements.main.hidden = true;
   elements.settings.hidden = false;
-  elements.settingsStatus.textContent = "";
+  elements.settingsStatus.textContent = message;
 }
 
 function closeSettings() {
   elements.settings.hidden = true;
   elements.main.hidden = false;
+  updateModelSummary();
 }
 
 function applyProvider(provider, resetModel) {
@@ -457,14 +451,12 @@ async function saveSettings() {
     if (!settings.model) throw new Error("Enter a model name.");
     if (PROVIDER_PRESETS[settings.provider].keyRequired && !settings.apiKey)
       throw new Error("Enter an API key.");
-    if (!settings.dataConsent) throw new Error("Confirm the data disclosure.");
     await ensureEndpointPermission(settings.endpoint);
     await chrome.storage.local.set({
       signetAgent: {
         provider: settings.provider,
         endpoint: settings.endpoint,
         model: settings.model,
-        dataConsent: true,
       },
     });
     const keyState = await saveApiKey(settings.apiKey, {
@@ -472,6 +464,8 @@ async function saveSettings() {
     });
     elements.rememberKey.checked = keyState.remembered;
     updateKeyStorageNote();
+    updateModelSummary();
+    elements.runStatus.textContent = "";
     elements.settingsStatus.textContent = "Saved";
     closeSettings();
   } catch (error) {
@@ -492,7 +486,6 @@ async function loadSettings() {
   const preset = PROVIDER_PRESETS[provider] ?? PROVIDER_PRESETS.custom;
   elements.endpoint.value = stored.endpoint || preset.endpoint;
   elements.model.value = stored.model || preset.model;
-  elements.dataConsent.checked = stored.dataConsent === true;
   elements.apiKey.value = keyState.apiKey;
   elements.rememberKey.checked = keyState.remembered;
   updateKeyStorageNote();
@@ -501,15 +494,10 @@ async function loadSettings() {
 
 async function currentSettings() {
   const settings = settingsFromFields();
-  const preset = PROVIDER_PRESETS[settings.provider];
-  if (
-    !settings.endpoint ||
-    !settings.model ||
-    !settings.dataConsent ||
-    (preset.keyRequired && !settings.apiKey)
-  ) {
-    openSettings();
-    throw new Error("Connect a model in Settings before running.");
+  const message = modelConfigurationError(settings);
+  if (message) {
+    openSettings(message);
+    throw new Error(message);
   }
   return settings;
 }
@@ -520,7 +508,6 @@ function settingsFromFields() {
     endpoint: elements.endpoint.value.trim(),
     model: elements.model.value.trim(),
     apiKey: elements.apiKey.value.trim(),
-    dataConsent: elements.dataConsent.checked,
   };
 }
 
@@ -559,18 +546,11 @@ function setRunning(running) {
   elements.modelSummary.disabled = running;
   elements.newRun.disabled = running;
   elements.refresh.disabled = running;
-  if (
-    !running &&
-    !["Complete", "Failed", "Stopped"].includes(elements.runStatus.textContent)
-  )
-    elements.runStatus.textContent = "Ready";
 }
 
 function updateModelSummary() {
-  const preset = PROVIDER_PRESETS[elements.provider.value];
-  const provider = preset?.label ?? "Custom";
-  const model = elements.model.value.trim() || "Choose model";
-  elements.modelSummary.textContent = `${provider} · ${model}`;
+  elements.modelSummary.textContent =
+    modelConfigurationSummary(settingsFromFields());
 }
 
 function updateKeyStorageNote() {

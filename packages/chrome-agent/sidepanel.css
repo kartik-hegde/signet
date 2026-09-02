@@ -187,15 +187,12 @@ h2 {
   padding: 12px 16px;
   border-radius: 14px 14px 4px 14px;
   background: var(--raised);
+  font-size: 15px;
   line-height: 1.5;
 }
 .answer-message {
-  font-family:
-    Charter,
-    Iowan Old Style,
-    Georgia,
-    serif;
-  font-size: 21px;
+  font-family: inherit;
+  font-size: 15px;
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
@@ -231,7 +228,7 @@ h2 {
 }
 .answer-message h1,
 .answer-message h2 {
-  font-size: 1.25em;
+  font-size: 1em;
 }
 .answer-message h3,
 .answer-message h4,
@@ -344,7 +341,7 @@ summary strong {
     monospace;
 }
 .tools-state,
-#trace-state {
+.trace-status {
   color: var(--faint);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -483,13 +480,14 @@ pre {
 }
 .composer textarea {
   width: 100%;
-  min-height: 78px;
-  max-height: 220px;
+  min-height: 52px;
+  max-height: 160px;
   padding: 2px;
   resize: vertical;
   border: 0;
   outline: 0;
   background: transparent;
+  font-size: 15px;
   line-height: 1.5;
 }
 .composer textarea::placeholder {
@@ -498,7 +496,7 @@ pre {
 .composer-footer {
   display: flex;
   min-height: 38px;
-  align-items: end;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
 }
@@ -632,6 +630,12 @@ select {
 .consent-row .muted {
   display: block;
   margin-top: 3px;
+}
+.provider-disclosure {
+  margin: 0;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1.5;
 }
 .sheet-actions {
   display: flex;

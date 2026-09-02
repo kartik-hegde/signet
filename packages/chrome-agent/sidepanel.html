@@ -103,7 +103,6 @@
               ><strong>Run details</strong>
               <span class="count" id="call-count">0</span></span
             >
-            <span id="trace-state">Running…</span>
           </summary>
           <div class="trace-list" id="trace-list"></div>
         </details>
@@ -112,11 +111,11 @@
           <label class="sr-only" for="prompt-input">Prompt</label>
           <textarea
             id="prompt-input"
-            rows="3"
+            rows="2"
             placeholder="Ask Signet to use this page…"
           ></textarea>
           <div class="composer-footer">
-            <span class="run-status" id="run-status" role="status">Ready</span>
+            <span class="run-status" id="run-status" role="status"></span>
             <button
               class="model-summary-button"
               id="model-summary-button"
@@ -210,13 +209,10 @@
             ></span
           >
         </label>
-        <label class="consent-row">
-          <input id="data-consent-input" type="checkbox" />
-          <span
-            >Allow each run to send the prompt, tool definitions, and tool
-            results directly to this provider.</span
-          >
-        </label>
+        <p class="provider-disclosure">
+          Prompts, tool definitions, and tool results are sent directly to this
+          provider. Signet does not receive them.
+        </p>
       </div>
 
       <div class="sheet-actions">

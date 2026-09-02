@@ -5,7 +5,33 @@ import {
   createChatCompletionsProvider,
   createModelProvider,
   endpointOriginPattern,
+  modelConfigurationError,
+  modelConfigurationSummary,
 } from "../provider.mjs";
+
+test("treats a configured Gemini key as ready without an extra consent gate", () => {
+  const config = {
+    provider: "gemini",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/interactions",
+    model: "gemini-3.7-flash",
+    apiKey: "gemini-secret",
+  };
+
+  assert.equal(modelConfigurationError(config), "");
+  assert.equal(modelConfigurationSummary(config), "Gemini · gemini-3.7-flash");
+});
+
+test("reports the precise missing model setting", () => {
+  assert.equal(
+    modelConfigurationError({
+      provider: "gemini",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta/interactions",
+      model: "gemini-3.7-flash",
+      apiKey: "",
+    }),
+    "Add your Gemini API key.",
+  );
+});
 
 test("calls a compatible model endpoint with tools and a bearer token", async () => {
   let captured;

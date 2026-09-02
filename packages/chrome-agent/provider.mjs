@@ -31,6 +31,21 @@ export const PROVIDER_PRESETS = Object.freeze({
   }),
 });
 
+export function modelConfigurationError(config) {
+  const preset = PROVIDER_PRESETS[config.provider];
+  if (!preset) return "Choose a model provider.";
+  if (!config.endpoint?.trim()) return "Add a model endpoint.";
+  if (!config.model?.trim()) return "Choose a model.";
+  if (preset.keyRequired && !config.apiKey?.trim())
+    return `Add your ${preset.label} API key.`;
+  return "";
+}
+
+export function modelConfigurationSummary(config) {
+  if (modelConfigurationError(config)) return "Set up model";
+  return `${PROVIDER_PRESETS[config.provider].label} · ${config.model.trim()}`;
+}
+
 export function createModelProvider(config, fetchImpl = fetch) {
   const provider = config.provider || "custom";
   const preset = PROVIDER_PRESETS[provider];

@@ -36,8 +36,7 @@ npm run demo --workspace=@signet/chrome-agent
 ```
 
 Open `http://127.0.0.1:4174`, click the Signet Agent toolbar button, open
-**Settings**, and choose **Local demo**. Leave the API key blank, confirm the data
-disclosure, and save.
+**Settings**, choose **Local demo**, and save. No API key is required.
 
 Ask: `Add two notebooks to my cart and tell me the total.`
 
