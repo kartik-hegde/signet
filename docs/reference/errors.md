@@ -18,15 +18,88 @@ Use `ToolError` for an expected business failure that an agent or UI can act on:
 throw new ToolError({
   code: "order_already_shipped",
   message: "Shipped orders cannot be cancelled.",
-  retryable: false,
+  retry: "never",
   details: { orderId },
 });
 ```
 
-`retryable` is descriptive. Signet never retries the operation automatically.
-The error message includes the code and retryability because custom error properties
-are not consistently preserved across browser-agent boundaries. `details` remains
+Signet never retries the operation automatically. Set `retry` to `never`, `as_is`, or
+`after_repair`. The legacy `retryable` boolean remains supported; Signet maps false to
+`never`, true without a repair to `as_is`, and true with a repair to `after_repair`.
+The portable message includes the precise policy so an agent does not blindly repeat a
+call that cannot yet succeed.
+
+The message includes the code and retry condition because custom error properties are
+not consistently preserved across browser-agent boundaries. `details` remains
 application-side and is never added to the message automatically.
+
+Use `repair` when the application knows the concrete next action an agent should take:
+
+```ts
+throw new ToolError({
+  code: "slot_stale",
+  message: "The selected slot is no longer available.",
+  retry: "after_repair",
+  repair: {
+    action: "call_tool",
+    tool: "list_available_slots",
+    instruction: "Choose a current slot, then retry with the same operationId.",
+  },
+});
+```
+
+Signet appends a bounded `Next action:` sentence to `Error.message`, because native
+browser-agent boundaries do not consistently preserve custom error properties. The
+`call_tool` action explicitly tells the agent to wait for that tool before continuing,
+so a dependent repair is not launched against stale state. The
+structured `repair` property remains available to application code. The supported
+actions are `change_input`, `call_tool`, `refresh_state`, `retry_same_operation`,
+`ask_user`, `reconcile`, and `stop`. Signet communicates the instruction but never
+performs the retry or calls another tool itself.
+
+Use an ordered plan when recovery needs multiple dependent calls:
+
+```ts
+throw new ToolError({
+  code: "payment_source_stale",
+  message: "The source account changed after authorization.",
+  retry: "after_repair",
+  repair: {
+    steps: [
+      {
+        action: "call_tool",
+        tool: "list_payment_accounts",
+        instruction: "Refresh the source account state.",
+      },
+      {
+        action: "call_tool",
+        tool: "prepare_payment_authorization",
+        instruction: "Create a replacement authorization.",
+      },
+      {
+        action: "retry_same_operation",
+        tool: "send_payment",
+        instruction: "Retry with the replacement authorization.",
+      },
+    ],
+    preserve: ["operationId", "amount", "receiverId"],
+    update: ["authorizationId"],
+  },
+});
+```
+
+Plans are rendered as numbered steps with an explicit instruction to run them in
+order and not in parallel. `preserve` names intent-defining input fields whose original
+values must survive the repair; `update` names fields that must be replaced from repair
+output. Neither copies values into the message. Keep a portable plan to five concise
+steps and eight fields in each invariant list. Instructions, tool names, and field
+names are whitespace-normalized and bounded in the fallback message; the full
+structured `repair` value remains on the error for capable callers.
+
+Author repair guidance from trusted application logic. Do not interpolate server
+responses, page content, or other untrusted text into agent instructions. A useful
+expected failure answers four questions: what failed (`code` and `message`), whether a
+retry is allowed, what must happen before it, and which inputs must not change.
 
 ## `AuthorizationError`
 
