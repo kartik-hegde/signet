@@ -34,46 +34,103 @@ export type ToolRepairAction =
   | "retry_same_operation"
   | "stop";
 
-/** Explicit, application-authored next action that is safe to show to an agent. */
-export interface ToolRepairGuidance {
-  readonly action: ToolRepairAction;
-  readonly tool?: string;
-  readonly instruction: string;
+export type ToolRetryPolicy = "never" | "as_is" | "after_repair";
+
+/** One explicit, application-authored action that is safe to show to an agent. */
+export type ToolRepairStep =
+  | {
+      readonly action: "call_tool";
+      readonly tool: string;
+      readonly instruction: string;
+    }
+  | {
+      readonly action: Exclude<ToolRepairAction, "call_tool">;
+      readonly tool?: string;
+      readonly instruction: string;
+    };
+
+/** Ordered recovery actions and the original input fields they must preserve. */
+export interface ToolRepairPlan {
+  readonly steps: readonly [ToolRepairStep, ...ToolRepairStep[]];
+  readonly preserve?: readonly string[];
 }
+
+export type ToolRepairGuidance = ToolRepairStep | ToolRepairPlan;
 
 export class ToolError extends SignetError {
   readonly retryable: boolean;
+  readonly retry: ToolRetryPolicy;
   readonly repair?: ToolRepairGuidance;
   readonly details?: unknown;
 
   constructor(options: ToolErrorOptions) {
     const retryable = options.retryable ?? false;
+    const retry: ToolRetryPolicy = !retryable
+      ? "never"
+      : options.repair
+        ? "after_repair"
+        : "as_is";
     super(
       options.code,
-      `[${options.code}] ${options.message} (retryable: ${retryable ? "yes" : "no"})${repairMessage(options.repair)}`,
+      `[${options.code}] ${options.message} ${retryMessage(retry)}${repairMessage(options.repair)}`,
       options.cause === undefined ? undefined : { cause: options.cause },
     );
     this.name = "ToolError";
     this.retryable = retryable;
+    this.retry = retry;
     if (options.repair !== undefined) this.repair = options.repair;
     if (options.details !== undefined) this.details = options.details;
   }
 }
 
+function retryMessage(retry: ToolRetryPolicy): string {
+  if (retry === "never") return "(retryable: no)";
+  if (retry === "as_is") return "(retryable: yes)";
+  return "(retryable: yes; only after repair)";
+}
+
 function repairMessage(repair: ToolRepairGuidance | undefined): string {
   if (!repair) return "";
-  const instruction = repair.instruction.trim();
+  if ("steps" in repair) return repairPlanMessage(repair);
+  return ` Next action: ${repairStepMessage(repair, 300)}`;
+}
+
+function repairPlanMessage(plan: ToolRepairPlan): string {
+  const steps = plan.steps
+    .slice(0, 5)
+    .map((step, index) => `${index + 1}. ${repairStepMessage(step, 140)}`)
+    .join(" ");
+  const omitted = plan.steps.length - 5;
+  const preserve = (plan.preserve ?? [])
+    .map((field) => compact(field).slice(0, 64))
+    .filter(Boolean)
+    .slice(0, 8)
+    .join(", ");
+  const omittedSteps =
+    omitted > 0 ? ` ${omitted} additional step(s) omitted.` : "";
+  const invariants = preserve
+    ? ` Keep these original inputs unchanged: ${preserve}.`
+    : "";
+  return ` Repair plan (run in order; do not parallelize): ${steps}${omittedSteps}${invariants}`;
+}
+
+function repairStepMessage(step: ToolRepairStep, limit: number): string {
+  const instruction = compact(step.instruction);
   const boundedInstruction =
-    instruction.length <= 300
+    instruction.length <= limit
       ? instruction
-      : `${instruction.slice(0, 299).trimEnd()}…`;
-  const tool = repair.tool?.trim();
+      : `${instruction.slice(0, limit - 1).trimEnd()}…`;
+  const tool = step.tool ? compact(step.tool).slice(0, 128) : undefined;
   const target = tool ? ` ${tool}` : "";
   const sequencing =
-    repair.action === "call_tool" && tool
+    step.action === "call_tool" && tool
       ? ` Wait for ${tool} to finish before continuing.`
       : "";
-  return ` Next action: ${repair.action}${target}.${sequencing}${boundedInstruction ? ` ${boundedInstruction}` : ""}`;
+  return `${step.action}${target}.${sequencing}${boundedInstruction ? ` ${boundedInstruction}` : ""}`;
+}
+
+function compact(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
 }
 
 export interface ValidationIssue {

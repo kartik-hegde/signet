@@ -118,10 +118,12 @@ registration.dispose();
   and verify. It reuses the idempotency key when `key` is omitted. The app owns storage.
 - `execute(input, { context, operation?, signal })` is never automatically retried by Signet.
 - Expected business failures may throw
-  `ToolError({ code, message, retryable?, repair? })`. Use
-  `repair: { action, tool?, instruction }` only for bounded, agent-safe next steps.
-  Signet includes it in the cross-boundary message but never calls another tool or
-  retries automatically.
+  `ToolError({ code, message, retryable?, repair? })`. Use one
+  `{ action, tool?, instruction }` for a single next step or
+  `{ steps: [...], preserve: [...] }` for a dependent recovery sequence. Signet marks
+  a repairable failure `after_repair`, includes ordered non-parallel guidance in the
+  cross-boundary message, and never calls another tool or retries automatically. Use
+  bounded instructions authored from trusted application constants only.
 - `recover({ input, context, error, operation?, signal })` runs after the handler throws or
   for abandoned in-flight work. Return
   `{ recovered: true, output }` only after authoritative proof. Return

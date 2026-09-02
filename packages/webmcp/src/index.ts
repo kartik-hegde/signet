@@ -12,7 +12,10 @@ export {
   type SignetErrorCode,
   type ToolRepairAction,
   type ToolRepairGuidance,
+  type ToolRepairPlan,
+  type ToolRepairStep,
   type ToolErrorOptions,
+  type ToolRetryPolicy,
   type ValidationIssue,
 } from "./errors.js";
 export {

@@ -23,9 +23,14 @@ throw new ToolError({
 });
 ```
 
-`retryable` is descriptive. Signet never retries the operation automatically.
-The error message includes the code and retryability because custom error properties
-are not consistently preserved across browser-agent boundaries. `details` remains
+Signet never retries the operation automatically. `error.retry` makes the condition
+machine-readable: it is `never` when `retryable` is false, `as_is` when retryable
+without a repair, and `after_repair` when a repair is present. The portable message
+uses `retryable: yes; only after repair` for the last case so an agent does not blindly
+repeat a call that cannot yet succeed.
+
+The message includes the code and retry condition because custom error properties are
+not consistently preserved across browser-agent boundaries. `details` remains
 application-side and is never added to the message automatically.
 
 Use `repair` when the application knows the concrete next action an agent should take:
@@ -51,6 +56,48 @@ structured `repair` property remains available to application code. The supporte
 actions are `change_input`, `call_tool`, `refresh_state`, `retry_same_operation`,
 `ask_user`, `reconcile`, and `stop`. Signet communicates the instruction but never
 performs the retry or calls another tool itself.
+
+Use an ordered plan when recovery needs multiple dependent calls:
+
+```ts
+throw new ToolError({
+  code: "payment_source_stale",
+  message: "The source account changed after authorization.",
+  retryable: true,
+  repair: {
+    steps: [
+      {
+        action: "call_tool",
+        tool: "list_payment_accounts",
+        instruction: "Refresh the source account state.",
+      },
+      {
+        action: "call_tool",
+        tool: "prepare_payment_authorization",
+        instruction: "Create a replacement authorization.",
+      },
+      {
+        action: "retry_same_operation",
+        tool: "send_payment",
+        instruction: "Retry with the replacement authorization.",
+      },
+    ],
+    preserve: ["operationId", "amount", "receiverId"],
+  },
+});
+```
+
+Plans are rendered as numbered steps with an explicit instruction to run them in
+order and not in parallel. `preserve` names intent-defining input fields whose original
+values must survive the repair; it does not copy those values into the message. Keep a
+portable plan to five concise steps and eight preserved fields. Instructions, tool
+names, and field names are whitespace-normalized and bounded in the fallback message;
+the full structured `repair` value remains on the error for capable callers.
+
+Author repair guidance from trusted application logic. Do not interpolate server
+responses, page content, or other untrusted text into agent instructions. A useful
+expected failure answers four questions: what failed (`code` and `message`), whether a
+retry is allowed, what must happen before it, and which inputs must not change.
 
 ## `AuthorizationError`
 
