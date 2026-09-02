@@ -98,6 +98,11 @@ npx signet agent ./signet.agent.mjs --trials 5
 The Chrome extension remains a separate interactive UI. It is not installed by
 `@signet/eval`.
 
+For a guided setup, authoritative oracle example, automation strategy, and
+troubleshooting, follow the
+[headless-agent codelab](../../docs/tutorials/headless-agent-testing.md). The
+[CLI reference](../../docs/reference/cli.md) lists every option and suite hook.
+
 ## Score the interface, not just the outcome
 
 The oracle decides whether the task succeeded. It cannot say whether the _interface_
