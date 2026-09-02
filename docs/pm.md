@@ -28,9 +28,10 @@ frozen.
 
 ## Next proof points
 
-| Priority | Status | Work item                         | Exit criterion                                                                                       |
-| -------: | ------ | --------------------------------- | ---------------------------------------------------------------------------------------------------- |
-|        1 | Next   | Integrate three external websites | Each exposes one read and one consequential workflow with less custom boundary code than raw WebMCP. |
-|        2 | Next   | Run saved tasks with real agents  | Establish selection, valid-argument, completion, and token baselines across representative tasks.    |
-|        3 | Next   | Harden the Inspector from usage   | Add value capture only if developers request it, and only behind explicit redaction/consent.         |
-|        4 | Next   | Release candidate                 | Freeze the small proven surface, write migration/stability notes, then publish the first alpha.      |
+| Priority | Status | Work item                         | Exit criterion                                                                                                                                          |
+| -------: | ------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|        1 | Next   | Integrate three external websites | Each exposes one read and one consequential workflow with less custom boundary code than raw WebMCP.                                                    |
+|        2 | Next   | Run saved tasks with real agents  | Establish selection, valid-argument, completion, and token baselines across representative tasks.                                                       |
+|        3 | Next   | Harden the Inspector from usage   | Add value capture only if developers request it, and only behind explicit redaction/consent.                                                            |
+|        4 | Next   | Release candidate                 | Freeze the small proven surface, write migration/stability notes, then publish the first alpha.                                                         |
+|        5 | Spec   | Trace observability               | OTLP traces, per-tool latency and error tables, and a Jaeger recipe with no new developer code; see [the observability spec](./specs/observability.md). |
