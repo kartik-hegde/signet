@@ -153,7 +153,6 @@ function scoredEvidence(
       inventory,
       events,
       agent: { timedOut: false },
-      status: "completed",
     }),
   });
 }
@@ -182,7 +181,7 @@ test("interface-quality dimensions aggregate per condition", () => {
   });
   const baseline = report.conditions["signet-baseline"].interfaceQuality;
   assert.equal(baseline.selection.accuracy, 0.5);
-  assert.equal(baseline.surface.uiFallbackRate, 0.5);
+  assert.equal(baseline.discovery.completeRate, 1);
   assert.equal(
     report.conditions["signet-guided"].interfaceQuality.selection.accuracy,
     1,
@@ -207,5 +206,5 @@ test("a dimension the condition never exposed reports no score", () => {
   assert.equal(quality.selection.scoredTrials, 0);
   assert.equal(quality.selection.accuracy, null);
   assert.equal(quality.discovery.completeRate, 0);
-  assert.match(renderMarkdownReport(report), /\| ui-dom \| — \|/);
+  assert.match(renderMarkdownReport(report), /\| ui-dom \| 0% \| — \|/);
 });

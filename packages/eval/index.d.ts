@@ -52,7 +52,6 @@ export interface SignetSuite {
   readonly description?: string;
 }
 
-export const CASE_KINDS: readonly CaseKind[];
 export const CASE_SCHEMA_VERSION: 1;
 export function defineCase<
   Parameters extends Record<string, unknown> = Record<string, unknown>,
@@ -104,7 +103,6 @@ export interface ArgumentQuality extends QualityDimension {
   readonly validCalls: number;
   readonly invalidCalls: number;
   readonly validity: number | null;
-  readonly accurate: boolean | null;
   readonly violations: readonly {
     readonly tool: string;
     readonly sequence: number;
@@ -112,56 +110,21 @@ export interface ArgumentQuality extends QualityDimension {
   }[];
 }
 
-export interface ContinuationQuality extends QualityDimension {
-  readonly toolErrors: number;
-  readonly observedErrors: number;
-  readonly continuedErrors: number;
-  readonly continuationRate: number | null;
-  readonly continued: boolean | null;
-  readonly errorTools?: readonly string[];
-}
-
-export interface SurfaceQuality extends QualityDimension {
-  readonly uiActions: number;
-  readonly uiInspections: number;
-  readonly toolCalls: number;
-  readonly failedToolCalls: number;
-  readonly fullWebMcp: boolean | null;
-  readonly uiFallback: boolean | null;
-}
-
-export interface BudgetQuality extends QualityDimension {
-  readonly actions: number;
-  readonly toolCalls: number;
-  readonly maxActions?: number | null;
-  readonly maxToolCalls?: number | null;
-  readonly exceeded: boolean | null;
-  readonly exceededBudgets: readonly string[];
-}
-
 export interface InterfaceQuality {
-  readonly schemaVersion: 1;
   readonly source: "events" | "summary" | "none";
   readonly discovery: DiscoveryQuality;
   readonly selection: SelectionQuality;
   readonly arguments: ArgumentQuality;
-  readonly continuation: ContinuationQuality;
-  readonly surface: SurfaceQuality;
-  readonly budgets: BudgetQuality;
 }
 
-export const INTERFACE_QUALITY_SCHEMA_VERSION: 1;
 export const TRACE_EVENTS: {
   readonly toolCall: "webmcp_call";
-  readonly uiAction: "ui_action";
-  readonly uiInspection: "ui_inspection";
 };
 export function scoreInterfaceQuality(input: {
   readonly caseDefinition: SignetCase;
   readonly inventory?: readonly Record<string, unknown>[];
   readonly events?: readonly Record<string, unknown>[];
   readonly agent?: Record<string, unknown>;
-  readonly status?: TrialStatus;
 }): InterfaceQuality;
 export function validateAgainstSchema(
   value: unknown,
@@ -368,30 +331,9 @@ export interface InterfaceQualityAggregate {
   };
   readonly arguments: {
     readonly scoredTrials: number;
-    readonly accurateTrials: number;
-    readonly accuracy: number | null;
     readonly evaluatedCalls: number;
     readonly validCalls: number;
     readonly validity: number | null;
-  };
-  readonly continuation: {
-    readonly scoredTrials: number;
-    readonly toolErrors: number;
-    readonly observedErrors: number;
-    readonly continuedErrors: number;
-    readonly continuationRate: number | null;
-  };
-  readonly surface: {
-    readonly scoredTrials: number;
-    readonly fullWebMcpTrials: number;
-    readonly fullWebMcpRate: number | null;
-    readonly uiFallbackTrials: number;
-    readonly uiFallbackRate: number | null;
-  };
-  readonly budgets: {
-    readonly scoredTrials: number;
-    readonly exceededTrials: number;
-    readonly exceededRate: number | null;
   };
 }
 

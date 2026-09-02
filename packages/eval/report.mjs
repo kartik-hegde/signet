@@ -119,20 +119,20 @@ export function renderMarkdownReport(report) {
   const qualityRows = Object.entries(report.conditions)
     .map(([name, value]) => {
       const quality = value.interfaceQuality;
-      return `| ${name} | ${scored(quality.selection.accuracy, quality.selection.scoredTrials)} | ${scored(quality.arguments.accuracy, quality.arguments.scoredTrials)} | ${scored(quality.arguments.validity, quality.arguments.evaluatedCalls)} | ${scored(quality.continuation.continuationRate, quality.continuation.observedErrors)} | ${scored(quality.surface.fullWebMcpRate, quality.surface.scoredTrials)} | ${scored(quality.surface.uiFallbackRate, quality.surface.scoredTrials)} | ${scored(quality.discovery.completeRate, quality.discovery.scoredTrials)} | ${quality.budgets.exceededTrials} |`;
+      return `| ${name} | ${scored(quality.discovery.completeRate, quality.discovery.scoredTrials)} | ${scored(quality.selection.accuracy, quality.selection.scoredTrials)} | ${scored(quality.arguments.validity, quality.arguments.evaluatedCalls)} |`;
     })
     .join("\n");
   const comparisonRows = Object.entries(report.comparisons)
     .map(
       ([condition, value]) =>
-        `| ${condition} | ${signedPercent(value.authoritativeSuccessRateDelta)} | ${signedPercent(value.safeSuccessRateDelta)} | ${signedPercent(value.selectionAccuracyDelta)} | ${signedPercent(value.argumentValidityDelta)} | ${ratio(value.medianDurationRatio)} | ${signed(value.medianActionDelta)} | ${signed(value.medianTokenDelta)} |`,
+        `| ${condition} | ${signedPercent(value.authoritativeSuccessRateDelta)} | ${signedPercent(value.safeSuccessRateDelta)} | ${signedPercent(value.discoveryCompleteRateDelta)} | ${signedPercent(value.selectionAccuracyDelta)} | ${signedPercent(value.argumentValidityDelta)} | ${ratio(value.medianDurationRatio)} | ${signed(value.medianActionDelta)} | ${signed(value.medianTokenDelta)} |`,
     )
     .join("\n");
   const warnings = report.warnings.length
     ? `\n## Warnings\n\n${report.warnings.map((warning) => `- ${warning}`).join("\n")}\n`
     : "";
   const comparisons = report.baselineCondition
-    ? `\n## Change versus ${report.baselineCondition}\n\n| Candidate | Authoritative success Δ | Safe success Δ | Selection Δ | Argument validity Δ | Duration ratio | Median actions Δ | Median tokens Δ |\n|---|---:|---:|---:|---:|---:|---:|---:|\n${comparisonRows || "| — | — | — | — | — | — | — | — |"}\n`
+    ? `\n## Change versus ${report.baselineCondition}\n\n| Candidate | Authoritative success Δ | Safe success Δ | Discovery Δ | Selection Δ | Argument validity Δ | Duration ratio | Median actions Δ | Median tokens Δ |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|\n${comparisonRows || "| — | — | — | — | — | — | — | — | — |"}\n`
     : "";
   return `# ${report.suite} evaluation report
 
@@ -148,12 +148,11 @@ ${conditionRows}
 
 ## Interface quality
 
-Selection, arguments, and continuation are scored from the published inventory and the
-recorded trace, and only for the Trials where the dimension applied. A dash means the
-condition never exposed the capability the metric describes.
+Discovery, selection, and arguments are scored from the published inventory and the
+recorded tool trace. A dash means the dimension did not apply.
 
-| Condition | Selection accuracy | Argument accuracy | Argument validity | Error continuation | Full WebMCP | UI fallback | Capabilities discovered | Budget overruns |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Condition | Capabilities discovered | Selection accuracy | Argument validity |
+|---|---:|---:|---:|
 ${qualityRows}
 
 ## Cases
@@ -244,17 +243,9 @@ function aggregateQuality(values) {
   const discovery = dimension("discovery");
   const selection = dimension("selection");
   const argumentUse = dimension("arguments");
-  const continuation = dimension("continuation");
-  const surface = dimension("surface");
-  const budgets = dimension("budgets");
 
   const evaluatedCalls = sum(argumentUse.map((item) => item.evaluatedCalls));
   const validCalls = sum(argumentUse.map((item) => item.validCalls));
-  const toolErrors = sum(continuation.map((item) => item.toolErrors));
-  // Only errors the agent could be observed reacting to belong in the denominator; a
-  // trailing error on a clean exit is undetermined, not a continuation failure.
-  const observedErrors = sum(continuation.map((item) => item.observedErrors));
-  const continuedErrors = sum(continuation.map((item) => item.continuedErrors));
 
   return {
     scoredTrials: quality.length,
@@ -285,42 +276,9 @@ function aggregateQuality(values) {
     },
     arguments: {
       scoredTrials: argumentUse.length,
-      accurateTrials: argumentUse.filter((item) => item.accurate).length,
-      accuracy: rate(
-        argumentUse.filter((item) => item.accurate).length,
-        argumentUse.length,
-      ),
       evaluatedCalls,
       validCalls,
       validity: rate(validCalls, evaluatedCalls),
-    },
-    continuation: {
-      scoredTrials: continuation.length,
-      toolErrors,
-      observedErrors,
-      continuedErrors,
-      continuationRate: rate(continuedErrors, observedErrors),
-    },
-    surface: {
-      scoredTrials: surface.length,
-      fullWebMcpTrials: surface.filter((item) => item.fullWebMcp).length,
-      fullWebMcpRate: rate(
-        surface.filter((item) => item.fullWebMcp).length,
-        surface.length,
-      ),
-      uiFallbackTrials: surface.filter((item) => item.uiFallback).length,
-      uiFallbackRate: rate(
-        surface.filter((item) => item.uiFallback).length,
-        surface.length,
-      ),
-    },
-    budgets: {
-      scoredTrials: budgets.length,
-      exceededTrials: budgets.filter((item) => item.exceeded).length,
-      exceededRate: rate(
-        budgets.filter((item) => item.exceeded).length,
-        budgets.length,
-      ),
     },
   };
 }
@@ -382,9 +340,9 @@ function compare(baseline, candidate) {
       candidate.interfaceQuality?.arguments.validity,
       baseline.interfaceQuality?.arguments.validity,
     ),
-    fullWebMcpRateDelta: difference(
-      candidate.interfaceQuality?.surface.fullWebMcpRate,
-      baseline.interfaceQuality?.surface.fullWebMcpRate,
+    discoveryCompleteRateDelta: difference(
+      candidate.interfaceQuality?.discovery.completeRate,
+      baseline.interfaceQuality?.discovery.completeRate,
     ),
   };
 }

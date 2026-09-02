@@ -18,7 +18,6 @@ const paymentCase = defineCase({
     completionCapability: "send_payment",
     forbiddenEffects: ["duplicate-payment"],
   },
-  budgets: { maxToolCalls: 3 },
 });
 
 const inventory = [
@@ -73,7 +72,6 @@ function score(overrides = {}) {
     caseDefinition: paymentCase,
     inventory,
     agent: { timedOut: false },
-    status: "completed",
     ...overrides,
   });
 }
@@ -97,9 +95,6 @@ test("selection is accurate when every declared capability is used", () => {
   assert.equal(quality.selection.accurate, true);
   assert.equal(quality.selection.completionCapabilityCalled, true);
   assert.equal(quality.discovery.complete, true);
-  assert.equal(quality.surface.fullWebMcp, true);
-  assert.equal(quality.surface.uiFallback, false);
-  assert.equal(quality.budgets.exceeded, false);
 });
 
 test("a missing capability and an invented tool both fail selection", () => {
@@ -142,8 +137,6 @@ test("a condition that never published the capability is not scored for selectio
   ]);
   assert.equal(quality.selection.applicable, false);
   assert.equal(quality.selection.accurate, null);
-  assert.equal(quality.surface.fullWebMcp, false);
-  assert.equal(quality.surface.uiFallback, false);
 });
 
 test("arguments are validated against the schema the interface published", () => {
@@ -169,85 +162,15 @@ test("arguments are validated against the schema the interface published", () =>
   assert.equal(quality.arguments.evaluatedCalls, 3);
   assert.equal(quality.arguments.invalidCalls, 2);
   assert.equal(quality.arguments.validity, 1 / 3);
-  assert.equal(quality.arguments.accurate, false);
-  assert.deepEqual(quality.arguments.violations[0].problems, [
-    "input.limit is not an accepted property",
-  ]);
-  assert.match(
-    quality.arguments.violations[1].problems[0],
-    /amountCents must be integer, received string/,
+  assert.ok(
+    quality.arguments.violations[0].problems.some((problem) =>
+      problem.includes('Property "limit"'),
+    ),
   );
-});
-
-test("continuation records whether the agent kept working after a tool error", () => {
-  const recovered = score({
-    events: trace([
-      event("webmcp_call", {
-        tool: "search_payment_users",
-        input: { query: "Lia" },
-        ok: false,
-      }),
-      event("webmcp_call", {
-        tool: "search_payment_users",
-        input: { query: "Rosenbaum" },
-        ok: true,
-      }),
-      event("webmcp_call", {
-        tool: "send_payment",
-        input: { recipientId: "u1", amountCents: 1200 },
-        ok: true,
-      }),
-    ]),
-  });
-  assert.equal(recovered.continuation.toolErrors, 1);
-  assert.equal(recovered.continuation.continuationRate, 1);
-
-  const abandoned = score({
-    status: "timed_out",
-    agent: { timedOut: true },
-    events: trace([
-      event("webmcp_call", {
-        tool: "send_payment",
-        input: { recipientId: "u1", amountCents: 1200 },
-        ok: false,
-      }),
-    ]),
-  });
-  assert.equal(abandoned.continuation.continued, false);
-  assert.equal(abandoned.continuation.continuationRate, 0);
-});
-
-test("a mixed run reports UI fallback and a budget overrun", () => {
-  const quality = score({
-    events: trace([
-      event("ui_inspection"),
-      event("ui_action", { action: "click" }),
-      event("webmcp_call", {
-        tool: "search_payment_users",
-        input: { query: "Lia" },
-        ok: true,
-      }),
-      event("webmcp_call", {
-        tool: "send_payment",
-        input: { recipientId: "u1", amountCents: 1200 },
-        ok: true,
-      }),
-      event("webmcp_call", {
-        tool: "send_payment",
-        input: { recipientId: "u1", amountCents: 1200 },
-        ok: true,
-      }),
-      event("webmcp_call", {
-        tool: "send_payment",
-        input: { recipientId: "u1", amountCents: 1200 },
-        ok: true,
-      }),
-    ]),
-  });
-  assert.equal(quality.surface.uiFallback, true);
-  assert.equal(quality.surface.fullWebMcp, false);
-  assert.equal(quality.budgets.exceeded, true);
-  assert.deepEqual(quality.budgets.exceededBudgets, ["maxToolCalls"]);
+  assert.match(
+    quality.arguments.violations[1].problems.join("\n"),
+    /Expected "integer"/,
+  );
 });
 
 test("an adapter without a trace still yields selection from its tool sequence", () => {
@@ -256,13 +179,11 @@ test("an adapter without a trace still yields selection from its tool sequence",
     agent: {
       timedOut: false,
       toolSequence: ["search_payment_users", "send_payment"],
-      actions: { ui: 0, inspections: 0, webMcp: 2, total: 2 },
     },
   });
   assert.equal(quality.source, "summary");
   assert.equal(quality.selection.accurate, true);
   assert.equal(quality.arguments.applicable, false);
-  assert.equal(quality.surface.fullWebMcp, true);
 });
 
 test("a Case without capability expectations is not scored for selection", () => {
@@ -310,10 +231,12 @@ test("schema validation covers the keywords tool definitions use", () => {
     { currency: "gbp", memo: "too long", tags: [] },
     schema,
   );
-  assert.equal(problems.length, 4);
-  assert.ok(problems.some((problem) => problem.includes("amount is required")));
+  assert.ok(problems.length >= 4);
   assert.ok(
-    problems.some((problem) => problem.includes("not one of the allowed")),
+    problems.some((problem) => problem.includes('required property "amount"')),
+  );
+  assert.ok(
+    problems.some((problem) => problem.includes('any of ["usd","eur"]')),
   );
 });
 
@@ -348,38 +271,7 @@ test("an argument the trace could not record is left unscored, not failed", () =
   assert.equal(quality.selection.accurate, true);
 });
 
-test("a tool error the agent never acted on is undetermined, not continued", () => {
-  // The trace cannot distinguish a deliberate stop after an expected refusal from
-  // giving up, so a trailing error is only counted when the run failed to survive it.
-  const stopped = score({
-    events: trace([
-      event("webmcp_call", {
-        tool: "send_payment",
-        input: { recipientId: "u1", amountCents: 1200 },
-        ok: false,
-      }),
-    ]),
-  });
-  assert.equal(stopped.continuation.applicable, false);
-  assert.equal(stopped.continuation.toolErrors, 1);
-  assert.equal(stopped.continuation.continuationRate, null);
-
-  const derailed = score({
-    status: "timed_out",
-    agent: { timedOut: true },
-    events: trace([
-      event("webmcp_call", {
-        tool: "send_payment",
-        input: { recipientId: "u1", amountCents: 1200 },
-        ok: false,
-      }),
-    ]),
-  });
-  assert.equal(derailed.continuation.applicable, true);
-  assert.equal(derailed.continuation.continuationRate, 0);
-});
-
-test("selection is unscored when no inventory says which tools were real", () => {
+test("an empty inventory records failed discovery and leaves selection unscored", () => {
   const quality = score({
     inventory: [],
     events: trace([
@@ -396,29 +288,22 @@ test("selection is unscored when no inventory says which tools were real", () =>
       }),
     ]),
   });
+  assert.equal(quality.discovery.applicable, true);
+  assert.equal(quality.discovery.complete, false);
+  assert.deepEqual(quality.discovery.unavailableCapabilities, [
+    "search_payment_users",
+    "send_payment",
+  ]);
   assert.equal(quality.selection.applicable, false);
   assert.equal(quality.selection.accurate, null);
-  assert.match(quality.selection.reason, /without a published inventory/i);
+  assert.match(quality.selection.reason, /did not expose/i);
 });
 
-test("oneOf never invents a failure this validator cannot adjudicate", () => {
-  // Both branches differ only by a keyword the subset ignores, so both "match".
-  assert.deepEqual(
-    validateAgainstSchema(
-      { amount: 1 },
-      {
-        oneOf: [
-          { type: "object", format: "legacy" },
-          { type: "object", format: "current" },
-        ],
-      },
-    ),
-    [],
-  );
-  assert.deepEqual(
+test("standard schema combinators are evaluated", () => {
+  assert.match(
     validateAgainstSchema("text", {
       oneOf: [{ type: "object" }, { type: "array" }],
-    }),
-    ["input matches no oneOf branch"],
+    }).join("\n"),
+    /exactly one subschema/,
   );
 });

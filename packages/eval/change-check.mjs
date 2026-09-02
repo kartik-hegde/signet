@@ -116,6 +116,16 @@ export function buildChangeCheck({ baseline, candidate, policy = {} }) {
         );
       }
 
+      const discoveryIssue = rateRegression({
+        baseline: discoveryCompleteness(baselineAggregate),
+        candidate: discoveryCompleteness(candidateAggregate),
+        allowance: 0,
+        code: "capability_discovery_regressed",
+        label: "capability discovery",
+        caseId,
+        condition,
+      });
+
       cellIssues.push(
         ...[
           rateRegression({
@@ -127,24 +137,29 @@ export function buildChangeCheck({ baseline, candidate, policy = {} }) {
             caseId,
             condition,
           }),
-          rateRegression({
-            baseline: selectionAccuracy(baselineAggregate),
-            candidate: selectionAccuracy(candidateAggregate),
-            allowance: normalizedPolicy.maxSelectionRegression,
-            code: "selection_accuracy_regressed",
-            label: "selection accuracy",
-            caseId,
-            condition,
-          }),
-          rateRegression({
-            baseline: argumentValidity(baselineAggregate),
-            candidate: argumentValidity(candidateAggregate),
-            allowance: normalizedPolicy.maxArgumentRegression,
-            code: "argument_validity_regressed",
-            label: "argument validity",
-            caseId,
-            condition,
-          }),
+          discoveryIssue,
+          discoveryIssue
+            ? null
+            : rateRegression({
+                baseline: selectionAccuracy(baselineAggregate),
+                candidate: selectionAccuracy(candidateAggregate),
+                allowance: normalizedPolicy.maxSelectionRegression,
+                code: "selection_accuracy_regressed",
+                label: "selection accuracy",
+                caseId,
+                condition,
+              }),
+          discoveryIssue
+            ? null
+            : rateRegression({
+                baseline: argumentValidity(baselineAggregate),
+                candidate: argumentValidity(candidateAggregate),
+                allowance: normalizedPolicy.maxArgumentRegression,
+                code: "argument_validity_regressed",
+                label: "argument validity",
+                caseId,
+                condition,
+              }),
           rateRegression({
             baseline: timeoutRate(baselineAggregate),
             candidate: timeoutRate(candidateAggregate),
@@ -283,7 +298,7 @@ export function renderChangeCheckMarkdown(check) {
     .map(({ caseId, condition, status, baseline, candidate, deltas }) => {
       const before = baseline ? score(baseline, "safeSuccesses") : "—";
       const after = candidate ? score(candidate, "safeSuccesses") : "—";
-      return `| ${caseId} | ${condition} | ${before} | ${after} | ${signedPoints(deltas?.safeSuccessRate)} | ${signedPoints(deltas?.selectionAccuracy)} | ${signedPoints(deltas?.argumentValidity)} | ${formatRatio(deltas?.medianDurationRatio)} | ${formatRatio(deltas?.medianTokenRatio)} | ${statusLabel(status)} |`;
+      return `| ${caseId} | ${condition} | ${before} | ${after} | ${signedPoints(deltas?.safeSuccessRate)} | ${signedPoints(deltas?.discoveryCompleteness)} | ${signedPoints(deltas?.selectionAccuracy)} | ${signedPoints(deltas?.argumentValidity)} | ${formatRatio(deltas?.medianDurationRatio)} | ${formatRatio(deltas?.medianTokenRatio)} | ${statusLabel(status)} |`;
     })
     .join("\n");
   const regressionList = check.regressions.length
@@ -305,9 +320,9 @@ Generated: ${check.generatedAt}
 
 ## Case matrix
 
-| Case | Condition | Baseline safe | Candidate safe | Safe success Δ | Selection Δ | Arguments Δ | Duration | Tokens | Result |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---|
-${rows || "| — | — | — | — | — | — | — | — | — | — |"}
+| Case | Condition | Baseline safe | Candidate safe | Safe success Δ | Discovery Δ | Selection Δ | Arguments Δ | Duration | Tokens | Result |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+${rows || "| — | — | — | — | — | — | — | — | — | — | — |"}
 
 ## Regressions
 
@@ -407,6 +422,10 @@ function selectionAccuracy(aggregate) {
   return aggregate?.interfaceQuality?.selection?.accuracy ?? null;
 }
 
+function discoveryCompleteness(aggregate) {
+  return aggregate?.interfaceQuality?.discovery?.completeRate ?? null;
+}
+
 function argumentValidity(aggregate) {
   return aggregate?.interfaceQuality?.arguments?.validity ?? null;
 }
@@ -471,6 +490,10 @@ function cell(caseId, condition, baseline, candidate, issues) {
               candidate.medianTokens,
               baseline.medianTokens,
             ),
+            discoveryCompleteness: difference(
+              discoveryCompleteness(candidate),
+              discoveryCompleteness(baseline),
+            ),
             selectionAccuracy: difference(
               selectionAccuracy(candidate),
               selectionAccuracy(baseline),
@@ -496,6 +519,7 @@ function aggregateReference(value) {
     authoritativeSuccessRate: value.authoritativeSuccessRate,
     safeSuccesses: value.safeSuccesses,
     safeSuccessRate: value.safeSuccessRate,
+    discoveryCompleteness: discoveryCompleteness(value),
     selectionAccuracy: selectionAccuracy(value),
     argumentValidity: argumentValidity(value),
     timeoutRate: timeoutRate(value),
@@ -537,6 +561,10 @@ function isAggregateImprovement(baseline, candidate) {
   return (
     candidate.safeSuccessRate > baseline.safeSuccessRate ||
     candidate.authoritativeSuccessRate > baseline.authoritativeSuccessRate ||
+    (difference(
+      discoveryCompleteness(candidate),
+      discoveryCompleteness(baseline),
+    ) ?? 0) > 0 ||
     (difference(selectionAccuracy(candidate), selectionAccuracy(baseline)) ??
       0) > 0 ||
     (difference(argumentValidity(candidate), argumentValidity(baseline)) ?? 0) >

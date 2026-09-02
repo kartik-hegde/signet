@@ -179,7 +179,6 @@ export async function runTrial({
       inventory,
       events,
       agent,
-      status,
     }),
     trial: {
       id: trialId,

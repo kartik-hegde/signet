@@ -1,5 +1,4 @@
 export {
-  CASE_KINDS,
   CASE_SCHEMA_VERSION,
   defineCase,
   defineSuite,
@@ -15,7 +14,6 @@ export {
 } from "./evidence.mjs";
 export { defineEvaluation, validateAdapter } from "./adapters.mjs";
 export {
-  INTERFACE_QUALITY_SCHEMA_VERSION,
   TRACE_EVENTS,
   scoreInterfaceQuality,
   validateAgainstSchema,

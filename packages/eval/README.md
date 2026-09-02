@@ -105,37 +105,25 @@ served the agent well, so every Trial also carries interface-quality metrics der
 from the Case expectations, the exact inventory the browser published, and the recorded
 trace:
 
-| Dimension    | Question it answers                                                    |
-| ------------ | ---------------------------------------------------------------------- |
-| Discovery    | Did the condition publish every capability the Case requires?          |
-| Selection    | Did the agent call those capabilities, and only tools that exist?      |
-| Arguments    | Were the recorded arguments valid against the published `inputSchema`? |
-| Continuation | After a tool error, did the agent act again?                           |
-| Surface      | Did the run complete through WebMCP alone, or fall back to the DOM?    |
-| Budgets      | Did the run stay inside the Case's action and tool-call budgets?       |
+| Dimension | Question it answers                                                    |
+| --------- | ---------------------------------------------------------------------- |
+| Discovery | Did the condition publish every capability the Case requires?          |
+| Selection | Did the agent call those capabilities, and only tools that exist?      |
+| Arguments | Were the recorded arguments valid against the published `inputSchema`? |
 
-Each dimension reports whether it applied, and nothing is scored from what the trace
-cannot show. A UI-only arm never publishes the WebMCP capabilities a Case requires, so
-its selection accuracy reads as unscored rather than zero — a condition boundary must
-never look like an interface defect. Selection is likewise unscored when no inventory
-was published, since nothing then distinguishes a real capability from an invented one.
-A tool error that was the run's last action is undetermined when the run ended cleanly:
-the trace cannot tell a deliberate stop after an expected refusal from giving up. It
-counts against the interface only when the run did not survive it. Metrics are recorded
-per Trial under `quality` and aggregated per condition under
-`aggregate.interfaceQuality`.
+Each dimension reports whether it applied. A UI-only arm records incomplete discovery
+but leaves selection unscored: the condition did not offer the capabilities the agent
+was expected to select. Metrics are recorded per Trial under `quality` and aggregated
+per condition under `aggregate.interfaceQuality`.
 
-Agent adapters supply the trace by emitting three event types, exported as
-`TRACE_EVENTS`:
+Agent adapters supply argument evidence by emitting the exported tool-call event:
 
 ```js
 emit("webmcp_call", { tool, input, ok, error }); // one WebMCP tool call
-emit("ui_action", { action }); // one DOM interaction
-emit("ui_inspection"); // one page read
 ```
 
-An adapter that cannot emit a trace can instead return `toolSequence` and `actions`
-counts; selection and surface are still scored, and arguments report as unscored.
+An adapter that cannot emit a trace can return `toolSequence`; selection is still
+scored, while arguments remain unscored.
 
 ## Catch regressions while you iterate
 
@@ -153,6 +141,7 @@ report. The check compares every Case and condition independently, so an improve
 one workflow cannot hide a regression in another. By default it rejects:
 
 - any safe-success or authoritative-success regression;
+- a required capability that is no longer published;
 - a drop in selection accuracy or argument validity;
 - a metric the baseline measured that the candidate no longer scores;
 - an increased timeout rate;

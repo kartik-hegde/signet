@@ -266,7 +266,12 @@ const paymentInventory = [
   },
 ];
 
-function scoredTrial({ index = 1, tool = true, amountCents = 1200 }) {
+function scoredTrial({
+  index = 1,
+  tool = true,
+  amountCents = 1200,
+  inventory = paymentInventory,
+}) {
   const events = tool
     ? [
         {
@@ -297,7 +302,7 @@ function scoredTrial({ index = 1, tool = true, amountCents = 1200 }) {
       agent: { id: "agent" },
       oracle: { id: "database" },
     },
-    inventory: paymentInventory,
+    inventory,
     events,
     agent: {
       provider: "test",
@@ -316,10 +321,9 @@ function scoredTrial({ index = 1, tool = true, amountCents = 1200 }) {
     },
     quality: scoreInterfaceQuality({
       caseDefinition: capabilityCase,
-      inventory: paymentInventory,
+      inventory,
       events,
       agent: { timedOut: false },
-      status: "completed",
     }),
   });
 }
@@ -353,6 +357,19 @@ test("an interface revision that loses argument validity fails the check", () =>
   assert.ok(
     check.regressions.some(
       ({ code }) => code === "argument_validity_regressed",
+    ),
+  );
+});
+
+test("removing a required capability fails even when the oracle still passes", () => {
+  const check = buildChangeCheck({
+    baseline: report([scoredTrial({})]),
+    candidate: report([scoredTrial({ inventory: [] })]),
+  });
+  assert.equal(check.status, "fail");
+  assert.ok(
+    check.regressions.some(
+      ({ code }) => code === "capability_discovery_regressed",
     ),
   );
 });
@@ -419,14 +436,14 @@ test("a candidate that stops measuring a metric cannot hide behind it", () => {
   assert.equal(check.status, "fail");
   assert.ok(
     check.regressions.some(
-      ({ code }) => code === "selection_accuracy_unmeasured",
+      ({ code }) => code === "capability_discovery_unmeasured",
     ),
   );
   assert.match(
     check.regressions.find(
-      ({ code }) => code === "selection_accuracy_unmeasured",
+      ({ code }) => code === "capability_discovery_unmeasured",
     ).message,
-    /no longer measures selection accuracy/,
+    /no longer measures capability discovery/,
   );
 
   // The reverse — a baseline that predates the metric — stays comparable.

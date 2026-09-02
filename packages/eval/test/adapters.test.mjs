@@ -161,5 +161,4 @@ test("runTrial scores the published interface alongside the oracle grade", async
   assert.equal(evidence.quality.source, "events");
   assert.equal(evidence.quality.selection.accurate, true);
   assert.equal(evidence.quality.discovery.complete, true);
-  assert.equal(evidence.quality.surface.fullWebMcp, true);
 });
