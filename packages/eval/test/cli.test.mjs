@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -80,4 +81,25 @@ test("the CLI recognizes npm's symlinked bin entrypoint", () => {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("the unified CLI exposes the headless agent command", () => {
+  const cli = fileURLToPath(new URL("../cli.mjs", import.meta.url));
+  const result = spawnSync(process.execPath, [cli, "agent", "--help"], {
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Usage: signet agent/);
+  assert.match(result.stdout, /--prompt text/);
+});
+
+test("the root CLI lists agent, eval, and check", () => {
+  const cli = fileURLToPath(new URL("../cli.mjs", import.meta.url));
+  const result = spawnSync(process.execPath, [cli, "--help"], {
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /agent\s+Run natural-language tasks/);
+  assert.match(result.stdout, /eval\s+Run repeated/);
+  assert.match(result.stdout, /check\s+Compare/);
 });

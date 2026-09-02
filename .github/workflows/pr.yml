@@ -84,6 +84,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:eval
+      - run: npm run validate:chrome-agent
+      - run: npm run test:agent:benchmark
+      - run: npm run build
+      - run: npm run bench:agent:smoke
       - run: npm run format:check:repo
 
   safety:

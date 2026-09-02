@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Signet Agent",
+  "version": "0.1.0",
+  "description": "Inspect and try the WebMCP tools exposed by the current page.",
+  "minimum_chrome_version": "149",
+  "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "service-worker.mjs",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open Signet Agent"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}

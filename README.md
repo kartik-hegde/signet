@@ -6,8 +6,9 @@ Signet makes website capabilities reliable and agent-ready through WebMCP. This 
 
 - `packages/webmcp` — the open-source `@signet/webmcp` SDK
 - `packages/eval` — reusable Cases, adapters, evidence schema, runner, change checks, and the `signet` CLI
+- `packages/chrome-agent` — a Chrome side-panel agent for inspecting and invoking the current page's WebMCP tools
 - `fixtures` — applications used for end-to-end validation; the Cypress Real World App intentionally keeps its own Yarn lockfile and is not an npm workspace
-- `benchmarks` — deterministic safety, agent-effectiveness, build-vs-buy, and integration suites
+- `benchmarks` — deterministic safety, headless Signet Agent, agent-effectiveness, build-vs-buy, and integration suites
 - `evidence` — checked-in benchmark reports and their provenance
 - `tooling` — repository automation, report builders, and CI change classification
 - `docs` — Signet documentation
@@ -18,6 +19,16 @@ Signet makes website capabilities reliable and agent-ready through WebMCP. This 
 npm ci
 npm run validate
 npm run test:eval
+npm run validate:chrome-agent
+npm run bench:agent:smoke
+```
+
+The `@signet/eval` package installs one terminal entry point:
+
+```bash
+npx signet agent --help
+npx signet eval --help
+npx signet check --help
 ```
 
 Evaluation reports are designed for iteration as well as publication. `signet check`
@@ -31,4 +42,6 @@ npm run test:reference:install
 npm run test:reference
 ```
 
-See [`packages/webmcp/README.md`](packages/webmcp/README.md) for SDK usage and [`benchmarks/README.md`](benchmarks/README.md) for benchmark methodology.
+See [`packages/webmcp/README.md`](packages/webmcp/README.md) for SDK usage,
+[`packages/chrome-agent/README.md`](packages/chrome-agent/README.md) for the Chrome
+agent, and [`benchmarks/README.md`](benchmarks/README.md) for benchmark methodology.

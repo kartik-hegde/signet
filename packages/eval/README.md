@@ -38,6 +38,66 @@ The package installs a `signet` command. From the Signet monorepo, the complete 
 signet eval fixtures/cypress-realworld-app/eval/index.mjs --trials 5
 ```
 
+## Run the headless Signet Agent
+
+`signet agent` opens a fresh headless Chrome profile, discovers the page's exact
+WebMCP inventory, gives a prompt and those tools to a Chat Completions-compatible
+model, and records bounded evidence:
+
+```bash
+npm install --save-dev @signet/eval
+
+npx signet agent \
+  --url http://127.0.0.1:3000 \
+  --prompt "Add two notebooks to my cart and report the total." \
+  --endpoint http://127.0.0.1:8000/v1/chat/completions \
+  --model my-model \
+  --output .artifacts/notebooks.json
+```
+
+For repeatable tasks, define an application-owned suite:
+
+```js
+import { defineAgentTestSuite } from "@signet/eval/agent";
+
+export default defineAgentTestSuite({
+  schemaVersion: 1,
+  id: "storefront",
+  application: {
+    id: "storefront",
+    url: "http://127.0.0.1:3000",
+    async reset() {},
+    async snapshot({ phase }) {},
+    async grade({ before, after }) {
+      const passed = after.cartItems === before.cartItems + 2;
+      return {
+        source: "store-database",
+        authoritative: true,
+        authoritativeSuccess: passed,
+        safeSuccess: passed,
+        forbiddenEffects: [],
+      };
+    },
+  },
+  tasks: [
+    {
+      id: "add-notebooks",
+      prompt: "Add two notebooks to my cart and report the total.",
+      expectations: {
+        requiredTools: ["search_products", "add_cart_item"],
+      },
+    },
+  ],
+});
+```
+
+```bash
+npx signet agent ./signet.agent.mjs --trials 5
+```
+
+The Chrome extension remains a separate interactive UI. It is not installed by
+`@signet/eval`.
+
 ## Catch regressions while you iterate
 
 Keep a reviewed `report.json` as the baseline for an important workflow, then compare
