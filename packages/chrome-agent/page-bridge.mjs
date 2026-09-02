@@ -1,11 +1,11 @@
 /** These functions are serialized into the page's MAIN world by chrome.scripting. */
 
 export async function inspectWebMcpPage() {
-  const context = document.modelContext;
+  const context = webMcpContext();
   if (!context) {
     return {
       supported: false,
-      reason: "This page does not expose document.modelContext.",
+      reason: "WebMCP is not enabled in this browser.",
       tools: [],
       title: document.title,
       url: location.href,
@@ -30,7 +30,7 @@ export async function inspectWebMcpPage() {
         title: typeof tool.title === "string" ? tool.title : undefined,
         description:
           typeof tool.description === "string" ? tool.description : "",
-        inputSchema: normalize(tool.inputSchema),
+        inputSchema: normalize(tool.inputSchema ?? tool.input_schema),
         annotations:
           tool.annotations && typeof tool.annotations === "object"
             ? normalize(tool.annotations)
@@ -64,10 +64,23 @@ export async function inspectWebMcpPage() {
       return {};
     }
   }
+
+  function webMcpContext() {
+    return (
+      document.modelContext ??
+      (typeof globalThis.navigator === "undefined"
+        ? undefined
+        : globalThis.navigator.modelContext)
+    );
+  }
 }
 
 export async function executeWebMcpTool(name, input, callId, timeoutMs) {
-  const context = document.modelContext;
+  const context =
+    document.modelContext ??
+    (typeof globalThis.navigator === "undefined"
+      ? undefined
+      : globalThis.navigator.modelContext);
   if (!context || typeof context.getTools !== "function") {
     return {
       ok: false,
@@ -103,9 +116,19 @@ export async function executeWebMcpTool(name, input, callId, timeoutMs) {
   );
 
   try {
-    const result = await context.executeTool(tool, JSON.stringify(input), {
-      signal: controller.signal,
-    });
+    let result;
+    try {
+      result = await context.executeTool(tool, input, {
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (!String(error?.message).startsWith("Failed to parse input")) {
+        throw error;
+      }
+      result = await context.executeTool(tool, JSON.stringify(input), {
+        signal: controller.signal,
+      });
+    }
     return { ok: true, value: normalize(result) };
   } catch (error) {
     return {

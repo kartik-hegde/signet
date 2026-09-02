@@ -38,7 +38,7 @@ test("invokes the currently exposed tool", async () => {
     getTools: async () => [tool],
     executeTool: async (selected, input) => {
       assert.equal(selected, tool);
-      assert.equal(input, "{}");
+      assert.deepEqual(input, {});
       return '{"items":[]}';
     },
   });
@@ -48,11 +48,11 @@ test("invokes the currently exposed tool", async () => {
   assert.deepEqual(result, { ok: true, value: '{"items":[]}' });
 });
 
-test("serializes structured arguments for Chrome's execution boundary", async () => {
+test("uses structured arguments with the current WebMCP API", async () => {
   const tool = { name: "add_cart_item" };
   installPage({
     getTools: async () => [tool],
-    executeTool: async (_selected, input) => input,
+    executeTool: async (_selected, input) => JSON.stringify(input),
   });
 
   const result = await executeWebMcpTool(
@@ -63,6 +63,47 @@ test("serializes structured arguments for Chrome's execution boundary", async ()
   );
 
   assert.equal(result.value, '{"sku":"notebook","quantity":2}');
+});
+
+test("falls back to serialized arguments for older Chrome previews", async () => {
+  const tool = { name: "add_cart_item" };
+  installPage({
+    getTools: async () => [tool],
+    executeTool: async (_selected, input) => {
+      if (typeof input !== "string") throw new Error("Failed to parse input");
+      return input;
+    },
+  });
+
+  const result = await executeWebMcpTool(
+    "add_cart_item",
+    { sku: "notebook", quantity: 2 },
+    "call_legacy",
+    500,
+  );
+
+  assert.equal(result.value, '{"sku":"notebook","quantity":2}');
+});
+
+test("discovers tools from the older navigator API location", async () => {
+  installPage(
+    {
+      getTools: async () => [
+        {
+          name: "legacy_search",
+          description: "Search this site.",
+          input_schema: '{"type":"object"}',
+        },
+      ],
+    },
+    { navigatorOnly: true },
+  );
+
+  const page = await inspectWebMcpPage();
+
+  assert.equal(page.supported, true);
+  assert.equal(page.tools[0].name, "legacy_search");
+  assert.deepEqual(page.tools[0].inputSchema, { type: "object" });
 });
 
 test("aborts an active page call", async () => {
@@ -89,8 +130,15 @@ test("aborts an active page call", async () => {
   assert.match(result.error.message, /Stopped by the user/);
 });
 
-function installPage(modelContext) {
-  globalThis.document = { title: "Test page", modelContext };
+function installPage(modelContext, { navigatorOnly = false } = {}) {
+  globalThis.document = {
+    title: "Test page",
+    modelContext: navigatorOnly ? undefined : modelContext,
+  };
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: { modelContext: navigatorOnly ? modelContext : undefined },
+  });
   globalThis.location = {
     href: "https://shop.example/cart",
     origin: "https://shop.example",

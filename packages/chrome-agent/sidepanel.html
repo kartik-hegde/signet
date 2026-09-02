@@ -8,6 +8,8 @@
   </head>
   <body>
     <header class="app-header">
+      <button class="text-button" id="new-run-button" hidden>New</button>
+      <span></span>
       <button
         class="icon-button"
         id="settings-button"
@@ -20,17 +22,11 @@
           />
         </svg>
       </button>
-      <div class="wordmark">
-        <span class="brand-mark" aria-hidden="true">S</span
-        ><strong>Signet</strong>
-      </div>
-      <button class="text-button" id="new-run-button" hidden>New</button>
     </header>
 
     <main id="main-view">
       <section class="workspace">
         <div class="hero" id="hero">
-          <p class="kicker">Signet Agent</p>
           <h1>What do you want to do today?</h1>
           <p class="page-context" id="page-context">
             Checking this page for WebMCP tools…
@@ -53,7 +49,22 @@
               ><strong>Tools available</strong>
               <span class="count" id="tool-count">0</span></span
             >
-            <span class="tools-state" id="tools-state">Checking…</span>
+            <span class="tools-actions">
+              <span class="tools-state" id="tools-state" role="status"
+                >Checking…</span
+              >
+              <button
+                class="refresh-button"
+                id="refresh-button"
+                type="button"
+                aria-label="Refresh available tools"
+                title="Refresh available tools"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />
+                </svg>
+              </button>
+            </span>
           </summary>
           <div class="tool-list" id="tool-list">
             <p class="empty-state">No tools found.</p>

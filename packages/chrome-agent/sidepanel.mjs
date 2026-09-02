@@ -28,6 +28,7 @@ const elements = {
   promptForm: document.querySelector("#prompt-form"),
   promptMessage: document.querySelector("#prompt-message"),
   provider: document.querySelector("#provider-input"),
+  refresh: document.querySelector("#refresh-button"),
   run: document.querySelector("#run-button"),
   runStatus: document.querySelector("#run-status"),
   saveSettings: document.querySelector("#save-settings-button"),
@@ -52,10 +53,11 @@ const state = {
   callStartedAt: new Map(),
   callCount: 0,
   starting: false,
+  refreshTimers: [],
+  refreshVersion: 0,
 };
 
 await loadSettings();
-await refreshPage();
 
 elements.settingsButton.addEventListener("click", openSettings);
 elements.closeSettings.addEventListener("click", closeSettings);
@@ -64,6 +66,11 @@ elements.provider.addEventListener("change", () =>
 );
 elements.saveSettings.addEventListener("click", () => void saveSettings());
 elements.newRun.addEventListener("click", resetRun);
+elements.refresh.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  startDiscoveryCycle();
+});
 elements.promptForm.addEventListener("submit", (event) => {
   event.preventDefault();
   void startRun();
@@ -77,7 +84,7 @@ elements.prompt.addEventListener("keydown", (event) => {
 });
 
 chrome.tabs.onActivated.addListener(() => {
-  if (!state.runController && !state.starting) void refreshPage();
+  if (!state.runController && !state.starting) startDiscoveryCycle();
 });
 chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (
@@ -86,13 +93,41 @@ chrome.tabs.onUpdated.addListener((tabId, change) => {
     tabId === state.tabId &&
     change.status === "complete"
   )
-    void refreshPage();
+    startDiscoveryCycle();
+});
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "signet:refresh-tools") startDiscoveryCycle();
 });
 
+startDiscoveryCycle();
+
+function startDiscoveryCycle() {
+  clearDiscoveryRetries();
+  state.tools = [];
+  renderTools();
+  void refreshPage();
+  for (const delay of [1_000, 3_000, 7_000]) {
+    state.refreshTimers.push(
+      setTimeout(() => {
+        if (!state.runController && !state.starting && state.tools.length === 0)
+          void refreshPage();
+      }, delay),
+    );
+  }
+}
+
+function clearDiscoveryRetries() {
+  for (const timer of state.refreshTimers) clearTimeout(timer);
+  state.refreshTimers = [];
+}
+
 async function refreshPage() {
+  const version = ++state.refreshVersion;
   elements.pageContext.className = "page-context";
   elements.pageContext.textContent = "Checking this page for WebMCP tools…";
   elements.toolsState.textContent = "Checking…";
+  elements.refresh.disabled = true;
+  elements.refresh.classList.add("is-refreshing");
   try {
     const [tab] = await chrome.tabs.query({
       active: true,
@@ -101,26 +136,43 @@ async function refreshPage() {
     if (!tab?.id) throw new Error("No active tab is available.");
     state.tabId = tab.id;
     const page = await runInPage(inspectWebMcpPage);
+    if (version !== state.refreshVersion) return;
     state.tools = Array.isArray(page.tools) ? page.tools : [];
     renderTools();
     const title = page.title || tab.title || "Current page";
     if (!page.supported) {
-      elements.pageContext.textContent = `${title} · WebMCP unavailable`;
+      elements.pageContext.textContent = `No WebMCP tools detected on ${title}`;
       elements.pageContext.classList.add("is-error");
-      elements.toolsState.textContent = "Unavailable";
+      elements.toolsState.textContent = "Not detected";
       return;
     }
     elements.pageContext.textContent = state.tools.length
-      ? `${title} · WebMCP enabled`
-      : `${title} · No tools exposed`;
-    if (state.tools.length) elements.pageContext.classList.add("is-ready");
-    elements.toolsState.textContent = "WebMCP enabled";
-  } catch {
+      ? `${state.tools.length} tool${state.tools.length === 1 ? "" : "s"} ready on ${title}`
+      : `No WebMCP tools detected on ${title}`;
+    if (state.tools.length) {
+      elements.pageContext.classList.add("is-ready");
+      elements.toolsState.textContent = "Updated now";
+      clearDiscoveryRetries();
+    } else {
+      elements.toolsState.textContent = "No tools";
+    }
+  } catch (error) {
+    if (version !== state.refreshVersion) return;
     state.tools = [];
     renderTools();
-    elements.pageContext.textContent = "WebMCP unavailable on this tab";
+    const needsAccess = pageAccessRequired(error);
+    elements.pageContext.textContent = needsAccess
+      ? "Click the Signet toolbar icon to allow access to this page."
+      : "WebMCP could not be checked on this page.";
     elements.pageContext.classList.add("is-error");
-    elements.toolsState.textContent = "Unavailable";
+    elements.toolsState.textContent = needsAccess
+      ? "Needs access"
+      : "Unavailable";
+  } finally {
+    if (version === state.refreshVersion) {
+      elements.refresh.disabled = false;
+      elements.refresh.classList.remove("is-refreshing");
+    }
   }
 }
 
@@ -447,6 +499,7 @@ function setRunning(running) {
   elements.stop.hidden = !running;
   elements.settingsButton.disabled = running;
   elements.newRun.disabled = running;
+  elements.refresh.disabled = running;
   if (
     !running &&
     !["Complete", "Failed", "Stopped"].includes(elements.runStatus.textContent)
@@ -465,4 +518,14 @@ function formatDuration(value) {
   return value >= 1_000
     ? `${(value / 1_000).toFixed(1)}s`
     : `${value.toFixed(0)}ms`;
+}
+
+function pageAccessRequired(error) {
+  const message = error?.message ?? String(error);
+  return (
+    message.includes("Cannot access") ||
+    message.includes("cannot be scripted") ||
+    message.includes("extensions gallery") ||
+    message.includes("Missing host permission")
+  );
 }
