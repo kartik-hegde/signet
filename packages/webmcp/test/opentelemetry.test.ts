@@ -21,6 +21,7 @@ const harness = () => {
     addEvent: vi.fn(),
     end: vi.fn(),
     recordException: vi.fn(),
+    setAttribute: vi.fn(),
     setStatus: vi.fn(),
   } as unknown as Span;
   const tracer = {
@@ -40,8 +41,11 @@ describe("openTelemetryObserver", () => {
     void observe(event("authorized"));
     void observe(event("succeeded"));
 
-    expect(tracer.startSpan).toHaveBeenCalledWith("webmcp cancel-order", {
+    expect(tracer.startSpan).toHaveBeenCalledWith("execute_tool cancel-order", {
       attributes: {
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": "cancel-order",
+        "gen_ai.tool.type": "function",
         "service.name": "storefront",
         "signet.invocation.id": "invocation-1",
         "signet.operation.name": "cancel-order",
@@ -50,7 +54,9 @@ describe("openTelemetryObserver", () => {
     expect(span.addEvent).toHaveBeenNthCalledWith(1, "signet.authorized", {
       "signet.duration_ms": 12,
     });
-    expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatusCode.OK });
+    expect(span.setStatus).toHaveBeenCalledWith({
+      code: SpanStatusCode.UNSET,
+    });
     expect(span.end).toHaveBeenCalledOnce();
   });
 
@@ -62,7 +68,8 @@ describe("openTelemetryObserver", () => {
     void observe(event("started"));
     void observe(event("failed", { error: failure }));
 
-    expect(span.recordException).toHaveBeenCalledWith(failure);
+    expect(span.recordException).not.toHaveBeenCalled();
+    expect(span.setAttribute).toHaveBeenCalledWith("error.type", "Error");
     expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatusCode.ERROR });
     expect(span.end).toHaveBeenCalledOnce();
   });
@@ -103,7 +110,9 @@ describe("openTelemetryObserver", () => {
     expect(tracer.startSpan).toHaveBeenCalledWith(
       "agent action invocation-1",
       expect.objectContaining({
-        attributes: { "signet.invocation.id": "invocation-1" },
+        attributes: expect.objectContaining({
+          "signet.invocation.id": "invocation-1",
+        }),
       }),
     );
   });
@@ -120,7 +129,7 @@ describe("openTelemetryObserver", () => {
     });
 
     expect(tracer.startSpan).toHaveBeenCalledWith(
-      "webmcp tool",
+      "execute_tool tool",
       expect.any(Object),
     );
   });

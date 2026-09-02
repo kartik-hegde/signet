@@ -89,6 +89,7 @@ export default defineConfig({
         items: [
           { text: "Production checklist", link: "/production-checklist" },
           { text: "Design contract", link: "/design" },
+          { text: "Observability spec", link: "/specs/observability" },
           { text: "Ecosystem research", link: "/ecosystem" },
           { text: "Product tracker", link: "/pm" },
         ],

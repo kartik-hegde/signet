@@ -70,6 +70,77 @@ describe("createSignet", () => {
     expect(JSON.stringify(events)).not.toContain("value");
   });
 
+  it("correlates caller telemetry without exposing it to application code", async () => {
+    const native = modelContext();
+    const events: import("../src/index.js").GuardEvent[] = [];
+    const execute = vi.fn((_input, options) => {
+      expect(options).not.toHaveProperty("callerTelemetry");
+      return "ok";
+    });
+    const signet = createSignet({
+      modelContext: native.context,
+      observe: (event) => {
+        events.push(event);
+      },
+    });
+    await signet.expose({
+      name: "correlated",
+      description: "Correlate one agent call.",
+      inputSchema: schema,
+      execute,
+    });
+
+    await native.registrations.get("correlated")?.tool.execute(
+      { value: 1 },
+      {
+        signal: new AbortController().signal,
+        callerTelemetry: {
+          version: 1,
+          sequence: 3,
+          model: { provider: "openai", name: "gpt-5" },
+        },
+      },
+    );
+
+    expect(
+      events.find(({ stage }) => stage === "started")?.callerTelemetry,
+    ).toEqual(expect.objectContaining({ sequence: 3 }));
+    expect(events.filter(({ stage }) => stage !== "started")).toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({ callerTelemetry: expect.anything() }),
+      ]),
+    );
+  });
+
+  it("exports OTLP with one createSignet option", async () => {
+    const native = modelContext();
+    const send = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", send);
+    const signet = createSignet({
+      modelContext: native.context,
+      telemetry: {
+        otlp: "http://collector.example/v1/traces",
+        serviceName: "storefront",
+        flushIntervalMs: 60_000,
+      },
+    });
+    await signet.expose({
+      name: "exported",
+      description: "Export one call.",
+      inputSchema: schema,
+      execute: () => "ok",
+    });
+    await native.registrations
+      .get("exported")
+      ?.tool.execute({ value: 1 }, { signal: new AbortController().signal });
+    await signet.telemetry?.flush();
+
+    expect(send).toHaveBeenCalledOnce();
+    expect(String(send.mock.calls[0]?.[1]?.body)).toContain("storefront");
+    await signet.telemetry?.shutdown();
+    vi.unstubAllGlobals();
+  });
+
   it("exposes a four-field tool through native registration", async () => {
     const native = modelContext();
     const signet = createSignet({ modelContext: native.context });

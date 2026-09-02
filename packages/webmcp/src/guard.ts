@@ -132,6 +132,9 @@ export async function runGuarded<
       timestamp: Date.now(),
       durationMs: Math.max(0, now() - startedAt),
       ...(error === undefined ? {} : { error }),
+      ...(stage === "started" && executeOptions.callerTelemetry !== undefined
+        ? { callerTelemetry: executeOptions.callerTelemetry }
+        : {}),
     };
 
     try {

@@ -24,6 +24,7 @@
     "docs:dev": "npm run docs:dev --workspace=@signet/webmcp",
     "docs:preview": "npm run docs:preview --workspace=@signet/webmcp",
     "tutorial:build": "npm run tutorial:build --workspace=@signet/webmcp",
+    "tutorial:dev": "npm run tutorial:dev --workspace=@signet/webmcp",
     "tutorial:test": "npm run tutorial:test --workspace=@signet/webmcp",
     "test:eval": "node --test packages/eval/test/*.test.mjs",
     "test:reference:install": "npm run test:reference:install --workspace=@signet/webmcp",
