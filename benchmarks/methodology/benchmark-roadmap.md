@@ -1,6 +1,6 @@
 # Benchmark audit and roadmap
 
-Updated: 2026-08-31
+Updated: 2026-09-02
 
 ## Decision
 
@@ -49,8 +49,8 @@ and execution behavior it adds around that access.
 | --- | --- | --- | --- |
 | Existing functions become agent-ready quickly | Directional adapter SLOC in `build-vs-buy/` | Weak | End-to-end integration time, total changed code, defects, and time to first real-agent success |
 | Native WebMCP reduces agent work | Repeated UI/raw/Signet payment runs in P1 | Useful ecosystem baseline | More tasks and domains; this is primarily a WebMCP claim, not a Signet runtime claim |
-| Tools are selected with valid arguments and complete the task | Two payment-domain tasks plus one Test Agent run | Early instrument, insufficient benchmark | Held-out task suites, argument scoring, continuation/fallback classification, and repeated runs across apps |
-| Developers can inspect, test, and hill-climb the interface | Inventory, call, lifecycle, token, and oracle traces exist | Instrumentation exists; value is unmeasured | Before/after interface revisions and developer time-to-diagnosis or improvement |
+| Tools are selected with valid arguments and complete the task | Two payment-domain tasks plus one Test Agent run; every Trial scores discovery, selection, argument validity, error continuation, and UI fallback | Instrument in place, task coverage still thin | Held-out task suites, seeded variants, and repeated runs across apps |
+| Developers can inspect, test, and hill-climb the interface | Inventory, call, lifecycle, token, and oracle traces exist, and `signet check` gates selection and argument regressions per Case and condition | Instrumentation and gates exist; value is unmeasured | Before/after interface revisions and developer time-to-diagnosis or improvement |
 | Consequential actions are reliable and honest under faults | Seven deterministic scenarios, durable-store arm, Saleor and Cal.diy recovery proofs | Strongest current lane | Full shipped-interface path, authorization/cancellation/lifecycle coverage, and real-browser reload/navigation faults |
 | Application state remains authoritative | Independent SQLite, HTTP, and Postgres oracles | Strong | Standardize the oracle contract and failure taxonomy across applications |
 | The workflow transfers across real websites | Cypress RWA, Saleor, and Cal.diy integrations | Promising case-study evidence | One runner, one result schema, comparable tasks, and repeated trials across all apps |
@@ -298,7 +298,10 @@ which improvement belongs to WebMCP, Signet, the application, or the agent.
 ## Hill-climbing scorecard
 
 Do not collapse the benchmark into one public number. For internal iteration, display
-one compact scorecard in this order:
+one compact scorecard in this order. Rows 1–7 are computed today: rows 1, 2, and 7 in
+the report's **Conditions** table and rows 3–6 in its **Interface quality** table. Row 8
+is in **Failure evidence** and the deterministic safety lane; row 9 still needs the
+integration study.
 
 1. authoritative task completion;
 2. safe task completion;
@@ -321,4 +324,6 @@ desired implementation look better.
 2. Generalize the Test Agent runner and migrate Cypress RWA plus Cal.diy to prove the
    app adapter boundary.
 3. Add the first held-out, multi-task hill-climbing suite and use it to guide the next
-   tool-definition or readiness improvement in Signet.
+   tool-definition or readiness improvement in Signet. The per-revision metrics and
+   regression gates this needs now exist in `@signet/eval`; what is missing is the
+   balanced task suite, its seeded variants, and a recorded intervention per revision.

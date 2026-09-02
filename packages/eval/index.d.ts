@@ -61,7 +61,10 @@ export function defineSuite(definition: SignetSuite): SignetSuite;
 export function validateCase(value: unknown): SignetCase;
 
 export type TrialStatus =
-  "completed" | "failed" | "timed_out" | "environment_error";
+  | "completed"
+  | "failed"
+  | "timed_out"
+  | "environment_error";
 export type FailureCategory =
   | "environment"
   | "registration"
@@ -72,6 +75,98 @@ export type FailureCategory =
   | "verification"
   | "oracle"
   | "agent_provider";
+
+export interface QualityDimension {
+  readonly applicable: boolean;
+  readonly reason?: string;
+}
+
+export interface DiscoveryQuality extends QualityDimension {
+  readonly expected: number;
+  readonly available: number;
+  readonly unavailableCapabilities: readonly string[];
+  readonly complete: boolean | null;
+}
+
+export interface SelectionQuality extends QualityDimension {
+  readonly requiredCapabilities: readonly string[];
+  readonly completionCapability: string | null;
+  readonly calledCapabilities: readonly string[];
+  readonly missingCapabilities: readonly string[];
+  readonly completionCapabilityCalled: boolean | null;
+  readonly unknownToolCalls: readonly string[];
+  readonly toolCalls: number;
+  readonly accurate: boolean | null;
+}
+
+export interface ArgumentQuality extends QualityDimension {
+  readonly evaluatedCalls: number;
+  readonly validCalls: number;
+  readonly invalidCalls: number;
+  readonly validity: number | null;
+  readonly accurate: boolean | null;
+  readonly violations: readonly {
+    readonly tool: string;
+    readonly sequence: number;
+    readonly problems: readonly string[];
+  }[];
+}
+
+export interface ContinuationQuality extends QualityDimension {
+  readonly toolErrors: number;
+  readonly continuedErrors: number;
+  readonly continuationRate: number | null;
+  readonly continued: boolean | null;
+  readonly errorTools?: readonly string[];
+}
+
+export interface SurfaceQuality extends QualityDimension {
+  readonly uiActions: number;
+  readonly uiInspections: number;
+  readonly toolCalls: number;
+  readonly failedToolCalls: number;
+  readonly fullWebMcp: boolean | null;
+  readonly uiFallback: boolean | null;
+}
+
+export interface BudgetQuality extends QualityDimension {
+  readonly actions: number;
+  readonly toolCalls: number;
+  readonly maxActions?: number | null;
+  readonly maxToolCalls?: number | null;
+  readonly exceeded: boolean | null;
+  readonly exceededBudgets: readonly string[];
+}
+
+export interface InterfaceQuality {
+  readonly schemaVersion: 1;
+  readonly source: "events" | "summary" | "none";
+  readonly discovery: DiscoveryQuality;
+  readonly selection: SelectionQuality;
+  readonly arguments: ArgumentQuality;
+  readonly continuation: ContinuationQuality;
+  readonly surface: SurfaceQuality;
+  readonly budgets: BudgetQuality;
+}
+
+export const INTERFACE_QUALITY_SCHEMA_VERSION: 1;
+export const TRACE_EVENTS: {
+  readonly toolCall: "webmcp_call";
+  readonly uiAction: "ui_action";
+  readonly uiInspection: "ui_inspection";
+};
+export function scoreInterfaceQuality(input: {
+  readonly caseDefinition: SignetCase;
+  readonly inventory?: readonly Record<string, unknown>[];
+  readonly events?: readonly Record<string, unknown>[];
+  readonly agent?: Record<string, unknown>;
+  readonly status?: TrialStatus;
+}): InterfaceQuality;
+export function validateAgainstSchema(
+  value: unknown,
+  schema: unknown,
+  path?: string,
+): string[];
 
 export interface TrialEvidence {
   readonly schemaVersion: 1;
@@ -106,6 +201,7 @@ export interface TrialEvidence {
       readonly components?: Record<string, unknown>;
     };
   };
+  readonly quality?: InterfaceQuality;
   readonly failure?: {
     readonly category: FailureCategory;
     readonly message: string;
@@ -134,6 +230,7 @@ export function createEvidence(input: {
   readonly events?: TrialEvidence["events"];
   readonly agent: TrialEvidence["agent"];
   readonly oracle: TrialEvidence["oracle"];
+  readonly quality?: TrialEvidence["quality"];
   readonly failure?: TrialEvidence["failure"];
   readonly artifacts?: TrialEvidence["artifacts"];
   readonly redaction?: TrialEvidence["redaction"];
@@ -253,6 +350,49 @@ export function runTrial(input: {
   readonly trialId?: string;
 }): Promise<TrialEvidence>;
 
+export interface InterfaceQualityAggregate {
+  readonly scoredTrials: number;
+  readonly discovery: {
+    readonly scoredTrials: number;
+    readonly completeTrials: number;
+    readonly completeRate: number | null;
+    readonly unavailableCapabilities: Readonly<Record<string, number>>;
+  };
+  readonly selection: {
+    readonly scoredTrials: number;
+    readonly accurateTrials: number;
+    readonly accuracy: number | null;
+    readonly missingCapabilities: Readonly<Record<string, number>>;
+    readonly unknownToolCalls: Readonly<Record<string, number>>;
+  };
+  readonly arguments: {
+    readonly scoredTrials: number;
+    readonly accurateTrials: number;
+    readonly accuracy: number | null;
+    readonly evaluatedCalls: number;
+    readonly validCalls: number;
+    readonly validity: number | null;
+  };
+  readonly continuation: {
+    readonly scoredTrials: number;
+    readonly toolErrors: number;
+    readonly continuedErrors: number;
+    readonly continuationRate: number | null;
+  };
+  readonly surface: {
+    readonly scoredTrials: number;
+    readonly fullWebMcpTrials: number;
+    readonly fullWebMcpRate: number | null;
+    readonly uiFallbackTrials: number;
+    readonly uiFallbackRate: number | null;
+  };
+  readonly budgets: {
+    readonly scoredTrials: number;
+    readonly exceededTrials: number;
+    readonly exceededRate: number | null;
+  };
+}
+
 export interface EvaluationAggregate {
   readonly trials: number;
   readonly authoritativeSuccesses: number;
@@ -266,6 +406,7 @@ export interface EvaluationAggregate {
   readonly environmentErrors: number;
   readonly forbiddenEffectCount: number;
   readonly failuresByCategory: Readonly<Record<string, number>>;
+  readonly interfaceQuality: InterfaceQualityAggregate;
 }
 
 export interface EvaluationReport {
@@ -302,6 +443,10 @@ export function writeReport(input: {
 
 export interface ChangeCheckPolicy {
   readonly maxSafeRegression?: number;
+  readonly maxAuthoritativeRegression?: number;
+  readonly maxSelectionRegression?: number;
+  readonly maxArgumentRegression?: number;
+  readonly maxTimeoutRateIncrease?: number;
   readonly maxDurationRatio?: number | null;
   readonly maxTokenRatio?: number | null;
   readonly requireAtLeastBaselineTrials?: boolean;

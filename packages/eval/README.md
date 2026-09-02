@@ -38,6 +38,40 @@ The package installs a `signet` command. From the Signet monorepo, the complete 
 signet eval fixtures/cypress-realworld-app/eval/index.mjs --trials 5
 ```
 
+## Score the interface, not just the outcome
+
+The oracle decides whether the task succeeded. It cannot say whether the _interface_
+served the agent well, so every Trial also carries interface-quality metrics derived
+from the Case expectations, the exact inventory the browser published, and the recorded
+trace:
+
+| Dimension    | Question it answers                                                    |
+| ------------ | ---------------------------------------------------------------------- |
+| Discovery    | Did the condition publish every capability the Case requires?          |
+| Selection    | Did the agent call those capabilities, and only tools that exist?      |
+| Arguments    | Were the recorded arguments valid against the published `inputSchema`? |
+| Continuation | After a tool error, did the agent keep working?                        |
+| Surface      | Did the run complete through WebMCP alone, or fall back to the DOM?    |
+| Budgets      | Did the run stay inside the Case's action and tool-call budgets?       |
+
+Each dimension reports whether it applied. A UI-only arm never publishes the WebMCP
+capabilities a Case requires, so its selection accuracy reads as unscored rather than
+zero — a condition boundary must never look like an interface defect. Metrics are
+recorded per Trial under `quality` and aggregated per condition under
+`aggregate.interfaceQuality`.
+
+Agent adapters supply the trace by emitting three event types, exported as
+`TRACE_EVENTS`:
+
+```js
+emit("webmcp_call", { tool, input, ok, error }); // one WebMCP tool call
+emit("ui_action", { action }); // one DOM interaction
+emit("ui_inspection"); // one page read
+```
+
+An adapter that cannot emit a trace can instead return `toolSequence` and `actions`
+counts; selection and surface are still scored, and arguments report as unscored.
+
 ## Catch regressions while you iterate
 
 Keep a reviewed `report.json` as the baseline for an important workflow, then compare
@@ -53,10 +87,15 @@ The run writes `check.json` for CI and `check.md` for code review next to its no
 report. The check compares every Case and condition independently, so an improvement in
 one workflow cannot hide a regression in another. By default it rejects:
 
-- any safe-success regression;
+- any safe-success or authoritative-success regression;
+- a drop in selection accuracy or argument validity;
+- an increased timeout rate;
 - new forbidden effects or environment errors;
 - missing Cases, conditions, or trial coverage; and
 - a changed Case definition that would make the comparison invalid.
+
+A metric the baseline never measured is left ungated rather than treated as a
+regression, so reports written before a metric existed stay comparable.
 
 Agent evaluations are probabilistic, so teams can declare an explicit tolerance while
 keeping safety failures strict:
@@ -69,6 +108,11 @@ signet eval scenarios/send-payment.eval.mjs \
   --max-duration-ratio 1.25 \
   --max-token-ratio 1.2
 ```
+
+`--max-safe-regression` sets the default allowance for every probabilistic outcome
+rate. Tighten or loosen one of them independently with
+`--max-authoritative-regression`, `--max-selection-regression`,
+`--max-argument-regression`, or `--max-timeout-increase`.
 
 Existing reports can also be checked without rerunning an agent:
 

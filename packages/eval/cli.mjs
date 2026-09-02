@@ -176,6 +176,14 @@ export function parseArgs(argv) {
         options[key] = value;
       else if (key === "max-safe-regression")
         options.maxSafeRegression = proportion(value, rawKey);
+      else if (key === "max-authoritative-regression")
+        options.maxAuthoritativeRegression = proportion(value, rawKey);
+      else if (key === "max-selection-regression")
+        options.maxSelectionRegression = proportion(value, rawKey);
+      else if (key === "max-argument-regression")
+        options.maxArgumentRegression = proportion(value, rawKey);
+      else if (key === "max-timeout-increase")
+        options.maxTimeoutRateIncrease = proportion(value, rawKey);
       else if (key === "max-duration-ratio")
         options.maxDurationRatio = positiveNumber(value, rawKey);
       else if (key === "max-token-ratio")
@@ -201,6 +209,14 @@ export function parseCheckArgs(argv) {
       if (["against", "output"].includes(key)) options[key] = value;
       else if (key === "max-safe-regression")
         options.maxSafeRegression = proportion(value, key);
+      else if (key === "max-authoritative-regression")
+        options.maxAuthoritativeRegression = proportion(value, key);
+      else if (key === "max-selection-regression")
+        options.maxSelectionRegression = proportion(value, key);
+      else if (key === "max-argument-regression")
+        options.maxArgumentRegression = proportion(value, key);
+      else if (key === "max-timeout-increase")
+        options.maxTimeoutRateIncrease = proportion(value, key);
       else if (key === "max-duration-ratio")
         options.maxDurationRatio = positiveNumber(value, key);
       else if (key === "max-token-ratio")
@@ -318,6 +334,10 @@ function positiveNumber(value, label) {
 function policyFromOptions(options) {
   return {
     maxSafeRegression: options.maxSafeRegression,
+    maxAuthoritativeRegression: options.maxAuthoritativeRegression,
+    maxSelectionRegression: options.maxSelectionRegression,
+    maxArgumentRegression: options.maxArgumentRegression,
+    maxTimeoutRateIncrease: options.maxTimeoutRateIncrease,
     maxDurationRatio: options.maxDurationRatio,
     maxTokenRatio: options.maxTokenRatio,
   };
@@ -363,6 +383,13 @@ Options:
   --baseline condition       Baseline used for comparison deltas
   --against report.json      Compare this run with a saved report and fail on regression
   --max-safe-regression 0    Allowed safe-success drop, 0–1 (default: 0)
+  --max-authoritative-regression n
+                             Allowed authoritative-success drop (default: safe allowance)
+  --max-selection-regression n
+                             Allowed selection-accuracy drop (default: safe allowance)
+  --max-argument-regression n
+                             Allowed argument-validity drop (default: safe allowance)
+  --max-timeout-increase n   Allowed timeout-rate rise (default: safe allowance)
   --max-duration-ratio n     Optional median-duration budget versus baseline
   --max-token-ratio n        Optional median-token budget versus baseline
   --list                     List the selected matrix without running it
@@ -381,6 +408,13 @@ Options:
   --against report.json      Baseline report (required)
   --output directory         Output directory (default: candidate directory)
   --max-safe-regression 0    Allowed safe-success drop, 0–1 (default: 0)
+  --max-authoritative-regression n
+                             Allowed authoritative-success drop (default: safe allowance)
+  --max-selection-regression n
+                             Allowed selection-accuracy drop (default: safe allowance)
+  --max-argument-regression n
+                             Allowed argument-validity drop (default: safe allowance)
+  --max-timeout-increase n   Allowed timeout-rate rise (default: safe allowance)
   --max-duration-ratio n     Optional median-duration budget versus baseline
   --max-token-ratio n        Optional median-token budget versus baseline
   -h, --help                 Show this help

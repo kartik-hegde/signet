@@ -116,6 +116,48 @@ export function buildChangeCheck({ baseline, candidate, policy = {} }) {
         );
       }
 
+      cellIssues.push(
+        ...[
+          rateRegression({
+            baseline: baselineAggregate.authoritativeSuccessRate,
+            candidate: candidateAggregate.authoritativeSuccessRate,
+            allowance: normalizedPolicy.maxAuthoritativeRegression,
+            code: "authoritative_success_regressed",
+            label: "authoritative success",
+            caseId,
+            condition,
+          }),
+          rateRegression({
+            baseline: selectionAccuracy(baselineAggregate),
+            candidate: selectionAccuracy(candidateAggregate),
+            allowance: normalizedPolicy.maxSelectionRegression,
+            code: "selection_accuracy_regressed",
+            label: "selection accuracy",
+            caseId,
+            condition,
+          }),
+          rateRegression({
+            baseline: argumentValidity(baselineAggregate),
+            candidate: argumentValidity(candidateAggregate),
+            allowance: normalizedPolicy.maxArgumentRegression,
+            code: "argument_validity_regressed",
+            label: "argument validity",
+            caseId,
+            condition,
+          }),
+          rateRegression({
+            baseline: timeoutRate(baselineAggregate),
+            candidate: timeoutRate(candidateAggregate),
+            allowance: normalizedPolicy.maxTimeoutRateIncrease,
+            code: "timeout_rate_increased",
+            label: "timeout rate",
+            caseId,
+            condition,
+            higherIsWorse: true,
+          }),
+        ].filter(Boolean),
+      );
+
       for (const [effect, count] of increasedForbiddenEffects(
         baselineAggregate,
         candidateAggregate,
@@ -241,7 +283,7 @@ export function renderChangeCheckMarkdown(check) {
     .map(({ caseId, condition, status, baseline, candidate, deltas }) => {
       const before = baseline ? score(baseline, "safeSuccesses") : "—";
       const after = candidate ? score(candidate, "safeSuccesses") : "—";
-      return `| ${caseId} | ${condition} | ${before} | ${after} | ${signedPoints(deltas?.safeSuccessRate)} | ${formatRatio(deltas?.medianDurationRatio)} | ${formatRatio(deltas?.medianTokenRatio)} | ${statusLabel(status)} |`;
+      return `| ${caseId} | ${condition} | ${before} | ${after} | ${signedPoints(deltas?.safeSuccessRate)} | ${signedPoints(deltas?.selectionAccuracy)} | ${signedPoints(deltas?.argumentValidity)} | ${formatRatio(deltas?.medianDurationRatio)} | ${formatRatio(deltas?.medianTokenRatio)} | ${statusLabel(status)} |`;
     })
     .join("\n");
   const regressionList = check.regressions.length
@@ -263,9 +305,9 @@ Generated: ${check.generatedAt}
 
 ## Case matrix
 
-| Case | Condition | Baseline safe | Candidate safe | Safe success Δ | Duration | Tokens | Result |
-|---|---|---:|---:|---:|---:|---:|---|
-${rows || "| — | — | — | — | — | — | — | — |"}
+| Case | Condition | Baseline safe | Candidate safe | Safe success Δ | Selection Δ | Arguments Δ | Duration | Tokens | Result |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+${rows || "| — | — | — | — | — | — | — | — | — | — |"}
 
 ## Regressions
 
@@ -274,6 +316,10 @@ ${regressionList}
 ## Policy
 
 - Maximum safe-success regression: ${percentagePoints(check.policy.maxSafeRegression)}
+- Maximum authoritative-success regression: ${percentagePoints(check.policy.maxAuthoritativeRegression)}
+- Maximum selection-accuracy regression: ${percentagePoints(check.policy.maxSelectionRegression)}
+- Maximum argument-validity regression: ${percentagePoints(check.policy.maxArgumentRegression)}
+- Maximum timeout-rate increase: ${percentagePoints(check.policy.maxTimeoutRateIncrease)}
 - Require at least baseline trial count: ${yesNo(check.policy.requireAtLeastBaselineTrials)}
 - Require unchanged Case definitions: ${yesNo(check.policy.requireSameCaseDefinitions)}
 - Reject new environment errors: ${yesNo(check.policy.disallowNewEnvironmentErrors)}
@@ -296,14 +342,67 @@ function validateReport(value, label) {
 }
 
 function normalizePolicy(policy) {
+  const maxSafeRegression = proportion(policy.maxSafeRegression ?? 0);
   return {
-    maxSafeRegression: proportion(policy.maxSafeRegression ?? 0),
+    maxSafeRegression,
+    // A team that accepts probabilistic noise on safe success accepts the same noise
+    // on the other outcome rates, so these default to the tolerance already declared.
+    maxAuthoritativeRegression: proportion(
+      policy.maxAuthoritativeRegression ?? maxSafeRegression,
+    ),
+    maxSelectionRegression: proportion(
+      policy.maxSelectionRegression ?? maxSafeRegression,
+    ),
+    maxArgumentRegression: proportion(
+      policy.maxArgumentRegression ?? maxSafeRegression,
+    ),
+    maxTimeoutRateIncrease: proportion(
+      policy.maxTimeoutRateIncrease ?? maxSafeRegression,
+    ),
     maxDurationRatio: optionalPositive(policy.maxDurationRatio),
     maxTokenRatio: optionalPositive(policy.maxTokenRatio),
     requireAtLeastBaselineTrials: policy.requireAtLeastBaselineTrials !== false,
     requireSameCaseDefinitions: policy.requireSameCaseDefinitions !== false,
     disallowNewEnvironmentErrors: policy.disallowNewEnvironmentErrors !== false,
   };
+}
+
+/**
+ * Compare one rate, but only when both reports measured it. A metric the baseline
+ * never scored — an older report, or a condition that never exposed the capability —
+ * is left unmeasured rather than gated into a false regression.
+ */
+function rateRegression({
+  baseline,
+  candidate,
+  allowance,
+  code,
+  label,
+  caseId,
+  condition,
+  higherIsWorse = false,
+}) {
+  if (typeof baseline !== "number" || typeof candidate !== "number")
+    return null;
+  const drop = higherIsWorse ? candidate - baseline : baseline - candidate;
+  if (drop <= allowance + Number.EPSILON) return null;
+  return issue(
+    code,
+    `${caseId} × ${condition} ${label} ${higherIsWorse ? "rose" : "fell"} ${percentagePoints(drop)} (${rounded(baseline * 100)}% → ${rounded(candidate * 100)}%), exceeding the ${percentagePoints(allowance)} allowance.`,
+    { caseId, condition },
+  );
+}
+
+function selectionAccuracy(aggregate) {
+  return aggregate?.interfaceQuality?.selection?.accuracy ?? null;
+}
+
+function argumentValidity(aggregate) {
+  return aggregate?.interfaceQuality?.arguments?.validity ?? null;
+}
+
+function timeoutRate(aggregate) {
+  return aggregate?.trials > 0 ? aggregate.timeouts / aggregate.trials : null;
 }
 
 function proportion(value) {
@@ -362,6 +461,18 @@ function cell(caseId, condition, baseline, candidate, issues) {
               candidate.medianTokens,
               baseline.medianTokens,
             ),
+            selectionAccuracy: difference(
+              selectionAccuracy(candidate),
+              selectionAccuracy(baseline),
+            ),
+            argumentValidity: difference(
+              argumentValidity(candidate),
+              argumentValidity(baseline),
+            ),
+            timeoutRate: difference(
+              timeoutRate(candidate),
+              timeoutRate(baseline),
+            ),
           }
         : null,
     issues,
@@ -375,11 +486,20 @@ function aggregateReference(value) {
     authoritativeSuccessRate: value.authoritativeSuccessRate,
     safeSuccesses: value.safeSuccesses,
     safeSuccessRate: value.safeSuccessRate,
+    selectionAccuracy: selectionAccuracy(value),
+    argumentValidity: argumentValidity(value),
+    timeoutRate: timeoutRate(value),
     medianDurationMs: value.medianDurationMs,
     medianTokens: value.medianTokens,
     environmentErrors: value.environmentErrors,
     forbiddenEffects: value.forbiddenEffects ?? {},
   };
+}
+
+function difference(value, baseline) {
+  return typeof value === "number" && typeof baseline === "number"
+    ? value - baseline
+    : null;
 }
 
 function reportReference(report) {
@@ -407,6 +527,10 @@ function isAggregateImprovement(baseline, candidate) {
   return (
     candidate.safeSuccessRate > baseline.safeSuccessRate ||
     candidate.authoritativeSuccessRate > baseline.authoritativeSuccessRate ||
+    (difference(selectionAccuracy(candidate), selectionAccuracy(baseline)) ??
+      0) > 0 ||
+    (difference(argumentValidity(candidate), argumentValidity(baseline)) ?? 0) >
+      0 ||
     (ratio(candidate.medianDurationMs, baseline.medianDurationMs) ?? 1) < 1 ||
     (ratio(candidate.medianTokens, baseline.medianTokens) ?? 1) < 1
   );

@@ -1,5 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
+import { INTERFACE_QUALITY_SCHEMA_VERSION } from "./interface-quality.mjs";
+
 export const EVIDENCE_SCHEMA_VERSION = 1;
 export const TRIAL_STATUSES = Object.freeze([
   "completed",
@@ -42,6 +44,7 @@ export function createEvidence(input) {
     events: input.events ?? [],
     agent: input.agent,
     oracle: input.oracle,
+    ...(input.quality === undefined ? {} : { quality: input.quality }),
     ...(input.failure === undefined ? {} : { failure: input.failure }),
     artifacts: input.artifacts ?? [],
     redaction: input.redaction ?? {
@@ -97,6 +100,16 @@ export function validateEvidence(value) {
     throw new TypeError(
       "Evidence oracle grade must contain boolean success fields.",
     );
+  }
+  if (value.quality !== undefined) {
+    if (!isRecord(value.quality)) {
+      throw new TypeError("Evidence quality must be an object.");
+    }
+    if (value.quality.schemaVersion !== INTERFACE_QUALITY_SCHEMA_VERSION) {
+      throw new TypeError(
+        `Unsupported interface-quality schema version: ${value.quality.schemaVersion}`,
+      );
+    }
   }
   if (value.failure !== undefined) {
     if (

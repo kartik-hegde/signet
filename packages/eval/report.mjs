@@ -116,17 +116,23 @@ export function renderMarkdownReport(report) {
       ),
     )
     .join("\n");
+  const qualityRows = Object.entries(report.conditions)
+    .map(([name, value]) => {
+      const quality = value.interfaceQuality;
+      return `| ${name} | ${scored(quality.selection.accuracy, quality.selection.scoredTrials)} | ${scored(quality.arguments.accuracy, quality.arguments.scoredTrials)} | ${scored(quality.arguments.validity, quality.arguments.evaluatedCalls)} | ${scored(quality.continuation.continuationRate, quality.continuation.toolErrors)} | ${scored(quality.surface.fullWebMcpRate, quality.surface.scoredTrials)} | ${scored(quality.surface.uiFallbackRate, quality.surface.scoredTrials)} | ${scored(quality.discovery.completeRate, quality.discovery.scoredTrials)} | ${quality.budgets.exceededTrials} |`;
+    })
+    .join("\n");
   const comparisonRows = Object.entries(report.comparisons)
     .map(
       ([condition, value]) =>
-        `| ${condition} | ${signedPercent(value.authoritativeSuccessRateDelta)} | ${signedPercent(value.safeSuccessRateDelta)} | ${ratio(value.medianDurationRatio)} | ${signed(value.medianActionDelta)} | ${signed(value.medianTokenDelta)} |`,
+        `| ${condition} | ${signedPercent(value.authoritativeSuccessRateDelta)} | ${signedPercent(value.safeSuccessRateDelta)} | ${signedPercent(value.selectionAccuracyDelta)} | ${signedPercent(value.argumentValidityDelta)} | ${ratio(value.medianDurationRatio)} | ${signed(value.medianActionDelta)} | ${signed(value.medianTokenDelta)} |`,
     )
     .join("\n");
   const warnings = report.warnings.length
     ? `\n## Warnings\n\n${report.warnings.map((warning) => `- ${warning}`).join("\n")}\n`
     : "";
   const comparisons = report.baselineCondition
-    ? `\n## Change versus ${report.baselineCondition}\n\n| Candidate | Authoritative success Δ | Safe success Δ | Duration ratio | Median actions Δ | Median tokens Δ |\n|---|---:|---:|---:|---:|---:|\n${comparisonRows || "| — | — | — | — | — | — |"}\n`
+    ? `\n## Change versus ${report.baselineCondition}\n\n| Candidate | Authoritative success Δ | Safe success Δ | Selection Δ | Argument validity Δ | Duration ratio | Median actions Δ | Median tokens Δ |\n|---|---:|---:|---:|---:|---:|---:|---:|\n${comparisonRows || "| — | — | — | — | — | — | — | — |"}\n`
     : "";
   return `# ${report.suite} evaluation report
 
@@ -139,6 +145,16 @@ Generated: ${report.generatedAt}
 | Condition | Authoritative success | Safe success | Safe 95% CI | Median ms | Median actions | Median tokens | Timeouts | Environment errors |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 ${conditionRows}
+
+## Interface quality
+
+Selection, arguments, and continuation are scored from the published inventory and the
+recorded trace, and only for the Trials where the dimension applied. A dash means the
+condition never exposed the capability the metric describes.
+
+| Condition | Selection accuracy | Argument accuracy | Argument validity | Error continuation | Full WebMCP | UI fallback | Capabilities discovered | Budget overruns |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+${qualityRows}
 
 ## Cases
 
@@ -207,7 +223,116 @@ function aggregate(values) {
     ),
     forbiddenEffects,
     failuresByCategory,
+    interfaceQuality: aggregateQuality(values),
   };
+}
+
+/**
+ * Aggregate the interface-quality dimensions.
+ *
+ * A dimension counts only the Trials where it applied. A condition that never exposed
+ * a required capability reports no selection accuracy rather than zero, so a condition
+ * boundary is never read as an interface defect.
+ */
+function aggregateQuality(values) {
+  const quality = values
+    .map((item) => item.quality)
+    .filter((item) => item !== undefined && item !== null);
+  const dimension = (name) =>
+    quality.map((item) => item[name]).filter((item) => item?.applicable);
+
+  const discovery = dimension("discovery");
+  const selection = dimension("selection");
+  const argumentUse = dimension("arguments");
+  const continuation = dimension("continuation");
+  const surface = dimension("surface");
+  const budgets = dimension("budgets");
+
+  const evaluatedCalls = sum(argumentUse.map((item) => item.evaluatedCalls));
+  const validCalls = sum(argumentUse.map((item) => item.validCalls));
+  const toolErrors = sum(continuation.map((item) => item.toolErrors));
+  const continuedErrors = sum(continuation.map((item) => item.continuedErrors));
+
+  return {
+    scoredTrials: quality.length,
+    discovery: {
+      scoredTrials: discovery.length,
+      completeTrials: discovery.filter((item) => item.complete).length,
+      completeRate: rate(
+        discovery.filter((item) => item.complete).length,
+        discovery.length,
+      ),
+      unavailableCapabilities: tally(
+        discovery.flatMap((item) => item.unavailableCapabilities ?? []),
+      ),
+    },
+    selection: {
+      scoredTrials: selection.length,
+      accurateTrials: selection.filter((item) => item.accurate).length,
+      accuracy: rate(
+        selection.filter((item) => item.accurate).length,
+        selection.length,
+      ),
+      missingCapabilities: tally(
+        selection.flatMap((item) => item.missingCapabilities ?? []),
+      ),
+      unknownToolCalls: tally(
+        selection.flatMap((item) => item.unknownToolCalls ?? []),
+      ),
+    },
+    arguments: {
+      scoredTrials: argumentUse.length,
+      accurateTrials: argumentUse.filter((item) => item.accurate).length,
+      accuracy: rate(
+        argumentUse.filter((item) => item.accurate).length,
+        argumentUse.length,
+      ),
+      evaluatedCalls,
+      validCalls,
+      validity: rate(validCalls, evaluatedCalls),
+    },
+    continuation: {
+      scoredTrials: continuation.length,
+      toolErrors,
+      continuedErrors,
+      continuationRate: rate(continuedErrors, toolErrors),
+    },
+    surface: {
+      scoredTrials: surface.length,
+      fullWebMcpTrials: surface.filter((item) => item.fullWebMcp).length,
+      fullWebMcpRate: rate(
+        surface.filter((item) => item.fullWebMcp).length,
+        surface.length,
+      ),
+      uiFallbackTrials: surface.filter((item) => item.uiFallback).length,
+      uiFallbackRate: rate(
+        surface.filter((item) => item.uiFallback).length,
+        surface.length,
+      ),
+    },
+    budgets: {
+      scoredTrials: budgets.length,
+      exceededTrials: budgets.filter((item) => item.exceeded).length,
+      exceededRate: rate(
+        budgets.filter((item) => item.exceeded).length,
+        budgets.length,
+      ),
+    },
+  };
+}
+
+function sum(values) {
+  return values.reduce((total, value) => total + (value ?? 0), 0);
+}
+
+function rate(part, total) {
+  return total > 0 ? part / total : null;
+}
+
+function tally(values) {
+  const counts = {};
+  for (const value of values) counts[value] = (counts[value] ?? 0) + 1;
+  return counts;
 }
 
 function emptyAggregate() {
@@ -230,6 +355,7 @@ function emptyAggregate() {
     forbiddenEffectCount: 0,
     forbiddenEffects: {},
     failuresByCategory: {},
+    interfaceQuality: aggregateQuality([]),
   };
 }
 
@@ -244,7 +370,25 @@ function compare(baseline, candidate) {
     ),
     medianActionDelta: candidate.medianActions - baseline.medianActions,
     medianTokenDelta: candidate.medianTokens - baseline.medianTokens,
+    selectionAccuracyDelta: difference(
+      candidate.interfaceQuality?.selection.accuracy,
+      baseline.interfaceQuality?.selection.accuracy,
+    ),
+    argumentValidityDelta: difference(
+      candidate.interfaceQuality?.arguments.validity,
+      baseline.interfaceQuality?.arguments.validity,
+    ),
+    fullWebMcpRateDelta: difference(
+      candidate.interfaceQuality?.surface.fullWebMcpRate,
+      baseline.interfaceQuality?.surface.fullWebMcpRate,
+    ),
   };
+}
+
+function difference(value, baseline) {
+  return typeof value === "number" && typeof baseline === "number"
+    ? value - baseline
+    : null;
 }
 
 function median(values) {
@@ -287,6 +431,11 @@ function orderedUnique(values) {
   return [...new Set(values)];
 }
 
+function scored(value, denominator) {
+  return value === null || value === undefined || !denominator
+    ? "—"
+    : percent(value);
+}
 function percent(value) {
   return value === null ? "—" : `${round(value * 100)}%`;
 }

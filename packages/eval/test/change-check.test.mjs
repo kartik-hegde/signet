@@ -18,6 +18,7 @@ import {
   createEvidence,
   defineCase,
   renderChangeCheckMarkdown,
+  scoreInterfaceQuality,
   writeChangeCheck,
 } from "../index.mjs";
 
@@ -239,4 +240,165 @@ test("the CLI writes diagnostics before failing a regressed check", async () => 
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+const capabilityCase = defineCase({
+  id: "pay-with-tools",
+  intent: "Send one payment using the published payment tools.",
+  kind: "consequential",
+  application: "payments",
+  oracle: "database",
+  expectations: {
+    requiredCapabilities: ["send_payment"],
+    completionCapability: "send_payment",
+  },
+});
+
+const paymentInventory = [
+  {
+    name: "send_payment",
+    description: "Send one payment.",
+    inputSchema: {
+      type: "object",
+      properties: { amountCents: { type: "integer" } },
+      required: ["amountCents"],
+    },
+  },
+];
+
+function scoredTrial({ index = 1, tool = true, amountCents = 1200 }) {
+  const events = tool
+    ? [
+        {
+          sequence: 0,
+          atMs: 1,
+          type: "webmcp_call",
+          tool: "send_payment",
+          input: { amountCents },
+          ok: true,
+        },
+      ]
+    : [{ sequence: 0, atMs: 1, type: "ui_action", action: "click" }];
+  return createEvidence({
+    evidenceId: `scored-${index}-${tool}-${amountCents}`,
+    generatedAt: "2026-09-01T00:00:00.000Z",
+    caseDefinition: capabilityCase,
+    trial: {
+      id: `${capabilityCase.id}:guided:${index}`,
+      index,
+      condition: "guided",
+      startedAt: "2026-09-01T00:00:00.000Z",
+      durationMs: 100,
+      status: "completed",
+    },
+    provenance: {
+      application: { id: "payments" },
+      browser: { id: "chrome" },
+      agent: { id: "agent" },
+      oracle: { id: "database" },
+    },
+    inventory: paymentInventory,
+    events,
+    agent: {
+      provider: "test",
+      model: "deterministic",
+      timedOut: false,
+      usage: { totalTokens: 100 },
+      actions: { total: 1, webMcp: events.length },
+    },
+    oracle: {
+      adapter: "database",
+      grade: {
+        authoritativeSuccess: true,
+        safeSuccess: true,
+        forbiddenEffects: [],
+      },
+    },
+    quality: scoreInterfaceQuality({
+      caseDefinition: capabilityCase,
+      inventory: paymentInventory,
+      events,
+      agent: { timedOut: false },
+      status: "completed",
+    }),
+  });
+}
+
+test("an interface revision that loses tool selection fails the check", () => {
+  const check = buildChangeCheck({
+    baseline: report([scoredTrial({ index: 1 }), scoredTrial({ index: 2 })]),
+    candidate: report([
+      scoredTrial({ index: 1 }),
+      scoredTrial({ index: 2, tool: false }),
+    ]),
+  });
+  assert.equal(check.status, "fail");
+  assert.ok(
+    check.regressions.some(
+      ({ code }) => code === "selection_accuracy_regressed",
+    ),
+  );
+  assert.match(
+    renderChangeCheckMarkdown(check),
+    /selection accuracy fell 50 pp/,
+  );
+});
+
+test("an interface revision that loses argument validity fails the check", () => {
+  const check = buildChangeCheck({
+    baseline: report([scoredTrial({ index: 1 })]),
+    candidate: report([scoredTrial({ index: 1, amountCents: "1200" })]),
+  });
+  assert.equal(check.status, "fail");
+  assert.ok(
+    check.regressions.some(
+      ({ code }) => code === "argument_validity_regressed",
+    ),
+  );
+});
+
+test("a declared tolerance applies to every probabilistic outcome rate", () => {
+  const baseline = report([
+    scoredTrial({ index: 1 }),
+    scoredTrial({ index: 2 }),
+  ]);
+  const candidate = report([
+    scoredTrial({ index: 1 }),
+    scoredTrial({ index: 2, tool: false }),
+  ]);
+  assert.equal(
+    buildChangeCheck({
+      baseline,
+      candidate,
+      policy: { maxSafeRegression: 0.5 },
+    }).status,
+    "pass",
+  );
+});
+
+test("a baseline without interface-quality metrics is not gated on them", () => {
+  const baseline = report([trial({ caseDefinition: cases.pay })]);
+  assert.equal(
+    baseline.cases["pay-once"].conditions.guided.interfaceQuality.selection
+      .accuracy,
+    null,
+  );
+  const check = buildChangeCheck({
+    baseline,
+    candidate: report([trial({ caseDefinition: cases.pay })]),
+  });
+  assert.equal(check.status, "pass");
+});
+
+test("an increased timeout rate is a regression", () => {
+  const check = buildChangeCheck({
+    baseline: report([trial({ index: 1 }), trial({ index: 2 })]),
+    candidate: report([
+      trial({ index: 1 }),
+      trial({ index: 2, status: "timed_out" }),
+    ]),
+  });
+  assert.ok(
+    check.regressions.some(({ code }) => code === "timeout_rate_increased"),
+  );
 });
