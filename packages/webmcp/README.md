@@ -116,7 +116,7 @@ await signet.expose({
       throw new ToolError({
         code: "order_already_shipped",
         message: "Shipped orders cannot be cancelled.",
-        retryable: false,
+        retry: "never",
       });
     }
 
@@ -233,8 +233,9 @@ privacy-safe lifecycle timings.
 - **Runtime validation:** JSON Schema validation before application code runs.
 - **State-aware lifecycle:** per-call application context and disposable registrations.
 - **Framework lifecycle:** a StrictMode-safe React binding.
-- **Expected failures:** `ToolError`, validation, authorization, and verification
-  errors remain distinguishable.
+- **Expected failures:** `ToolError` carries retry conditions, ordered repair plans,
+  and input invariants; validation, authorization, and verification errors remain
+  distinguishable from system faults.
 - **Reliable mutations:** app-provided idempotency plus authoritative postcondition
   recovery and verification.
 - **Cancellation:** the native execution signal reaches every stage and your handler.

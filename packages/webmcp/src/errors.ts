@@ -19,6 +19,8 @@ export class SignetError extends Error {
 export interface ToolErrorOptions {
   readonly code: string;
   readonly message: string;
+  readonly retry?: ToolRetryPolicy;
+  /** @deprecated Use `retry` to distinguish as-is retries from repair-gated retries. */
   readonly retryable?: boolean;
   readonly repair?: ToolRepairGuidance;
   readonly details?: unknown;
@@ -53,6 +55,7 @@ export type ToolRepairStep =
 export interface ToolRepairPlan {
   readonly steps: readonly [ToolRepairStep, ...ToolRepairStep[]];
   readonly preserve?: readonly string[];
+  readonly update?: readonly string[];
 }
 
 export type ToolRepairGuidance = ToolRepairStep | ToolRepairPlan;
@@ -64,12 +67,14 @@ export class ToolError extends SignetError {
   readonly details?: unknown;
 
   constructor(options: ToolErrorOptions) {
-    const retryable = options.retryable ?? false;
-    const retry: ToolRetryPolicy = !retryable
-      ? "never"
-      : options.repair
-        ? "after_repair"
-        : "as_is";
+    const retry: ToolRetryPolicy =
+      options.retry ??
+      (!(options.retryable ?? false)
+        ? "never"
+        : options.repair
+          ? "after_repair"
+          : "as_is");
+    const retryable = retry !== "never";
     super(
       options.code,
       `[${options.code}] ${options.message} ${retryMessage(retry)}${repairMessage(options.repair)}`,
@@ -84,38 +89,52 @@ export class ToolError extends SignetError {
 }
 
 function retryMessage(retry: ToolRetryPolicy): string {
-  if (retry === "never") return "(retryable: no)";
-  if (retry === "as_is") return "(retryable: yes)";
-  return "(retryable: yes; only after repair)";
+  return `[retry: ${retry}]`;
 }
 
 function repairMessage(repair: ToolRepairGuidance | undefined): string {
   if (!repair) return "";
   if ("steps" in repair) return repairPlanMessage(repair);
-  return ` Next action: ${repairStepMessage(repair, 300)}`;
+  return ` Next action: ${repairStepMessage(repair, 300, true)}`;
 }
 
 function repairPlanMessage(plan: ToolRepairPlan): string {
   const steps = plan.steps
     .slice(0, 5)
-    .map((step, index) => `${index + 1}. ${repairStepMessage(step, 140)}`)
-    .join(" ");
+    .map(
+      (step, index) => `${index + 1}) ${repairStepMessage(step, 140, false)}`,
+    )
+    .join("; ");
   const omitted = plan.steps.length - 5;
   const preserve = (plan.preserve ?? [])
     .map((field) => compact(field).slice(0, 64))
     .filter(Boolean)
     .slice(0, 8)
     .join(", ");
-  const omittedSteps =
-    omitted > 0 ? ` ${omitted} additional step(s) omitted.` : "";
-  const invariants = preserve
-    ? ` Keep these original inputs unchanged: ${preserve}.`
-    : "";
-  return ` Repair plan (run in order; do not parallelize): ${steps}${omittedSteps}${invariants}`;
+  const update = (plan.update ?? [])
+    .map((field) => compact(field).slice(0, 64))
+    .filter(Boolean)
+    .slice(0, 8)
+    .join(", ");
+  const omittedSteps = omitted > 0 ? `; ${omitted} more step(s) omitted` : "";
+  const inputChanges = [
+    preserve ? `Preserve: ${preserve}` : "",
+    update ? `Update from repair output: ${update}` : "",
+  ].filter(Boolean);
+  const invariants =
+    inputChanges.length > 0 ? `. ${inputChanges.join(". ")}.` : ".";
+  return ` Repair sequentially; do not parallelize: ${steps}${omittedSteps}${invariants}`;
 }
 
-function repairStepMessage(step: ToolRepairStep, limit: number): string {
-  const instruction = compact(step.instruction);
+function repairStepMessage(
+  step: ToolRepairStep,
+  limit: number,
+  waitForCall: boolean,
+): string {
+  const compactInstruction = compact(step.instruction);
+  const instruction = waitForCall
+    ? compactInstruction
+    : compactInstruction.replace(/[.;:,!?]+$/, "");
   const boundedInstruction =
     instruction.length <= limit
       ? instruction
@@ -123,10 +142,11 @@ function repairStepMessage(step: ToolRepairStep, limit: number): string {
   const tool = step.tool ? compact(step.tool).slice(0, 128) : undefined;
   const target = tool ? ` ${tool}` : "";
   const sequencing =
-    step.action === "call_tool" && tool
+    waitForCall && step.action === "call_tool" && tool
       ? ` Wait for ${tool} to finish before continuing.`
       : "";
-  return `${step.action}${target}.${sequencing}${boundedInstruction ? ` ${boundedInstruction}` : ""}`;
+  const separator = boundedInstruction ? " — " : "";
+  return `${step.action}${target}${separator}${boundedInstruction}${sequencing}`;
 }
 
 function compact(value: string): string {

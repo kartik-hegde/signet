@@ -109,6 +109,14 @@ hooks only when the workflow needs them.
   commonly follow an irreversible effect. The application still owns durable storage.
 - `execute(input, { context, operation?, signal })` runs at most once per store
   operation. Signet never retries it automatically.
+- `ToolError({ code, message, retry?, retryable?, repair? })` represents an expected business
+  failure. A repair may be one action or
+  `{ steps: [...], preserve?: [inputField, ...], update?: [inputField, ...] }`.
+  Signet derives `error.retry` as `never`, `as_is`, or `after_repair` and appends a
+  bounded fallback to the cross-boundary message. `retryable` is the legacy boolean.
+  Ordered plans explicitly forbid parallel execution. It is information for the
+  caller; Signet never performs the repair or retry. Author instructions from trusted
+  application constants only.
 - `recover({ input, context, error, operation?, signal })` runs after the handler throws or
   when an abandoned in-flight claim is encountered. It
   may return `{ recovered: true, output }` only after authoritative proof; otherwise
