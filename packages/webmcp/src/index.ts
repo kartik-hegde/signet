@@ -10,6 +10,8 @@ export {
   ValidationError,
   VerificationError,
   type SignetErrorCode,
+  type ToolRepairAction,
+  type ToolRepairGuidance,
   type ToolErrorOptions,
   type ValidationIssue,
 } from "./errors.js";

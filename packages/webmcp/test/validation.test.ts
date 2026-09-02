@@ -141,6 +141,44 @@ describe("Signet validation and expected errors", () => {
     expect(error.details).toBeUndefined();
   });
 
+  it("serializes explicit repair guidance for agent boundaries", () => {
+    const repair = {
+      action: "call_tool" as const,
+      tool: "list_available_slots",
+      instruction:
+        "Refresh availability, then retry with the same operationId.",
+    };
+    const error = new ToolError({
+      code: "slot_stale",
+      message: "The selected slot is no longer available.",
+      retryable: true,
+      repair,
+    });
+
+    expect(error.repair).toBe(repair);
+    expect(error.message).toBe(
+      "[slot_stale] The selected slot is no longer available. (retryable: yes) " +
+        "Next action: call_tool list_available_slots. " +
+        "Wait for list_available_slots to finish before continuing. " +
+        "Refresh availability, then retry with the same operationId.",
+    );
+  });
+
+  it("bounds repair instructions in the cross-boundary message", () => {
+    const instruction = "x".repeat(400);
+    const error = new ToolError({
+      code: "stale_state",
+      message: "State changed.",
+      retryable: true,
+      repair: { action: "refresh_state", instruction },
+    });
+
+    expect(error.repair?.instruction).toBe(instruction);
+    expect(error.message).toContain("Next action: refresh_state.");
+    expect(error.message).not.toContain("x".repeat(301));
+    expect(error.message.endsWith("…")).toBe(true);
+  });
+
   it("exports ValidationError for application-level handling", () => {
     const error = new ValidationError([
       { path: "/orderId", message: "is required", keyword: "required" },

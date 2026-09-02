@@ -28,6 +28,30 @@ The error message includes the code and retryability because custom error proper
 are not consistently preserved across browser-agent boundaries. `details` remains
 application-side and is never added to the message automatically.
 
+Use `repair` when the application knows the concrete next action an agent should take:
+
+```ts
+throw new ToolError({
+  code: "slot_stale",
+  message: "The selected slot is no longer available.",
+  retryable: true,
+  repair: {
+    action: "call_tool",
+    tool: "list_available_slots",
+    instruction: "Choose a current slot, then retry with the same operationId.",
+  },
+});
+```
+
+Signet appends a bounded `Next action:` sentence to `Error.message`, because native
+browser-agent boundaries do not consistently preserve custom error properties. The
+`call_tool` action explicitly tells the agent to wait for that tool before continuing,
+so a dependent repair is not launched against stale state. The
+structured `repair` property remains available to application code. The supported
+actions are `change_input`, `call_tool`, `refresh_state`, `retry_same_operation`,
+`ask_user`, `reconcile`, and `stop`. Signet communicates the instruction but never
+performs the retry or calls another tool itself.
+
 ## `AuthorizationError`
 
 Thrown when `authorize` returns a denial.

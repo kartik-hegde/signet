@@ -117,6 +117,11 @@ registration.dispose();
 - `journal: { store, key? }` supplies a scoped `operation` handle to execute, recover,
   and verify. It reuses the idempotency key when `key` is omitted. The app owns storage.
 - `execute(input, { context, operation?, signal })` is never automatically retried by Signet.
+- Expected business failures may throw
+  `ToolError({ code, message, retryable?, repair? })`. Use
+  `repair: { action, tool?, instruction }` only for bounded, agent-safe next steps.
+  Signet includes it in the cross-boundary message but never calls another tool or
+  retries automatically.
 - `recover({ input, context, error, operation?, signal })` runs after the handler throws or
   for abandoned in-flight work. Return
   `{ recovered: true, output }` only after authoritative proof. Return

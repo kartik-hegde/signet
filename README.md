@@ -6,7 +6,7 @@ Signet makes website capabilities reliable and agent-ready through WebMCP. This 
 
 - `packages/webmcp` — the open-source `@signet/webmcp` SDK
 - `packages/eval` — reusable Cases, adapters, evidence schema, runner, change checks, and the `signet` CLI
-- `fixtures` — applications used for end-to-end validation; the Cypress Real World App intentionally keeps its own Yarn lockfile and is not an npm workspace
+- `fixtures` — applications used for end-to-end validation; the Cypress Real World App intentionally keeps its own Yarn v1 lockfile and is not an npm workspace
 - `benchmarks` — deterministic safety, agent-effectiveness, build-vs-buy, and integration suites
 - `evidence` — checked-in benchmark reports and their provenance
 - `tooling` — repository automation, report builders, and CI change classification

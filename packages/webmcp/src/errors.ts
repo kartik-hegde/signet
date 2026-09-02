@@ -20,25 +20,60 @@ export interface ToolErrorOptions {
   readonly code: string;
   readonly message: string;
   readonly retryable?: boolean;
+  readonly repair?: ToolRepairGuidance;
   readonly details?: unknown;
   readonly cause?: unknown;
 }
 
+export type ToolRepairAction =
+  | "ask_user"
+  | "call_tool"
+  | "change_input"
+  | "reconcile"
+  | "refresh_state"
+  | "retry_same_operation"
+  | "stop";
+
+/** Explicit, application-authored next action that is safe to show to an agent. */
+export interface ToolRepairGuidance {
+  readonly action: ToolRepairAction;
+  readonly tool?: string;
+  readonly instruction: string;
+}
+
 export class ToolError extends SignetError {
   readonly retryable: boolean;
+  readonly repair?: ToolRepairGuidance;
   readonly details?: unknown;
 
   constructor(options: ToolErrorOptions) {
     const retryable = options.retryable ?? false;
     super(
       options.code,
-      `[${options.code}] ${options.message} (retryable: ${retryable ? "yes" : "no"})`,
+      `[${options.code}] ${options.message} (retryable: ${retryable ? "yes" : "no"})${repairMessage(options.repair)}`,
       options.cause === undefined ? undefined : { cause: options.cause },
     );
     this.name = "ToolError";
     this.retryable = retryable;
+    if (options.repair !== undefined) this.repair = options.repair;
     if (options.details !== undefined) this.details = options.details;
   }
+}
+
+function repairMessage(repair: ToolRepairGuidance | undefined): string {
+  if (!repair) return "";
+  const instruction = repair.instruction.trim();
+  const boundedInstruction =
+    instruction.length <= 300
+      ? instruction
+      : `${instruction.slice(0, 299).trimEnd()}…`;
+  const tool = repair.tool?.trim();
+  const target = tool ? ` ${tool}` : "";
+  const sequencing =
+    repair.action === "call_tool" && tool
+      ? ` Wait for ${tool} to finish before continuing.`
+      : "";
+  return ` Next action: ${repair.action}${target}.${sequencing}${boundedInstruction ? ` ${boundedInstruction}` : ""}`;
 }
 
 export interface ValidationIssue {
