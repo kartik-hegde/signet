@@ -1,36 +1,56 @@
 import { runAgent } from "./agent-core.mjs";
+import { loadApiKey, saveApiKey } from "./api-key-storage.mjs";
 import {
   abortWebMcpTool,
   executeWebMcpTool,
   inspectWebMcpPage,
 } from "./page-bridge.mjs";
 import {
-  createChatCompletionsProvider,
+  createModelProvider,
   endpointOriginPattern,
+  modelConfigurationError,
+  modelConfigurationSummary,
+  PROVIDER_PRESETS,
 } from "./provider.mjs";
+import { renderMarkdown } from "./markdown.mjs";
+import { hasWebsiteAccess, requestWebsiteAccess } from "./website-access.mjs";
 
 const elements = {
+  activity: document.querySelector("#agent-activity"),
+  answer: document.querySelector("#answer-message"),
   apiKey: document.querySelector("#api-key-input"),
-  clear: document.querySelector("#clear-button"),
-  connectionMessage: document.querySelector("#connection-message"),
+  apiKeyField: document.querySelector("#api-key-field"),
+  apiKeyStorageNote: document.querySelector("#api-key-storage-note"),
+  callCount: document.querySelector("#call-count"),
+  closeSettings: document.querySelector("#close-settings-button"),
+  conversation: document.querySelector("#conversation"),
   endpoint: document.querySelector("#endpoint-input"),
+  endpointField: document.querySelector("#endpoint-field"),
+  hero: document.querySelector("#hero"),
+  main: document.querySelector("#main-view"),
   model: document.querySelector("#model-input"),
-  pageTitle: document.querySelector("#page-title"),
-  pageUrl: document.querySelector("#page-url"),
+  modelSummary: document.querySelector("#model-summary-button"),
+  newRun: document.querySelector("#new-run-button"),
   prompt: document.querySelector("#prompt-input"),
   promptForm: document.querySelector("#prompt-form"),
+  promptMessage: document.querySelector("#prompt-message"),
+  provider: document.querySelector("#provider-input"),
   refresh: document.querySelector("#refresh-button"),
+  rememberKey: document.querySelector("#remember-key-input"),
+  rememberKeyRow: document.querySelector("#remember-key-row"),
   run: document.querySelector("#run-button"),
-  runLog: document.querySelector("#run-log"),
   runStatus: document.querySelector("#run-status"),
   saveSettings: document.querySelector("#save-settings-button"),
   settings: document.querySelector("#settings-panel"),
   settingsButton: document.querySelector("#settings-button"),
   settingsStatus: document.querySelector("#settings-status"),
-  statusDot: document.querySelector("#status-dot"),
   stop: document.querySelector("#stop-button"),
   toolCount: document.querySelector("#tool-count"),
   toolList: document.querySelector("#tool-list"),
+  toolsState: document.querySelector("#tools-state"),
+  trace: document.querySelector("#trace-disclosure"),
+  traceList: document.querySelector("#trace-list"),
+  websiteAccess: document.querySelector("#website-access-button"),
 };
 
 const state = {
@@ -40,22 +60,45 @@ const state = {
   activeCalls: new Set(),
   callCards: new Map(),
   callStartedAt: new Map(),
+  callCount: 0,
+  starting: false,
+  refreshTimers: [],
+  refreshVersion: 0,
+  websiteAccess: false,
+  pageUrl: undefined,
 };
 
 await loadSettings();
-await refreshPage();
+await updateWebsiteAccess();
 
-elements.refresh.addEventListener("click", () => void refreshPage());
-elements.settingsButton.addEventListener("click", () => {
-  elements.settings.hidden = !elements.settings.hidden;
+elements.settingsButton.addEventListener("click", () => openSettings());
+elements.closeSettings.addEventListener("click", closeSettings);
+elements.provider.addEventListener("change", () => {
+  applyProvider(elements.provider.value, true);
+  updateModelSummary();
 });
+elements.model.addEventListener("input", updateModelSummary);
+elements.endpoint.addEventListener("input", updateModelSummary);
+elements.apiKey.addEventListener("input", updateModelSummary);
+elements.modelSummary.addEventListener("click", () => openSettings());
+elements.rememberKey.addEventListener("change", updateKeyStorageNote);
 elements.saveSettings.addEventListener("click", () => void saveSettings());
+elements.newRun.addEventListener("click", resetRun);
+elements.refresh.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  startDiscoveryCycle();
+});
+elements.websiteAccess.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  void allowWebsiteAccess();
+});
 elements.promptForm.addEventListener("submit", (event) => {
   event.preventDefault();
   void startRun();
 });
 elements.stop.addEventListener("click", () => void stopRun());
-elements.clear.addEventListener("click", clearRunLog);
 elements.prompt.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
@@ -63,13 +106,49 @@ elements.prompt.addEventListener("keydown", (event) => {
   }
 });
 
-chrome.tabs.onActivated.addListener(() => void refreshPage());
+chrome.tabs.onActivated.addListener(() => {
+  if (!state.runController && !state.starting) startDiscoveryCycle();
+});
 chrome.tabs.onUpdated.addListener((tabId, change) => {
-  if (tabId === state.tabId && change.status === "complete") void refreshPage();
+  if (
+    !state.runController &&
+    !state.starting &&
+    tabId === state.tabId &&
+    change.status === "complete"
+  )
+    startDiscoveryCycle();
+});
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "signet:refresh-tools") startDiscoveryCycle();
 });
 
+startDiscoveryCycle();
+
+function startDiscoveryCycle() {
+  clearDiscoveryRetries();
+  state.tools = [];
+  renderTools();
+  void refreshPage();
+  for (const delay of [1_000, 3_000, 7_000]) {
+    state.refreshTimers.push(
+      setTimeout(() => {
+        if (!state.runController && !state.starting && state.tools.length === 0)
+          void refreshPage();
+      }, delay),
+    );
+  }
+}
+
+function clearDiscoveryRetries() {
+  for (const timer of state.refreshTimers) clearTimeout(timer);
+  state.refreshTimers = [];
+}
+
 async function refreshPage() {
-  setConnection("loading", "Connecting to page…", "");
+  const version = ++state.refreshVersion;
+  elements.toolsState.textContent = "Checking…";
+  elements.refresh.disabled = true;
+  elements.refresh.classList.add("is-refreshing");
   try {
     const [tab] = await chrome.tabs.query({
       active: true,
@@ -78,35 +157,60 @@ async function refreshPage() {
     if (!tab?.id) throw new Error("No active tab is available.");
     state.tabId = tab.id;
     const page = await runInPage(inspectWebMcpPage);
+    if (version !== state.refreshVersion) return;
+    state.pageUrl = page.url;
     state.tools = Array.isArray(page.tools) ? page.tools : [];
-    elements.pageUrl.textContent = page.url ?? tab.url ?? "";
-    elements.pageTitle.textContent = page.title || tab.title || "Current page";
     renderTools();
-
     if (!page.supported) {
-      setConnection("error", elements.pageTitle.textContent, page.reason);
+      elements.toolsState.textContent = "Not detected";
       return;
     }
-    setConnection(
-      "connected",
-      elements.pageTitle.textContent,
-      state.tools.length === 0
-        ? "WebMCP is available, but this page exposes no tools."
-        : `${state.tools.length} WebMCP tool${state.tools.length === 1 ? "" : "s"} ready.`,
-    );
+    if (state.tools.length) {
+      elements.toolsState.textContent = "Updated now";
+      clearDiscoveryRetries();
+    } else {
+      elements.toolsState.textContent = "No tools";
+    }
   } catch (error) {
+    if (version !== state.refreshVersion) return;
     state.tools = [];
     renderTools();
-    setConnection(
-      "error",
-      "Unable to inspect this tab",
-      pageAccessMessage(error),
-    );
+    const needsAccess = pageAccessRequired(error);
+    if (needsAccess && !state.websiteAccess)
+      elements.websiteAccess.hidden = false;
+    elements.toolsState.textContent = needsAccess
+      ? "Needs access"
+      : "Unavailable";
+  } finally {
+    if (version === state.refreshVersion) {
+      elements.refresh.disabled = false;
+      elements.refresh.classList.remove("is-refreshing");
+    }
+  }
+}
+
+async function updateWebsiteAccess() {
+  state.websiteAccess = await hasWebsiteAccess();
+  elements.websiteAccess.hidden = state.websiteAccess;
+}
+
+async function allowWebsiteAccess() {
+  elements.websiteAccess.disabled = true;
+  elements.toolsState.textContent = "Waiting for permission…";
+  try {
+    state.websiteAccess = await requestWebsiteAccess();
+    elements.websiteAccess.hidden = state.websiteAccess;
+    if (state.websiteAccess) startDiscoveryCycle();
+    else elements.toolsState.textContent = "Access not allowed";
+  } catch (error) {
+    elements.toolsState.textContent = error?.message ?? "Access unavailable";
+  } finally {
+    elements.websiteAccess.disabled = false;
   }
 }
 
 async function startRun() {
-  if (state.runController) return;
+  if (state.runController || state.starting) return;
   const prompt = elements.prompt.value.trim();
   if (!prompt) {
     elements.runStatus.textContent = "Enter a prompt";
@@ -114,20 +218,17 @@ async function startRun() {
     return;
   }
 
+  let began = false;
+  state.starting = true;
   try {
-    if (state.tools.length === 0) await refreshPage();
-    if (state.tools.length === 0) {
-      throw new Error("The current page has no available WebMCP tools.");
-    }
     const settings = await currentSettings();
+    const complete = createModelProvider(settings);
     await ensureEndpointPermission(settings.endpoint);
-    const complete = createChatCompletionsProvider(settings);
-
+    beginRun(prompt);
+    began = true;
     state.runController = new AbortController();
     setRunning(true);
-    appendMessage("user", "Prompt", prompt);
     elements.prompt.value = "";
-
     await runAgent({
       prompt,
       tools: state.tools,
@@ -137,17 +238,54 @@ async function startRun() {
       invoke: invokePageTool,
     });
   } catch (error) {
-    if (error?.name === "AbortError") {
-      appendMessage("error", "Stopped", "The agent run was stopped.");
+    const stopped = error?.name === "AbortError";
+    const message = stopped
+      ? "The run was stopped."
+      : (error?.message ?? String(error));
+    if (began) {
+      elements.answer.textContent = message;
+      elements.answer.classList.add("is-error");
+      elements.activity.hidden = true;
     } else {
-      appendMessage("error", "Run failed", error?.message ?? String(error));
+      elements.runStatus.textContent = message;
     }
   } finally {
+    state.starting = false;
     state.runController = undefined;
     state.activeCalls.clear();
-    setRunning(false);
-    await refreshPage();
+    if (began) {
+      setRunning(false);
+      await refreshPage();
+    }
   }
+}
+
+function beginRun(prompt) {
+  state.callCards.clear();
+  state.callStartedAt.clear();
+  state.callCount = 0;
+  elements.callCount.textContent = "0";
+  elements.traceList.replaceChildren();
+  elements.trace.hidden = false;
+  elements.trace.open = false;
+  elements.hero.hidden = true;
+  elements.conversation.hidden = false;
+  elements.promptMessage.textContent = prompt;
+  elements.answer.textContent = "";
+  elements.answer.className = "answer-message";
+  setActivity("Planning the next step…");
+  elements.newRun.hidden = false;
+}
+
+function resetRun() {
+  if (state.runController) return;
+  elements.hero.hidden = false;
+  elements.conversation.hidden = true;
+  elements.trace.hidden = true;
+  elements.activity.hidden = true;
+  elements.newRun.hidden = true;
+  elements.runStatus.textContent = "";
+  elements.prompt.focus();
 }
 
 async function invokePageTool(call) {
@@ -174,16 +312,24 @@ async function invokePageTool(call) {
 
 function handleAgentEvent(event) {
   if (event.type === "model_started") {
-    elements.runStatus.textContent =
-      event.step === 1 ? "Planning…" : "Continuing…";
+    const status =
+      event.step === 1 ? "Planning the next step…" : "Reviewing tool results…";
+    setActivity(status);
   } else if (event.type === "tool_started") {
-    elements.runStatus.textContent = `Calling ${event.call.name}…`;
+    const toolName = readableToolName(event.call.name);
+    setActivity(`Running ${toolName}…`);
     appendToolCall(event.call);
   } else if (event.type === "tool_completed") {
     completeToolCall(event.call, event.result);
+    const toolName = readableToolName(event.call.name);
+    const status = event.result.ok
+      ? `${toolName} completed. Reviewing the result…`
+      : `${toolName} failed. Deciding whether to retry…`;
+    setActivity(status);
   } else if (event.type === "assistant_completed") {
-    elements.runStatus.textContent = "Complete";
-    appendMessage("assistant", "Signet Agent", event.content);
+    elements.runStatus.textContent = "";
+    elements.activity.hidden = true;
+    renderMarkdown(elements.answer, event.content, { baseUrl: state.pageUrl });
   }
 }
 
@@ -191,9 +337,10 @@ async function stopRun() {
   state.runController?.abort(
     new DOMException("Stopped by the user.", "AbortError"),
   );
-  const calls = [...state.activeCalls];
   await Promise.allSettled(
-    calls.map((callId) => runInPage(abortWebMcpTool, [callId])),
+    [...state.activeCalls].map((callId) =>
+      runInPage(abortWebMcpTool, [callId]),
+    ),
   );
 }
 
@@ -202,143 +349,175 @@ function renderTools() {
   elements.toolCount.textContent = String(state.tools.length);
   if (state.tools.length === 0) {
     elements.toolList.append(
-      textElement("p", "empty-state", "No WebMCP tools found on this page."),
+      textElement(
+        "p",
+        "empty-state",
+        "This page has not exposed any WebMCP tools.",
+      ),
     );
     return;
   }
-
   for (const tool of state.tools) {
+    const item = document.createElement("div");
+    item.className = "tool-item";
+    item.append(
+      textElement("code", "", tool.name),
+      textElement("p", "", tool.description || "No description."),
+    );
     const details = document.createElement("details");
-    details.className = "tool-card";
-    const summary = document.createElement("summary");
-    const name = textElement("span", "tool-name", tool.name);
-    summary.append(name);
-    if (tool.annotations?.readOnlyHint) {
-      summary.append(textElement("span", "tool-badge", "read only"));
-    }
-
-    const body = document.createElement("div");
-    body.className = "tool-body";
-    body.append(textElement("p", "", tool.description || "No description."));
+    const summary = textElement("summary", "", "Input schema");
     const schema = document.createElement("pre");
     schema.textContent = JSON.stringify(tool.inputSchema ?? {}, null, 2);
-    body.append(schema);
-    details.append(summary, body);
-    elements.toolList.append(details);
+    details.append(summary, schema);
+    item.append(details);
+    elements.toolList.append(item);
   }
 }
 
 function appendToolCall(call) {
-  const details = document.createElement("details");
-  details.className = "trace-card";
-  details.open = true;
-  const summary = document.createElement("summary");
-  summary.append(
-    textElement("span", "tool-name", call.name),
-    textElement("span", "call-status", "running"),
+  state.callCount += 1;
+  elements.callCount.textContent = String(state.callCount);
+  const item = document.createElement("div");
+  item.className = "trace-item";
+  const head = document.createElement("div");
+  head.className = "trace-head";
+  head.append(
+    textElement("span", "trace-name", call.name),
+    textElement("span", "trace-status", "running"),
   );
-  const body = document.createElement("div");
-  body.className = "trace-body";
-  body.append(textElement("span", "trace-label", "Arguments"));
+  const details = document.createElement("details");
+  details.append(textElement("summary", "", "Arguments"));
   const args = document.createElement("pre");
   args.textContent = JSON.stringify(
     call.arguments.value ?? { error: call.arguments.error },
     null,
     2,
   );
-  body.append(args);
-  details.append(summary, body);
-  state.callCards.set(call.id, details);
+  details.append(args);
+  item.append(head, details);
+  state.callCards.set(call.id, item);
   state.callStartedAt.set(call.id, performance.now());
-  elements.runLog.append(details);
-  scrollRunLog();
+  elements.traceList.append(item);
 }
 
 function completeToolCall(call, result) {
-  const details = state.callCards.get(call.id);
-  if (!details) return;
-  const badge = details.querySelector(".call-status");
-  const elapsed = performance.now() - (state.callStartedAt.get(call.id) ?? 0);
-  badge.textContent = `${result.ok ? "succeeded" : "failed"} · ${formatDuration(elapsed)}`;
-  badge.classList.add(result.ok ? "success" : "failure");
-  const body = details.querySelector(".trace-body");
-  body.append(textElement("span", "trace-label", "Result"));
+  const item = state.callCards.get(call.id);
+  if (!item) return;
+  const status = item.querySelector(".trace-status");
+  const elapsed =
+    performance.now() - (state.callStartedAt.get(call.id) ?? performance.now());
+  status.textContent = `${result.ok ? "succeeded" : "failed"} · ${formatDuration(elapsed)}`;
+  status.classList.add(result.ok ? "success" : "error");
+  const details = document.createElement("details");
+  details.append(textElement("summary", "", "Result"));
   const output = document.createElement("pre");
   output.textContent = JSON.stringify(result, null, 2);
-  body.append(output);
+  details.append(output);
+  item.append(details);
   state.callStartedAt.delete(call.id);
-  scrollRunLog();
 }
 
-function appendMessage(kind, label, content) {
-  const card = document.createElement("div");
-  card.className = `trace-card ${kind}`;
-  card.append(
-    textElement("span", "trace-label", label),
-    textElement("p", "", content),
-  );
-  elements.runLog.append(card);
-  scrollRunLog();
+function openSettings(message = "") {
+  elements.main.hidden = true;
+  elements.settings.hidden = false;
+  elements.settingsStatus.textContent = message;
 }
 
-function clearRunLog() {
-  state.callCards.clear();
-  state.callStartedAt.clear();
-  elements.runLog.replaceChildren();
-  const welcome = document.createElement("div");
-  welcome.className = "welcome-card";
-  welcome.append(
-    textElement("strong", "", "Try the page as an agent."),
-    textElement(
-      "p",
-      "",
-      "Signet shows each WebMCP call and result without reading the page DOM.",
-    ),
-  );
-  elements.runLog.append(welcome);
+function closeSettings() {
+  elements.settings.hidden = true;
+  elements.main.hidden = false;
+  updateModelSummary();
+}
+
+function applyProvider(provider, resetModel) {
+  const preset = PROVIDER_PRESETS[provider] ?? PROVIDER_PRESETS.custom;
+  elements.endpointField.hidden = provider !== "custom";
+  elements.apiKeyField.hidden = provider === "demo";
+  elements.rememberKeyRow.hidden = provider === "demo";
+  if (provider !== "custom" || resetModel)
+    elements.endpoint.value = preset.endpoint;
+  if (resetModel) elements.model.value = preset.model;
+  elements.apiKey.placeholder = preset.keyRequired
+    ? `Paste your ${preset.label} API key`
+    : "Optional";
+  updateModelSummary();
 }
 
 async function saveSettings() {
   elements.settingsStatus.textContent = "Saving…";
   try {
-    const endpoint = elements.endpoint.value.trim();
-    const model = elements.model.value.trim();
-    endpointOriginPattern(endpoint);
-    if (!model) throw new Error("Enter a model name.");
-    await ensureEndpointPermission(endpoint);
-    await chrome.storage.local.set({ signetAgent: { endpoint, model } });
-    await chrome.storage.session.set({
-      signetAgentKey: elements.apiKey.value.trim(),
+    const settings = settingsFromFields();
+    endpointOriginPattern(settings.endpoint);
+    if (!settings.model) throw new Error("Enter a model name.");
+    if (PROVIDER_PRESETS[settings.provider].keyRequired && !settings.apiKey)
+      throw new Error("Enter an API key.");
+    await ensureEndpointPermission(settings.endpoint);
+    await chrome.storage.local.set({
+      signetAgent: {
+        provider: settings.provider,
+        endpoint: settings.endpoint,
+        model: settings.model,
+      },
     });
+    const keyState = await saveApiKey(settings.apiKey, {
+      remember: elements.rememberKey.checked,
+    });
+    elements.rememberKey.checked = keyState.remembered;
+    updateKeyStorageNote();
+    updateModelSummary();
+    elements.runStatus.textContent = "";
     elements.settingsStatus.textContent = "Saved";
-    elements.settings.hidden = true;
+    closeSettings();
   } catch (error) {
     elements.settingsStatus.textContent = error?.message ?? String(error);
   }
 }
 
 async function loadSettings() {
-  const local = await chrome.storage.local.get("signetAgent");
-  const session = await chrome.storage.session.get("signetAgentKey");
-  elements.endpoint.value = local.signetAgent?.endpoint ?? "";
-  elements.model.value = local.signetAgent?.model ?? "";
-  elements.apiKey.value = session.signetAgentKey ?? "";
-  elements.settings.hidden = Boolean(
-    elements.endpoint.value && elements.model.value,
-  );
+  const [local, keyState] = await Promise.all([
+    chrome.storage.local.get("signetAgent"),
+    loadApiKey(),
+  ]);
+  const stored = local.signetAgent ?? {};
+  const provider =
+    stored.provider ?? inferProvider(stored.endpoint) ?? "openai";
+  elements.provider.value = provider;
+  applyProvider(provider, false);
+  const preset = PROVIDER_PRESETS[provider] ?? PROVIDER_PRESETS.custom;
+  elements.endpoint.value = stored.endpoint || preset.endpoint;
+  elements.model.value = stored.model || preset.model;
+  elements.apiKey.value = keyState.apiKey;
+  elements.rememberKey.checked = keyState.remembered;
+  updateKeyStorageNote();
+  updateModelSummary();
 }
 
 async function currentSettings() {
-  const endpoint = elements.endpoint.value.trim();
-  const model = elements.model.value.trim();
-  const apiKey = elements.apiKey.value.trim();
-  if (!endpoint || !model) {
-    elements.settings.hidden = false;
-    throw new Error(
-      "Connect a model provider in Settings before running a prompt.",
-    );
+  const settings = settingsFromFields();
+  const message = modelConfigurationError(settings);
+  if (message) {
+    openSettings(message);
+    throw new Error(message);
   }
-  return { endpoint, model, apiKey };
+  return settings;
+}
+
+function settingsFromFields() {
+  return {
+    provider: elements.provider.value,
+    endpoint: elements.endpoint.value.trim(),
+    model: elements.model.value.trim(),
+    apiKey: elements.apiKey.value.trim(),
+  };
+}
+
+function inferProvider(endpoint) {
+  if (!endpoint) return undefined;
+  return (
+    Object.entries(PROVIDER_PRESETS).find(
+      ([, value]) => value.endpoint === endpoint,
+    )?.[0] ?? "custom"
+  );
 }
 
 async function ensureEndpointPermission(endpoint) {
@@ -359,19 +538,34 @@ async function runInPage(func, args = []) {
   return injection.result;
 }
 
-function setConnection(status, title, message) {
-  elements.statusDot.className = `status-dot ${status}`;
-  elements.pageTitle.textContent = title;
-  elements.connectionMessage.textContent = message ?? "";
-}
-
 function setRunning(running) {
   elements.run.disabled = running;
+  elements.run.hidden = running;
   elements.stop.hidden = !running;
+  elements.settingsButton.disabled = running;
+  elements.modelSummary.disabled = running;
+  elements.newRun.disabled = running;
   elements.refresh.disabled = running;
-  if (!running && elements.runStatus.textContent !== "Complete") {
-    elements.runStatus.textContent = "Ready";
-  }
+}
+
+function updateModelSummary() {
+  elements.modelSummary.textContent =
+    modelConfigurationSummary(settingsFromFields());
+}
+
+function updateKeyStorageNote() {
+  elements.apiKeyStorageNote.textContent = elements.rememberKey.checked
+    ? "Stored locally by Chrome; not encrypted."
+    : "Cleared when Chrome or Signet restarts.";
+}
+
+function setActivity(message) {
+  elements.activity.textContent = message;
+  elements.activity.hidden = false;
+}
+
+function readableToolName(name) {
+  return String(name).replaceAll(/[_-]+/g, " ");
 }
 
 function textElement(tag, className, text) {
@@ -381,25 +575,18 @@ function textElement(tag, className, text) {
   return element;
 }
 
-function scrollRunLog() {
-  requestAnimationFrame(() =>
-    window.scrollTo({ top: document.body.scrollHeight }),
-  );
-}
-
 function formatDuration(value) {
   return value >= 1_000
     ? `${(value / 1_000).toFixed(1)}s`
     : `${value.toFixed(0)}ms`;
 }
 
-function pageAccessMessage(error) {
+function pageAccessRequired(error) {
   const message = error?.message ?? String(error);
-  if (
+  return (
     message.includes("Cannot access") ||
-    message.includes("The extensions gallery cannot be scripted")
-  ) {
-    return "Open a normal website and click the Signet toolbar button there.";
-  }
-  return message;
+    message.includes("cannot be scripted") ||
+    message.includes("extensions gallery") ||
+    message.includes("Missing host permission")
+  );
 }

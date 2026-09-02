@@ -28,6 +28,7 @@
     "tutorial:test": "npm run tutorial:test --workspace=@signet/webmcp",
     "test:eval": "node --test packages/eval/test/*.test.mjs",
     "build:chrome-agent": "npm run build --workspace=@signet/chrome-agent",
+    "package:chrome-agent": "npm run package --workspace=@signet/chrome-agent",
     "test:chrome-agent": "npm run test --workspace=@signet/chrome-agent",
     "validate:chrome-agent": "npm run validate --workspace=@signet/chrome-agent",
     "test:agent:headless": "node packages/eval/cli.mjs agent",

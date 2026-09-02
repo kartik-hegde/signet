@@ -38,36 +38,72 @@ test("invokes the currently exposed tool", async () => {
     getTools: async () => [tool],
     executeTool: async (selected, input) => {
       assert.equal(selected, tool);
-      assert.deepEqual(JSON.parse(input), {});
-      return { items: [] };
+      assert.deepEqual(input, {});
+      return '{"items":[]}';
     },
   });
 
   const result = await executeWebMcpTool("inspect_cart", {}, "call_1", 500);
 
-  assert.deepEqual(result, { ok: true, value: { items: [] } });
+  assert.deepEqual(result, { ok: true, value: '{"items":[]}' });
 });
 
-test("does not retry a failed execution with a second input transport", async () => {
-  const tool = { name: "inspect_cart" };
-  let invocations = 0;
+test("uses structured arguments with the current WebMCP API", async () => {
+  const tool = { name: "add_cart_item" };
   installPage({
     getTools: async () => [tool],
-    executeTool: async () => {
-      invocations += 1;
-      throw new Error("Outcome is unknown.");
+    executeTool: async (_selected, input) => JSON.stringify(input),
+  });
+
+  const result = await executeWebMcpTool(
+    "add_cart_item",
+    { sku: "notebook", quantity: 2 },
+    "call_2",
+    500,
+  );
+
+  assert.equal(result.value, '{"sku":"notebook","quantity":2}');
+});
+
+test("falls back to serialized arguments for older Chrome previews", async () => {
+  const tool = { name: "add_cart_item" };
+  installPage({
+    getTools: async () => [tool],
+    executeTool: async (_selected, input) => {
+      if (typeof input !== "string") throw new Error("Failed to parse input");
+      return input;
     },
   });
 
   const result = await executeWebMcpTool(
-    "inspect_cart",
-    { store: "nyc" },
-    "call_native",
+    "add_cart_item",
+    { sku: "notebook", quantity: 2 },
+    "call_legacy",
     500,
   );
 
-  assert.equal(result.ok, false);
-  assert.equal(invocations, 1);
+  assert.equal(result.value, '{"sku":"notebook","quantity":2}');
+});
+
+test("discovers tools from the older navigator API location", async () => {
+  installPage(
+    {
+      getTools: async () => [
+        {
+          name: "legacy_search",
+          description: "Search this site.",
+          input_schema: '{"type":"object"}',
+        },
+      ],
+    },
+    { navigatorOnly: true },
+  );
+
+  const page = await inspectWebMcpPage();
+
+  assert.equal(page.supported, true);
+  assert.equal(page.tools[0].name, "legacy_search");
+  assert.deepEqual(page.tools[0].inputSchema, { type: "object" });
 });
 
 test("aborts an active page call", async () => {
@@ -94,8 +130,15 @@ test("aborts an active page call", async () => {
   assert.match(result.error.message, /Stopped by the user/);
 });
 
-function installPage(modelContext) {
-  globalThis.document = { title: "Test page", modelContext };
+function installPage(modelContext, { navigatorOnly = false } = {}) {
+  globalThis.document = {
+    title: "Test page",
+    modelContext: navigatorOnly ? undefined : modelContext,
+  };
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: { modelContext: navigatorOnly ? modelContext : undefined },
+  });
   globalThis.location = {
     href: "https://shop.example/cart",
     origin: "https://shop.example",

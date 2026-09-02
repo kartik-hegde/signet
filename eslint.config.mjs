@@ -29,4 +29,32 @@ export default tseslint.config(
       "@typescript-eslint/prefer-promise-reject-errors": "off",
     },
   },
+  {
+    ...tseslint.configs.disableTypeChecked,
+    files: ["packages/chrome-agent/**/*.mjs"],
+    languageOptions: {
+      ...tseslint.configs.disableTypeChecked.languageOptions,
+      globals: Object.fromEntries(
+        [
+          "AbortController",
+          "DOMException",
+          "Response",
+          "URL",
+          "chrome",
+          "console",
+          "crypto",
+          "document",
+          "fetch",
+          "location",
+          "performance",
+          "process",
+          "requestAnimationFrame",
+          "setTimeout",
+          "clearTimeout",
+          "window",
+        ].map((name) => [name, "readonly"]),
+      ),
+      parserOptions: { projectService: false },
+    },
+  },
 );

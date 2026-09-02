@@ -1,37 +1,54 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { dirname, extname, join } from "node:path";
+import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const host = "127.0.0.1";
 const port = Number(process.env.SIGNET_AGENT_DEMO_PORT ?? 4174);
 
-createServer(async (request, response) => {
-  if (request.method === "POST" && request.url === "/v1/chat/completions") {
-    const payload = JSON.parse(await readBody(request));
-    sendJson(response, demoCompletion(payload));
-    return;
-  }
+export function createDemoServer() {
+  return createServer(async (request, response) => {
+    try {
+      if (request.method === "POST" && request.url === "/v1/chat/completions") {
+        const payload = JSON.parse(await readBody(request));
+        sendJson(response, demoCompletion(payload));
+        return;
+      }
 
-  const path = request.url === "/" ? "index.html" : request.url.slice(1);
-  if (!new Set(["index.html", "demo.mjs"]).has(path)) {
-    response.writeHead(404).end("Not found");
-    return;
-  }
-  const body = await readFile(join(root, path));
-  response.writeHead(200, {
-    "content-type":
-      extname(path) === ".mjs" ? "text/javascript" : "text/html; charset=utf-8",
-    "cache-control": "no-store",
+      const path = request.url === "/" ? "index.html" : request.url.slice(1);
+      if (!new Set(["index.html", "demo.mjs"]).has(path)) {
+        response.writeHead(404).end("Not found");
+        return;
+      }
+      const body = await readFile(join(root, path));
+      response.writeHead(200, {
+        "content-type":
+          extname(path) === ".mjs"
+            ? "text/javascript"
+            : "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      });
+      response.end(body);
+    } catch (error) {
+      sendJson(response, { error: { message: error.message } }, 400);
+    }
   });
-  response.end(body);
-}).listen(port, host, () => {
-  console.log(`Signet Agent demo: http://${host}:${port}`);
-  console.log(`Provider endpoint: http://${host}:${port}/v1/chat/completions`);
-});
+}
 
-function demoCompletion(payload) {
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  createDemoServer().listen(port, host, () => {
+    console.log(`Signet Agent demo: http://${host}:${port}`);
+    console.log(
+      `Provider endpoint: http://${host}:${port}/v1/chat/completions`,
+    );
+  });
+}
+
+export function demoCompletion(payload) {
   const messages = Array.isArray(payload.messages) ? payload.messages : [];
   const toolMessages = messages.filter((message) => message.role === "tool");
   const id = `demo_${toolMessages.length + 1}`;
@@ -69,8 +86,8 @@ function call(id, name, args) {
   };
 }
 
-function sendJson(response, value) {
-  response.writeHead(200, {
+function sendJson(response, value, status = 200) {
+  response.writeHead(status, {
     "content-type": "application/json",
     "access-control-allow-origin": "*",
     "cache-control": "no-store",
