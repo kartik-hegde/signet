@@ -35,6 +35,7 @@
     },
     "agent": { "$ref": "#/$defs/agent" },
     "oracle": { "$ref": "#/$defs/oracle" },
+    "quality": { "$ref": "#/$defs/quality" },
     "failure": { "$ref": "#/$defs/failure" },
     "artifacts": {
       "type": "array",
@@ -174,6 +175,27 @@
         }
       },
       "additionalProperties": false
+    },
+    "quality": {
+      "type": "object",
+      "description": "Interface-quality metrics derived from the Case expectations, the published inventory, and the recorded trace. Each dimension reports whether it applies to the condition.",
+      "required": ["source", "discovery", "selection", "arguments"],
+      "properties": {
+        "source": { "enum": ["events", "summary", "none"] },
+        "discovery": { "$ref": "#/$defs/qualityDimension" },
+        "selection": { "$ref": "#/$defs/qualityDimension" },
+        "arguments": { "$ref": "#/$defs/qualityDimension" }
+      },
+      "additionalProperties": false
+    },
+    "qualityDimension": {
+      "type": "object",
+      "required": ["applicable"],
+      "properties": {
+        "applicable": { "type": "boolean" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": true
     },
     "failure": {
       "type": "object",

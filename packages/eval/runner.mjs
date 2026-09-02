@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { FAILURE_CATEGORIES, createEvidence } from "./evidence.mjs";
+import { scoreInterfaceQuality } from "./interface-quality.mjs";
 
 /** Run one Case once. The oracle, never the agent transcript, decides success. */
 export async function runTrial({
@@ -173,6 +174,12 @@ export async function runTrial({
 
   return createEvidence({
     caseDefinition,
+    quality: scoreInterfaceQuality({
+      caseDefinition,
+      inventory,
+      events,
+      agent,
+    }),
     trial: {
       id: trialId,
       index,

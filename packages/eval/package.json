@@ -39,5 +39,8 @@
     "evals",
     "browser",
     "evidence"
-  ]
+  ],
+  "dependencies": {
+    "@cfworker/json-schema": "^4.1.1"
+  }
 }

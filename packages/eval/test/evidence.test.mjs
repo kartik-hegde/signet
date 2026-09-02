@@ -8,6 +8,7 @@ import {
   createEvidence,
   defineCase,
   hashCase,
+  scoreInterfaceQuality,
 } from "../index.mjs";
 
 const caseDefinition = defineCase({
@@ -85,5 +86,49 @@ test("createEvidence rejects unknown failure categories", () => {
         failure: { category: "mystery", message: "unknown" },
       }),
     /Unsupported failure category/,
+  );
+});
+
+test("interface-quality metrics travel with the Evidence they describe", async () => {
+  const quality = scoreInterfaceQuality({
+    caseDefinition,
+    inventory: [
+      {
+        name: "search_payment_users",
+        description: "Find a recipient.",
+        inputSchema: { type: "object", properties: {} },
+      },
+    ],
+    events: [
+      {
+        sequence: 0,
+        atMs: 1,
+        type: "webmcp_call",
+        tool: "search_payment_users",
+        input: {},
+        ok: true,
+      },
+    ],
+    agent: { timedOut: false },
+  });
+  const evidence = createEvidence({ ...evidenceInput(), quality });
+  assert.equal(evidence.quality.selection.accurate, true);
+
+  const schema = JSON.parse(
+    await readFile(
+      new URL("../schemas/evidence.v1.schema.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.deepEqual(
+    Object.keys(schema.$defs.quality.properties).sort(),
+    Object.keys(evidence.quality).sort(),
+  );
+});
+
+test("createEvidence rejects incomplete interface-quality metrics", () => {
+  assert.throws(
+    () => createEvidence({ ...evidenceInput(), quality: { source: "events" } }),
+    /quality\.discovery/,
   );
 });

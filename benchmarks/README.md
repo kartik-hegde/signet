@@ -43,8 +43,17 @@ may consume paid provider capacity, so CI uses deterministic contract tests inst
 `signet check candidate/report.json --against baseline/report.json` performs the same
 comparison on completed runs. It checks every Case and condition independently, rejects
 new forbidden effects and invalid comparisons, and writes `check.json` plus review-ready
-`check.md`. Safe-success tolerance and duration/token budgets are explicit command-line
+`check.md`. Regression tolerances and duration/token budgets are explicit command-line
 policy rather than hidden scoring rules.
+
+Every Trial also records how well the published interface served the agent, separately
+from whether the task succeeded: whether the condition exposed the capabilities the Case
+requires, whether the agent selected them, and whether its arguments validated against
+the published `inputSchema`. These land in `report.md` under **Interface quality** and
+gate the next revision.
+
+A UI-only arm records incomplete discovery but no selection score, because the expected
+capabilities were unavailable rather than overlooked by the agent.
 
 The current audit and ordered next steps are in
 [`methodology/benchmark-roadmap.md`](./methodology/benchmark-roadmap.md). The main

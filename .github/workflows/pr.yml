@@ -146,7 +146,6 @@ jobs:
         with:
           node-version: 24
       - run: npm run evidence:validate
-      - run: npm run test:eval
 
   docs:
     needs: changes

@@ -42,6 +42,7 @@ export function createEvidence(input) {
     events: input.events ?? [],
     agent: input.agent,
     oracle: input.oracle,
+    ...(input.quality === undefined ? {} : { quality: input.quality }),
     ...(input.failure === undefined ? {} : { failure: input.failure }),
     artifacts: input.artifacts ?? [],
     redaction: input.redaction ?? {
@@ -98,6 +99,9 @@ export function validateEvidence(value) {
       "Evidence oracle grade must contain boolean success fields.",
     );
   }
+  if (value.quality !== undefined) {
+    validateQuality(value.quality);
+  }
   if (value.failure !== undefined) {
     if (
       !isRecord(value.failure) ||
@@ -109,6 +113,47 @@ export function validateEvidence(value) {
     }
   }
   return value;
+}
+
+function validateQuality(quality) {
+  if (!isRecord(quality)) {
+    throw new TypeError("Evidence quality must be an object.");
+  }
+  if (!["events", "summary", "none"].includes(quality.source)) {
+    throw new TypeError(
+      `Unsupported interface-quality source: ${quality.source}`,
+    );
+  }
+  for (const name of ["discovery", "selection", "arguments"]) {
+    const dimension = quality[name];
+    if (!isRecord(dimension) || typeof dimension.applicable !== "boolean") {
+      throw new TypeError(
+        `Evidence quality.${name} must contain boolean applicable.`,
+      );
+    }
+  }
+
+  requireStringArray(
+    quality.discovery.unavailableCapabilities,
+    "quality.discovery.unavailableCapabilities",
+  );
+  requireBooleanOrNull(
+    quality.discovery.complete,
+    "quality.discovery.complete",
+  );
+
+  for (const field of ["missingCapabilities", "unknownToolCalls"]) {
+    requireStringArray(quality.selection[field], `quality.selection.${field}`);
+  }
+  requireBooleanOrNull(
+    quality.selection.accurate,
+    "quality.selection.accurate",
+  );
+
+  for (const field of ["evaluatedCalls", "validCalls"]) {
+    requireCount(quality.arguments[field], `quality.arguments.${field}`);
+  }
+  requireRateOrNull(quality.arguments.validity, "quality.arguments.validity");
 }
 
 function stableJson(value) {
@@ -132,6 +177,36 @@ function requireDate(value, path) {
   requireString(value, path);
   if (Number.isNaN(Date.parse(value)))
     throw new TypeError(`Evidence ${path} must be a date.`);
+}
+
+function requireCount(value, path) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new TypeError(`Evidence ${path} must be a non-negative integer.`);
+  }
+}
+
+function requireStringArray(value, path) {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+    throw new TypeError(`Evidence ${path} must be an array of strings.`);
+  }
+}
+
+function requireBooleanOrNull(value, path) {
+  if (value !== null && typeof value !== "boolean") {
+    throw new TypeError(`Evidence ${path} must be a boolean or null.`);
+  }
+}
+
+function requireRateOrNull(value, path) {
+  if (
+    value !== null &&
+    (typeof value !== "number" ||
+      !Number.isFinite(value) ||
+      value < 0 ||
+      value > 1)
+  ) {
+    throw new TypeError(`Evidence ${path} must be a rate from 0 to 1 or null.`);
+  }
 }
 
 function isRecord(value) {

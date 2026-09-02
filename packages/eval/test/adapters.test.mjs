@@ -131,3 +131,34 @@ test("runTrial normalizes custom adapter categories instead of losing evidence",
   assert.equal(evidence.failure.category, "environment");
   assert.equal(evidence.failure.message, "third-party category");
 });
+
+test("runTrial scores the published interface alongside the oracle grade", async () => {
+  const scoredCase = defineCase({
+    id: "create-payment-scored",
+    intent: "Send five dollars using the published payment tool.",
+    kind: "consequential",
+    application: "fake-payments",
+    oracle: "fake-database",
+    expectations: {
+      requiredCapabilities: ["create_payment"],
+      completionCapability: "create_payment",
+    },
+  });
+  const { evaluation } = fixture(({ emit }) => {
+    emit("webmcp_call", {
+      tool: "create_payment",
+      input: { amountCents: 500 },
+      ok: true,
+    });
+    return { exitCode: 0, timedOut: false, usage: {} };
+  });
+  const evidence = await runTrial({
+    caseDefinition: scoredCase,
+    condition: evaluation.conditions[0],
+    index: 1,
+    adapters: evaluation.adapters,
+  });
+  assert.equal(evidence.quality.source, "events");
+  assert.equal(evidence.quality.selection.accurate, true);
+  assert.equal(evidence.quality.discovery.complete, true);
+});

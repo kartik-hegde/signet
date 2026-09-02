@@ -13,6 +13,11 @@ export {
   validateEvidence,
 } from "./evidence.mjs";
 export { defineEvaluation, validateAdapter } from "./adapters.mjs";
+export {
+  TRACE_EVENTS,
+  scoreInterfaceQuality,
+  validateAgainstSchema,
+} from "./interface-quality.mjs";
 export { classifyFailure, runTrial } from "./runner.mjs";
 export {
   REPORT_SCHEMA_VERSION,
