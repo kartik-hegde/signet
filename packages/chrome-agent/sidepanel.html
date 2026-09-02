@@ -8,132 +8,163 @@
   </head>
   <body>
     <header class="app-header">
-      <div class="brand-mark" aria-hidden="true">S</div>
-      <div>
-        <h1>Signet Agent</h1>
-        <p>Use the tools this page exposes.</p>
-      </div>
       <button
         class="icon-button"
         id="settings-button"
         title="Settings"
-        aria-label="Settings"
+        aria-label="Open settings"
       >
-        •••
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path
+            d="M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5Zm8 3.5-.1-1.1 2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.9-1.1L15.3 3h-4l-.4 2.9A8 8 0 0 0 9 7L6.6 6 4.6 9.4l2 1.5a8 8 0 0 0 0 2.2l-2 1.5 2 3.4L9 17a8 8 0 0 0 1.9 1.1l.4 2.9h4l.4-2.9a8 8 0 0 0 1.9-1.1l2.4 1 2-3.4-2-1.5.1-1.1Z"
+          />
+        </svg>
       </button>
+      <div class="wordmark">
+        <span class="brand-mark" aria-hidden="true">S</span
+        ><strong>Signet</strong>
+      </div>
+      <button class="text-button" id="new-run-button" hidden>New</button>
     </header>
 
-    <main>
-      <section class="page-card" aria-live="polite">
-        <div class="connection-row">
-          <span class="status-dot" id="status-dot"></span>
-          <strong id="page-title">Connecting to page…</strong>
-          <button class="quiet-button" id="refresh-button">Refresh</button>
+    <main id="main-view">
+      <section class="workspace">
+        <div class="hero" id="hero">
+          <p class="kicker">Signet Agent</p>
+          <h1>What do you want to do today?</h1>
+          <p class="page-context" id="page-context">
+            Checking this page for WebMCP tools…
+          </p>
         </div>
-        <p id="page-url"></p>
-        <p class="connection-message" id="connection-message"></p>
+
+        <section
+          class="conversation"
+          id="conversation"
+          hidden
+          aria-live="polite"
+        >
+          <div class="prompt-message" id="prompt-message"></div>
+          <div class="answer-message" id="answer-message"></div>
+        </section>
+
+        <details class="tools-disclosure" id="tools-disclosure">
+          <summary>
+            <span
+              ><strong>Tools available</strong>
+              <span class="count" id="tool-count">0</span></span
+            >
+            <span class="tools-state" id="tools-state">Checking…</span>
+          </summary>
+          <div class="tool-list" id="tool-list">
+            <p class="empty-state">No tools found.</p>
+          </div>
+        </details>
+
+        <details class="trace-disclosure" id="trace-disclosure" hidden>
+          <summary>
+            <span
+              ><strong>Run details</strong>
+              <span class="count" id="call-count">0</span></span
+            >
+            <span id="trace-state">Running…</span>
+          </summary>
+          <div class="trace-list" id="trace-list"></div>
+        </details>
       </section>
 
-      <section class="settings-panel" id="settings-panel" hidden>
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">Connection</span>
-            <h2>Model provider</h2>
-          </div>
+      <form class="composer" id="prompt-form">
+        <label class="sr-only" for="prompt-input">Prompt</label>
+        <textarea
+          id="prompt-input"
+          rows="3"
+          placeholder="Ask Signet to use this page…"
+        ></textarea>
+        <div class="composer-footer">
+          <span class="run-status" id="run-status" role="status">Ready</span>
+          <button class="stop-button" id="stop-button" type="button" hidden>
+            Stop
+          </button>
+          <button
+            class="run-button"
+            id="run-button"
+            type="submit"
+            aria-label="Run agent"
+            title="Run agent"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="m6 12 6-6 6 6m-6-6v13" />
+            </svg>
+          </button>
         </div>
-        <label>
-          Chat Completions endpoint
-          <input
+      </form>
+    </main>
+
+    <section
+      class="settings-view"
+      id="settings-panel"
+      hidden
+      aria-labelledby="settings-title"
+    >
+      <div class="sheet-header">
+        <div>
+          <p class="kicker">Connection</p>
+          <h2 id="settings-title">Model settings</h2>
+        </div>
+        <button
+          class="icon-button"
+          id="close-settings-button"
+          aria-label="Close settings"
+          title="Close settings"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-fields">
+        <label
+          >Provider
+          <select id="provider-input">
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="demo">Local demo</option>
+            <option value="custom">Custom / OpenAI-compatible</option>
+          </select>
+        </label>
+        <label
+          >Model<input id="model-input" type="text" autocomplete="off"
+        /></label>
+        <label class="custom-only" id="endpoint-field"
+          >Endpoint<input
             id="endpoint-input"
             type="url"
             placeholder="https://provider.example/v1/chat/completions"
-          />
-        </label>
-        <label>
-          Model
-          <input
-            id="model-input"
-            type="text"
-            placeholder="provider model name"
-          />
-        </label>
-        <label>
-          API key
-          <span class="muted">kept only for this Chrome session</span>
+        /></label>
+        <label
+          >API key <span class="muted">kept only for this Chrome session</span>
           <input
             id="api-key-input"
             type="password"
             autocomplete="off"
-            placeholder="Optional for local providers"
+            placeholder="Paste your API key"
           />
         </label>
         <label class="consent-row">
           <input id="data-consent-input" type="checkbox" />
-          <span>
-            I understand that each run sends my prompt, the page's tool
-            definitions, and tool results to this model endpoint. Signet does
-            not receive them.
-          </span>
+          <span
+            >Allow each run to send the prompt, tool definitions, and tool
+            results directly to this provider.</span
+          >
         </label>
-        <div class="settings-actions">
-          <button class="primary-button compact" id="save-settings-button">
-            Save connection
-          </button>
-          <span id="settings-status" role="status"></span>
-        </div>
-      </section>
-
-      <section class="tools-section">
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">Current page</span>
-            <h2>
-              Available tools <span class="count" id="tool-count">0</span>
-            </h2>
-          </div>
-        </div>
-        <div class="tool-list" id="tool-list">
-          <p class="empty-state">No tools discovered yet.</p>
-        </div>
-      </section>
-
-      <section class="conversation-section">
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">Agent run</span>
-            <h2>Prompt and trace</h2>
-          </div>
-          <button class="quiet-button" id="clear-button">Clear</button>
-        </div>
-        <div class="run-log" id="run-log" aria-live="polite">
-          <div class="welcome-card">
-            <strong>Try the page as an agent.</strong>
-            <p>
-              Signet shows each WebMCP call and result without reading the page
-              DOM.
-            </p>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <form class="prompt-bar" id="prompt-form">
-      <label class="sr-only" for="prompt-input">Prompt</label>
-      <textarea
-        id="prompt-input"
-        rows="2"
-        placeholder="What should the agent do on this page?"
-      ></textarea>
-      <div class="prompt-actions">
-        <span id="run-status" role="status">Ready</span>
-        <button class="stop-button" id="stop-button" type="button" hidden>
-          Stop
-        </button>
-        <button class="primary-button" id="run-button" type="submit">
-          Run
-        </button>
       </div>
-    </form>
+
+      <div class="sheet-actions">
+        <span id="settings-status" role="status"></span>
+        <button class="save-button" id="save-settings-button">Save</button>
+      </div>
+    </section>
 
     <script type="module" src="sidepanel.mjs"></script>
   </body>

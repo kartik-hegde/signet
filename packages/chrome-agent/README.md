@@ -30,12 +30,9 @@ Start the included page and deterministic Chat Completions-compatible demo provi
 npm run demo --workspace=@signet/chrome-agent
 ```
 
-Open `http://127.0.0.1:4174`, click the Signet Agent toolbar button, and configure:
-
-- endpoint: `http://127.0.0.1:4174/v1/chat/completions`
-- model: `signet-demo`
-- API key: leave blank
-- data disclosure: confirm it
+Open `http://127.0.0.1:4174`, click the Signet Agent toolbar button, open
+**Settings**, and choose **Local demo**. Leave the API key blank, confirm the data
+disclosure, and save.
 
 Ask: `Add two notebooks to my cart and tell me the total.`
 
@@ -44,9 +41,14 @@ while the side panel shows both argument and result payloads.
 
 ## Connect a model
 
-Settings accepts an HTTP endpoint implementing the Chat Completions tool-calling shape.
-The provider receives only the prompt, exposed tool definitions, and tool results—not
-the page DOM, screenshot, cookies, or browsing history.
+Settings includes native presets for OpenAI, Gemini, and Anthropic, plus the bundled
+local demo. Choose a provider, paste its API key, and keep or change the suggested model.
+Custom endpoints can use the OpenAI Chat Completions tool-calling shape.
+
+The selected provider receives only the prompt, exposed tool definitions, and tool
+results—not the page DOM, screenshot, cookies, or browsing history. The main view stays
+prompt-first; tool definitions are expandable before a run and call details appear only
+after a run begins.
 
 The endpoint and model name are stored in `chrome.storage.local`. The API key is kept in
 `chrome.storage.session` and disappears when the Chrome session ends. Provider origin
