@@ -46,10 +46,14 @@ export default defineConfig({
           { text: "Choose a codelab", link: "/tutorials/" },
           { text: "1. First agent call", link: "/tutorials/first-agent-call" },
           {
-            text: "2. Authenticated payment",
+            text: "2. Headless agent testing",
+            link: "/tutorials/headless-agent-testing",
+          },
+          {
+            text: "3. Authenticated payment",
             link: "/guide/real-browser-example",
           },
-          { text: "3. Cal.diy booking", link: "/tutorials/cal-diy" },
+          { text: "4. Cal.diy booking", link: "/tutorials/cal-diy" },
           {
             text: "Patterns from integrations",
             link: "/guide/integration-patterns",
@@ -77,6 +81,7 @@ export default defineConfig({
           { text: "Interface", link: "/reference/interface" },
           { text: "guard", link: "/reference/guard" },
           { text: "Errors", link: "/reference/errors" },
+          { text: "CLI", link: "/reference/cli" },
           { text: "OpenTelemetry", link: "/reference/opentelemetry" },
         ],
       },

@@ -23,8 +23,21 @@ website unchanged and reports the tool as `unsupported`.
 npm install @signet/webmcp
 ```
 
-That is the only package required to use Signet. Install `webmcp-types` separately
-only when application code accesses the native `document.modelContext` API directly.
+That is the only runtime package required to expose tools. Install `webmcp-types`
+separately only when application code accesses the native `document.modelContext` API
+directly.
+
+To test those tools from a terminal, add the evaluation package as a development
+dependency. Its scoped package installs the `signet` executable:
+
+```sh
+npm install --save-dev @signet/eval
+npx signet agent --help
+```
+
+`@signet/webmcp` alone does not install the CLI, and the interactive Chrome extension
+is distributed separately. See [test a WebMCP job from the terminal](../tutorials/headless-agent-testing)
+for the complete workflow.
 
 ## Expose one tool
 
@@ -134,4 +147,6 @@ const state = useSignetTool(signet, greetingTool, [greetingTool]);
 
 Next, learn the [core Signet abstractions](./core-concepts) and how each one maps to
 application code. To run this example as a website and let an agent invoke it, follow
-the [first agent call codelab](../tutorials/first-agent-call).
+the [first agent call codelab](../tutorials/first-agent-call). To turn prompts into a
+repeatable regression suite, continue to
+[headless agent testing](../tutorials/headless-agent-testing).

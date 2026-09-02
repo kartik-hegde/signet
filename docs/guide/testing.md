@@ -96,10 +96,26 @@ agent:
 
 Model-driven tests complement invariant tests. They do not replace them.
 
-`evaluateAgentTasks()` accepts saved prompts, expected tools, argument predicates, and
-authoritative result oracles. Supply the model runner yourself; Signet reports tool
-selection accuracy, argument accuracy, and completion rate without becoming an agent
-orchestrator.
+For the complete browser path, install `@signet/eval` and run `signet agent`. It opens
+a fresh headless Chrome profile, discovers the page's exact WebMCP inventory, lets a
+tool-capable model work on a prompt, and records bounded Evidence:
+
+```sh
+npm install --save-dev @signet/eval
+npx signet agent \
+  --url http://127.0.0.1:3000 \
+  --prompt "Find the prepared order and report its status." \
+  --endpoint https://provider.example/v1/chat/completions \
+  --model tool-capable-model \
+  --output .artifacts/order-status.json
+```
+
+An ad-hoc run checks the interface contract. For consequential work, define a saved
+suite with reset, snapshot, and authoritative `grade` hooks. Run deterministic checks
+on every pull request and repeated real-model Trials on a schedule. The
+[headless-agent codelab](../tutorials/headless-agent-testing) shows the complete setup;
+the [CLI reference](../reference/cli) lists its budgets, expectations, and lifecycle
+hooks.
 
 Run Signet's complete local suite with:
 

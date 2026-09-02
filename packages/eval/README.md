@@ -98,6 +98,11 @@ npx signet agent ./signet.agent.mjs --trials 5
 The Chrome extension remains a separate interactive UI. It is not installed by
 `@signet/eval`.
 
+For a guided setup, authoritative oracle example, automation strategy, and
+troubleshooting, follow the
+[headless-agent codelab](../../docs/tutorials/headless-agent-testing.md). The
+[CLI reference](../../docs/reference/cli.md) lists every option and suite hook.
+
 ## Catch regressions while you iterate
 
 Keep a reviewed `report.json` as the baseline for an important workflow, then compare
