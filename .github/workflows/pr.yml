@@ -84,6 +84,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:eval
+      - run: npm run validate:chrome-agent
       - run: npm run format:check:repo
 
   safety:

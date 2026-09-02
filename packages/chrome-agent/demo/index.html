@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signet Agent Demo Store</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, system-ui, sans-serif;
+        background: #11110f;
+        color: #f4f0e8;
+      }
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        place-items: center;
+        background: radial-gradient(circle at 50% 0, #343229, #11110f 48%);
+      }
+      main {
+        width: min(680px, calc(100vw - 40px));
+      }
+      .eyebrow {
+        color: #83e1a5;
+        font-size: 12px;
+        font-weight: 750;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 10px 0;
+        font-size: clamp(42px, 8vw, 72px);
+        line-height: 0.98;
+        letter-spacing: -0.055em;
+      }
+      .lead {
+        max-width: 520px;
+        color: #aaa79f;
+        font-size: 17px;
+      }
+      .card {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 20px;
+        align-items: end;
+        margin-top: 36px;
+        padding: 22px;
+        border: 1px solid #3b3a34;
+        border-radius: 18px;
+        background: #1d1d1a;
+        box-shadow: 0 30px 90px #0008;
+      }
+      .item {
+        margin-top: 5px;
+        color: #aaa79f;
+      }
+      #total {
+        color: #83e1a5;
+        font:
+          700 28px ui-monospace,
+          monospace;
+      }
+      #activity {
+        min-height: 20px;
+        margin-top: 16px;
+        color: #8eb8ef;
+        font-family: ui-monospace, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="eyebrow">WebMCP test page</span>
+      <h1>A store with tools.</h1>
+      <p class="lead">
+        Open Signet Agent from the Chrome toolbar and ask it to add two
+        notebooks. The extension uses only the tools below—never the DOM.
+      </p>
+      <section class="card">
+        <div>
+          <strong>Cart</strong>
+          <p class="item" id="items">Empty</p>
+        </div>
+        <div id="total">$0.00</div>
+      </section>
+      <p id="activity">Three WebMCP tools registered.</p>
+    </main>
+    <script type="module" src="demo.mjs"></script>
+  </body>
+</html>

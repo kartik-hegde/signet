@@ -52,6 +52,7 @@ export function classifyFiles(files) {
       matches(
         changed,
         "packages/eval/",
+        "packages/chrome-agent/",
         "benchmarks/agent-effectiveness/",
         "fixtures/cypress-realworld-app/eval/",
       ),

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signet Agent</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand-mark" aria-hidden="true">S</div>
+      <div>
+        <h1>Signet Agent</h1>
+        <p>Use the tools this page exposes.</p>
+      </div>
+      <button
+        class="icon-button"
+        id="settings-button"
+        title="Settings"
+        aria-label="Settings"
+      >
+        •••
+      </button>
+    </header>
+
+    <main>
+      <section class="page-card" aria-live="polite">
+        <div class="connection-row">
+          <span class="status-dot" id="status-dot"></span>
+          <strong id="page-title">Connecting to page…</strong>
+          <button class="quiet-button" id="refresh-button">Refresh</button>
+        </div>
+        <p id="page-url"></p>
+        <p class="connection-message" id="connection-message"></p>
+      </section>
+
+      <section class="settings-panel" id="settings-panel" hidden>
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Connection</span>
+            <h2>Model provider</h2>
+          </div>
+        </div>
+        <label>
+          Chat Completions endpoint
+          <input
+            id="endpoint-input"
+            type="url"
+            placeholder="https://provider.example/v1/chat/completions"
+          />
+        </label>
+        <label>
+          Model
+          <input
+            id="model-input"
+            type="text"
+            placeholder="provider model name"
+          />
+        </label>
+        <label>
+          API key
+          <span class="muted">kept only for this Chrome session</span>
+          <input
+            id="api-key-input"
+            type="password"
+            autocomplete="off"
+            placeholder="Optional for local providers"
+          />
+        </label>
+        <label class="consent-row">
+          <input id="data-consent-input" type="checkbox" />
+          <span>
+            I understand that each run sends my prompt, the page's tool
+            definitions, and tool results to this model endpoint. Signet does
+            not receive them.
+          </span>
+        </label>
+        <div class="settings-actions">
+          <button class="primary-button compact" id="save-settings-button">
+            Save connection
+          </button>
+          <span id="settings-status" role="status"></span>
+        </div>
+      </section>
+
+      <section class="tools-section">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Current page</span>
+            <h2>
+              Available tools <span class="count" id="tool-count">0</span>
+            </h2>
+          </div>
+        </div>
+        <div class="tool-list" id="tool-list">
+          <p class="empty-state">No tools discovered yet.</p>
+        </div>
+      </section>
+
+      <section class="conversation-section">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Agent run</span>
+            <h2>Prompt and trace</h2>
+          </div>
+          <button class="quiet-button" id="clear-button">Clear</button>
+        </div>
+        <div class="run-log" id="run-log" aria-live="polite">
+          <div class="welcome-card">
+            <strong>Try the page as an agent.</strong>
+            <p>
+              Signet shows each WebMCP call and result without reading the page
+              DOM.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <form class="prompt-bar" id="prompt-form">
+      <label class="sr-only" for="prompt-input">Prompt</label>
+      <textarea
+        id="prompt-input"
+        rows="2"
+        placeholder="What should the agent do on this page?"
+      ></textarea>
+      <div class="prompt-actions">
+        <span id="run-status" role="status">Ready</span>
+        <button class="stop-button" id="stop-button" type="button" hidden>
+          Stop
+        </button>
+        <button class="primary-button" id="run-button" type="submit">
+          Run
+        </button>
+      </div>
+    </form>
+
+    <script type="module" src="sidepanel.mjs"></script>
+  </body>
+</html>
