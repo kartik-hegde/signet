@@ -1,7 +1,7 @@
 {
   "name": "@signet/eval",
   "version": "0.0.0",
-  "description": "Portable cases and local evaluation tools for agent-ready websites.",
+  "description": "Portable evaluations and headless WebMCP agent testing for agent-ready websites.",
   "type": "module",
   "bin": {
     "signet": "./cli.mjs"
@@ -11,10 +11,16 @@
     ".": {
       "types": "./index.d.ts",
       "import": "./index.mjs"
-    }
+    },
+    "./agent": {
+      "types": "./agent.d.mts",
+      "import": "./agent.mjs"
+    },
+    "./cli": "./cli.mjs"
   },
   "files": [
     "*.d.ts",
+    "*.d.mts",
     "*.mjs",
     "schemas"
   ],

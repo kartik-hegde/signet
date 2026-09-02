@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signet Agent benchmark fixture</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "@cfworker/json-schema": "/vendor/json-schema/index.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main>
+      <h1>Signet Agent benchmark fixture</h1>
+      <p id="status">Registering tools…</p>
+    </main>
+    <script>
+      window.__fixtureErrors = [];
+      window.addEventListener("error", (event) => {
+        window.__fixtureErrors.push(event.error?.stack ?? event.message);
+      });
+      window.addEventListener("unhandledrejection", (event) => {
+        window.__fixtureErrors.push(
+          event.reason?.stack ?? String(event.reason),
+        );
+      });
+    </script>
+    <script type="module" src="/fixture/app.js"></script>
+  </body>
+</html>
