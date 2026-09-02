@@ -29,6 +29,7 @@ const domainSchema = {
     domain: {
       type: "string",
       minLength: 1,
+      maxLength: 253,
       description: "A fully qualified domain name, such as example.com.",
     },
   },

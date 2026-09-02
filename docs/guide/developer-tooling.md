@@ -25,10 +25,13 @@ const inspector = mountSignetInspector(signet);
 // inspector.dispose();
 ```
 
-The dependency-free browser overlay displays current tool schemas, annotations,
-exposure state, and lifecycle timings. It captures no argument or result values and
-makes no network requests. Import it only in development code so bundlers can exclude
-the entry point from production.
+The dependency-free browser overlay displays current tool schemas and exposure state,
+plus one ordered row per call with outcome, total latency, and a phase waterfall.
+Expand a call to inspect validation, policy, execution/replay/recovery, and verification
+durations or its bounded error classification. Completed calls are also added to the
+browser's User Timing track by default. The inspector captures no argument, result,
+context, error message, or stack values and makes no network requests. Import it only
+in development code so bundlers can exclude the entry point from production.
 
 ## Evaluation change checks
 

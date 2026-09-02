@@ -29,6 +29,30 @@ export interface OperationHandle {
 export interface ExecuteOptions {
   readonly signal: AbortSignal;
   readonly operation?: OperationHandle;
+  /** Optional, untrusted correlation metadata supplied by the calling agent host. */
+  readonly callerTelemetry?: SignetCallerTelemetry;
+}
+
+/**
+ * A small, versioned envelope an agent host may attach to a tool call.
+ * Signet treats every value as untrusted metadata and never exposes it to the
+ * application's execute function.
+ */
+export interface SignetCallerTelemetry {
+  readonly version: 1;
+  readonly traceparent?: string;
+  readonly tracestate?: string;
+  readonly toolCallId?: string;
+  readonly sequence?: number;
+  readonly agent?: {
+    readonly id?: string;
+    readonly name?: string;
+    readonly version?: string;
+  };
+  readonly model?: {
+    readonly provider?: string;
+    readonly name?: string;
+  };
 }
 
 export type Execute<Input extends Record<string, unknown>, Output> = (
@@ -141,6 +165,8 @@ export interface GuardEvent {
   readonly timestamp: number;
   readonly durationMs: number;
   readonly error?: unknown;
+  /** Present only on `started`; consumers must still validate it. */
+  readonly callerTelemetry?: SignetCallerTelemetry;
 }
 
 export type GuardObserver = (event: GuardEvent) => MaybePromise<void>;

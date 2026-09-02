@@ -10,6 +10,9 @@ Options:
 - `observe`: receives privacy-safe registration and execution lifecycle events;
 - `unsupported`: `ignore`, `warn`, or `throw` when WebMCP is unavailable;
 - `modelContext`: injectable native boundary for deterministic tests.
+- `telemetry`: optional dependency-free OTLP/HTTP JSON export; set `otlp` and
+  optionally `serviceName`, `headers`, resource attributes, batching interval, and
+  queue size.
 
 Unsupported behavior defaults to `ignore` so production visitors without experimental
 WebMCP retain a quiet human experience. Use `warn` during integration and `throw` in
@@ -72,6 +75,10 @@ as a testable design constraint and return a smaller projection.
 `interface.observe(listener)` subscribes to registration and execution events and
 returns an unsubscribe function. Inputs, outputs, context, and stack traces are not
 captured implicitly.
+
+When `telemetry` is configured, `interface.telemetry` exposes `flush()` and
+`shutdown()` for tests and explicit application teardown. Normal browser code can let
+the bounded exporter flush on its configured interval.
 
 ## Registration
 

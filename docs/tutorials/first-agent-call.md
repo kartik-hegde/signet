@@ -54,9 +54,15 @@ export const greetingTool = {
     additionalProperties: false,
   },
   annotations: { readOnlyHint: true },
-  execute: () => ({ message: "Hello, world!" }),
+  execute: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 75));
+    return { message: "Hello, world!" };
+  },
 };
 ```
+
+The small delay is only there to make the execution segment easy to recognize in the
+trace waterfall.
 
 `App.tsx` creates one stable Signet interface and binds that definition to the React
 component lifetime:
@@ -101,8 +107,44 @@ The result is:
 { "message": "Hello, world!" }
 ```
 
-The Signet inspector records the call lifecycle. This proves that Chrome invoked the
-same registered callback that an agent will use.
+The Signet inspector now shows a **Calls** row for `get_greeting`: sequence number,
+outcome, total latency, and a proportional waterfall. Expand the row to see the
+`validate` and `execute` phases and their individual durations. The same call also
+appears as a `Signet: get_greeting` measure in Chrome's **Performance** panel. This
+proves that Chrome invoked the same registered callback that an agent will use and
+shows where its time went.
+
+### Optional: open the same trace in Jaeger
+
+The local inspector needs no backend. To exercise the standard OpenTelemetry path,
+start [Jaeger](https://www.jaegertracing.io/docs/2.20/getting-started/) in another
+terminal:
+
+```sh
+docker run --rm --name jaeger \
+  -p 16686:16686 \
+  -p 4318:4318 \
+  cr.jaegertracing.io/jaegertracing/jaeger:2.20.0
+```
+
+Then open `http://localhost:4173/?otlp=1` and execute `get_greeting` again. The query
+flag makes the example equivalent to this application configuration:
+
+```ts
+createSignet({
+  telemetry: {
+    otlp: "/v1/traces",
+    serviceName: "signet-hello-world",
+  },
+});
+```
+
+The checked-in Vite configuration proxies `/v1/traces` to Jaeger's OTLP/HTTP port,
+so the browser needs no CORS workaround. Open `http://localhost:16686`, choose the
+`signet-hello-world` service, and select **Find Traces**. Expanding the result shows
+the `execute_tool get_greeting` root span and its `signet.validate` and `signet.execute`
+children. Stop the container with <kbd>Ctrl+C</kbd>; its in-memory traces are
+deliberately disposable.
 
 ## 5. Let an agent call it
 
@@ -152,7 +194,7 @@ Expected evidence:
 1. the agent navigates its Chrome instance to the local page;
 2. `list_webmcp_tools` reports `get_greeting`;
 3. `execute_webmcp_tool` returns `Hello, world!`; and
-4. the Signet inspector records `started`, `validated`, `executed`, and `succeeded`.
+4. the Signet inspector shows a succeeded call with `validate` and `execute` latency.
 
 The [Chrome DevTools MCP tool reference](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/tool-reference.md)
 documents the current experimental category and tool names.

@@ -1,3 +1,5 @@
+export * from "./agent.mjs";
+
 export type CaseKind =
   | "read"
   | "mutation"

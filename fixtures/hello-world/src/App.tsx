@@ -7,7 +7,20 @@ import { useSignetTool } from "@signet/webmcp/react";
 import { greetingTool } from "./greeting";
 
 export function App() {
-  const signet = useMemo(() => createSignet({ unsupported: "warn" }), []);
+  const signet = useMemo(() => {
+    const exportToJaeger = new URLSearchParams(location.search).has("otlp");
+    return createSignet({
+      unsupported: "warn",
+      ...(exportToJaeger
+        ? {
+            telemetry: {
+              otlp: "/v1/traces",
+              serviceName: "signet-hello-world",
+            },
+          }
+        : {}),
+    });
+  }, []);
   const registration = useSignetTool(signet, greetingTool, [greetingTool]);
 
   useEffect(() => {
@@ -46,7 +59,7 @@ export function App() {
         <li>
           Execute the tool there, or ask an MCP-connected agent to call it.
         </li>
-        <li>Watch the Signet panel record validation and execution.</li>
+        <li>Watch the Signet panel show the call and its latency waterfall.</li>
       </ol>
 
       <pre className="result" aria-label="Expected tool result">

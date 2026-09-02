@@ -31,6 +31,10 @@ export default defineConfig({
         text: "Start",
         items: [
           { text: "Why Signet", link: "/guide/why-signet" },
+          {
+            text: "User jobs workflow",
+            link: "/guide/user-jobs-workflow",
+          },
           { text: "Getting started", link: "/guide/getting-started" },
           { text: "Core concepts", link: "/guide/core-concepts" },
           { text: "Production WebMCP", link: "/guide/production-webmcp" },
@@ -85,6 +89,7 @@ export default defineConfig({
         items: [
           { text: "Production checklist", link: "/production-checklist" },
           { text: "Design contract", link: "/design" },
+          { text: "Observability spec", link: "/specs/observability" },
           { text: "Ecosystem research", link: "/ecosystem" },
           { text: "Product tracker", link: "/pm" },
         ],

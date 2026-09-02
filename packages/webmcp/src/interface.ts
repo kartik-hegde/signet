@@ -1,4 +1,9 @@
 import { runGuarded } from "./guard.js";
+import {
+  otlpObserver,
+  type OtlpObserver,
+  type OtlpResource,
+} from "./tracing.js";
 import { compileInputValidator } from "./validation.js";
 import type {
   AuthorizationDecision,
@@ -10,6 +15,7 @@ import type {
   OperationHandle,
   OperationJournal,
   RecoveryDecision,
+  SignetCallerTelemetry,
   VerificationDecision,
 } from "./types.js";
 
@@ -28,7 +34,10 @@ export interface ModelContextLike {
       annotations?: ToolAnnotations;
       execute(
         input: Record<string, unknown>,
-        options: { signal: AbortSignal },
+        options: {
+          signal: AbortSignal;
+          callerTelemetry?: SignetCallerTelemetry;
+        },
       ): MaybePromise<unknown>;
     },
     options?: {
@@ -45,6 +54,15 @@ export interface CreateSignetOptions<Context> {
   readonly observe?: GuardObserver;
   readonly unsupported?: "ignore" | "warn" | "throw";
   readonly modelContext?: ModelContextLike;
+  /** Optional zero-dependency OTLP/HTTP JSON export. */
+  readonly telemetry?: {
+    readonly otlp: string;
+    readonly headers?: Readonly<Record<string, string>>;
+    readonly resource?: OtlpResource;
+    readonly serviceName?: string;
+    readonly flushIntervalMs?: number;
+    readonly maxQueue?: number;
+  };
 }
 
 export interface SignetTool<
@@ -122,6 +140,8 @@ export interface SignetInterface<Context> {
   ): Promise<SignetRegistration>;
   tools(): readonly SignetToolSnapshot[];
   observe(observer: GuardObserver): () => void;
+  /** Present when `telemetry` is configured. Normal app code need not call it. */
+  readonly telemetry?: Pick<OtlpObserver, "flush" | "shutdown">;
 }
 
 export interface SignetToolSnapshot {
@@ -234,6 +254,27 @@ export function createSignet<Context = undefined>(
 ): SignetInterface<Context> {
   const observers = new Set<GuardObserver>();
   if (options.observe) observers.add(options.observe);
+  const telemetry = options.telemetry
+    ? otlpObserver({
+        url: options.telemetry.otlp,
+        ...(options.telemetry.headers === undefined
+          ? {}
+          : { headers: options.telemetry.headers }),
+        ...(options.telemetry.resource === undefined
+          ? {}
+          : { resource: options.telemetry.resource }),
+        ...(options.telemetry.serviceName === undefined
+          ? {}
+          : { serviceName: options.telemetry.serviceName }),
+        ...(options.telemetry.flushIntervalMs === undefined
+          ? {}
+          : { flushIntervalMs: options.telemetry.flushIntervalMs }),
+        ...(options.telemetry.maxQueue === undefined
+          ? {}
+          : { maxQueue: options.telemetry.maxQueue }),
+      })
+    : undefined;
+  if (telemetry) observers.add(telemetry);
   const tools = new Map<string, SignetToolSnapshot>();
   const localNames = new Set<string>();
 
@@ -271,6 +312,7 @@ export function createSignet<Context = undefined>(
   };
 
   return {
+    ...(telemetry === undefined ? {} : { telemetry }),
     tools: () => [...tools.values()],
     observe(observer) {
       observers.add(observer);
@@ -336,13 +378,19 @@ export function createSignet<Context = undefined>(
 
       const execute = (
         input: Record<string, unknown>,
-        executeOptions?: { signal: AbortSignal },
+        executeOptions?: {
+          signal: AbortSignal;
+          callerTelemetry?: SignetCallerTelemetry;
+        },
       ) => {
         // Some WebMCP hosts currently invoke tools with an empty options object.
         // Keep cancellation when supplied, but do not let a host compatibility
         // detail bypass the guard before the application operation can run.
         const normalizedOptions = {
           signal: executeOptions?.signal ?? new AbortController().signal,
+          ...(executeOptions?.callerTelemetry === undefined
+            ? {}
+            : { callerTelemetry: executeOptions.callerTelemetry }),
         };
         return runGuarded(
           input as Parameters<typeof tool.execute>[0],

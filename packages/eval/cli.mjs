@@ -20,7 +20,15 @@ import {
 const DEFAULT_CONFIG = "fixtures/cypress-realworld-app/eval/index.mjs";
 
 export async function main(argv = process.argv.slice(2)) {
+  if (argv[0] === "agent") {
+    const { agentMain } = await import("./agent-cli.mjs");
+    return agentMain(argv.slice(1));
+  }
   if (argv[0] === "check") return checkMain(argv.slice(1));
+  if (argv[0] === "--help" || argv[0] === "-h" || argv.length === 0) {
+    process.stdout.write(rootHelpText());
+    return;
+  }
   return evalMain(argv);
 }
 
@@ -418,6 +426,18 @@ Options:
   --max-duration-ratio n     Optional median-duration budget versus baseline
   --max-token-ratio n        Optional median-token budget versus baseline
   -h, --help                 Show this help
+`;
+}
+
+function rootHelpText() {
+  return `Usage: signet <command> [options]
+
+Commands:
+  agent    Run natural-language tasks against a page's WebMCP tools
+  eval     Run repeated, application-owned evaluation Cases
+  check    Compare an evaluation report with a reviewed baseline
+
+Run "signet <command> --help" for command-specific options.
 `;
 }
 

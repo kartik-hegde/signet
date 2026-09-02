@@ -44,6 +44,20 @@ test("the reference fixture selects reference and eval only where relevant", () 
   assert.equal(adapter.eval, true);
 });
 
+test("Chrome agent changes select the deterministic agent lane", () => {
+  const result = classifyFiles(["packages/chrome-agent/sidepanel.mjs"]);
+  assert.equal(result.eval, true);
+  assert.equal(result.sdk, false);
+  assert.equal(result.reference, false);
+});
+
+test("Signet Agent benchmark changes select the deterministic agent lane", () => {
+  const result = classifyFiles(["benchmarks/signet-agent/tasks.mjs"]);
+  assert.equal(result.eval, true);
+  assert.equal(result.sdk, false);
+  assert.equal(result.reference, false);
+});
+
 test("root and workflow changes conservatively select every lane", () => {
   for (const filename of ["package-lock.json", ".github/workflows/pr.yml"]) {
     const result = classifyFiles([filename]);

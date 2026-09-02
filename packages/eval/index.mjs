@@ -34,3 +34,4 @@ export {
   renderChangeCheckMarkdown,
   writeChangeCheck,
 } from "./change-check.mjs";
+export * from "./agent.mjs";

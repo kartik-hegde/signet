@@ -347,16 +347,19 @@ export function registerPaymentTools(onPaymentCreated: (transactionId: string) =
             operationId: {
               type: "string",
               pattern: "^[A-Za-z0-9._:-]{1,128}$",
+              maxLength: 128,
               ...(copy.operationId ? { description: copy.operationId } : {}),
             },
             sourceAccountId: {
               type: "string",
               minLength: 1,
+              maxLength: 128,
               ...(copy.sourceAccountId ? { description: copy.sourceAccountId } : {}),
             },
             receiverId: {
               type: "string",
               minLength: 1,
+              maxLength: 128,
               ...(copy.receiverId ? { description: copy.receiverId } : {}),
             },
             amount: {

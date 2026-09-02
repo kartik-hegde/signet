@@ -4,6 +4,7 @@ import type {
   IdempotencyStore,
   OperationJournal,
   OperationJournalOptions,
+  SignetCallerTelemetry,
 } from "./types.js";
 import type { ModelContextLike } from "./interface.js";
 import type { MaybePromise } from "./types.js";
@@ -16,7 +17,10 @@ export interface WebMcpTestHarness {
   invoke(
     name: string,
     input: Record<string, unknown>,
-    options?: { readonly signal?: AbortSignal },
+    options?: {
+      readonly signal?: AbortSignal;
+      readonly callerTelemetry?: SignetCallerTelemetry;
+    },
   ): Promise<unknown>;
   clear(): void;
 }
@@ -50,6 +54,9 @@ export function createWebMcpTestHarness(): WebMcpTestHarness {
       if (!tool) throw new Error(`WebMCP tool is not registered: ${name}`);
       return await tool.execute(input, {
         signal: options.signal ?? new AbortController().signal,
+        ...(options.callerTelemetry === undefined
+          ? {}
+          : { callerTelemetry: options.callerTelemetry }),
       });
     },
     clear: () => tools.clear(),
