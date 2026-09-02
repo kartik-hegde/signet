@@ -74,12 +74,22 @@ summary:focus-visible {
 }
 
 .app-header {
+  position: relative;
   height: 60px;
   display: flex;
   align-items: center;
   padding: 0 16px;
   border-bottom: 1px solid var(--line);
   background: var(--paper);
+}
+.app-brand {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .icon-button,

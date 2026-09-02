@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DEFAULT_MAX_STEPS,
   normalizeAssistantMessage,
   providerTools,
   runAgent,
@@ -132,8 +133,14 @@ test("stops a runaway tool loop at the configured limit", async () => {
       }),
       invoke: async () => ({}),
     }),
-    /2-step limit/,
+    (error) => {
+      assert.match(error.message, /stopped after 2 model turns/);
+      assert.equal(error.name, "AgentLimitError");
+      assert.equal(error.code, "agent_step_limit");
+      return true;
+    },
   );
+  assert.equal(DEFAULT_MAX_STEPS, 16);
 });
 
 test("returns retryable tool failures to the model for correction", async () => {

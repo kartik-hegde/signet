@@ -99,7 +99,8 @@ Each later upload must increment `version` in `manifest.json` before packaging.
   valid origin-trial token, or testers must enable the applicable experimental Chrome
   feature. The bundled demo includes a local compatibility boundary.
 - The page must expose `document.modelContext.getTools()` and `executeTool()`.
-- Calls are sequential, capped at eight model steps, and time out after 45 seconds.
+- Calls are sequential, capped at 16 model turns to prevent unintended loops, and time
+  out after 45 seconds.
 - Stop aborts the model request and the active page tool call.
 - Conversations and tool results are not persisted.
 - This is a developer agent, not a general browser automation or DOM-control product.

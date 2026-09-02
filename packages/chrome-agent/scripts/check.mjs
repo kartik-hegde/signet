@@ -57,6 +57,11 @@ for (const id of ["tools-disclosure", "trace-disclosure", "prompt-form"]) {
     throw new Error(`#${id} must remain in the persistent control dock.`);
   }
 }
+if ((html.match(/class="app-brand"/g) ?? []).length !== 1) {
+  throw new Error(
+    "The side panel must contain exactly one visible Signet brand.",
+  );
+}
 
 for (const file of [
   "agent-core.mjs",
