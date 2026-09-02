@@ -36,6 +36,7 @@ export type {
   OperationJournal,
   OperationJournalOptions,
   RecoveryDecision,
+  SignetCallerTelemetry,
   VerificationDecision,
 } from "./types.js";
 export type {

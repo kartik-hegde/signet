@@ -225,7 +225,9 @@ const state = useSignetTool(signet, searchProductsTool, [shopId]);
 The React entry point handles teardown while asynchronous registration is still in
 flight. During development, `mountSignetInspector(signet)` from
 `@signet/webmcp/inspector` shows exact schemas, annotations, registration state, and
-privacy-safe lifecycle timings.
+a privacy-safe per-call latency waterfall. To export the same spans to Jaeger or any
+OTLP backend, add `telemetry: { otlp: "/v1/traces", serviceName: "storefront" }`
+to `createSignet`.
 
 ## What Signet provides
 

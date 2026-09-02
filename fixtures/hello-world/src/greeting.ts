@@ -13,5 +13,9 @@ export const greetingTool: SignetTool<
     additionalProperties: false,
   },
   annotations: { readOnlyHint: true },
-  execute: () => ({ message: "Hello, world!" }),
+  // A small delay makes the execution phase visible in the tutorial waterfall.
+  execute: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 75));
+    return { message: "Hello, world!" };
+  },
 };

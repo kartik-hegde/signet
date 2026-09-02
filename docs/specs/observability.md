@@ -1,7 +1,13 @@
 # Observability spec: traces, latency, and errors
 
-**Status:** proposal · **Owner:** Signet core · **Scope:** `@signet/webmcp`,
+**Status:** implementation in progress · **Owner:** Signet core · **Scope:** `@signet/webmcp`,
 `@signet/eval`, reference fixtures, docs
+
+The first vertical slice is implemented in `@signet/webmcp`: caller correlation,
+privacy-safe error classification, trace assembly, OTLP/HTTP JSON export, the
+Inspector waterfall, User Timing, and a Jaeger-enabled first-call tutorial. Evaluation
+Trial traces, registration spans, incomplete-call expiry, and report aggregation remain
+follow-up work.
 
 ## Summary
 
@@ -32,7 +38,7 @@ required**:
 - **Zero-install fallbacks.** The existing Inspector overlay gains a call waterfall,
   and every invocation can appear in the Chrome DevTools Performance panel through
   the User Timing API.
-- **Evidence is already a trace.** `signet eval` writes one OTLP trace per Trial
+- **Evidence becomes a trace.** `signet eval` will write one OTLP trace per Trial
   next to its Evidence, aggregates per-tool latency and error tables into
   `report.json` and `report.md`, and can stream Trials into a running Jaeger.
 
@@ -40,7 +46,7 @@ Developer cost by situation:
 
 | Situation                              | Developer writes                               |
 | -------------------------------------- | ---------------------------------------------- |
-| Running `signet eval`                  | nothing                                        |
+| Running `signet eval` (planned)        | nothing                                        |
 | Local development with the Inspector   | nothing new (`mountSignetInspector` as today)  |
 | Sending live traces to a local Jaeger  | one option: `telemetry: { otlp: url }`         |
 | Application already runs OpenTelemetry | the existing `openTelemetryObserver(tracer)`   |
@@ -71,7 +77,7 @@ Developer cost by situation:
   phase; see [Later](#later).
 - Shipping or hosting a collector.
 
-## Where we are today
+## Baseline before implementation
 
 Grounded in the current tree:
 
@@ -113,13 +119,15 @@ not standardized, and not viewable.
 
 ### 1. Trace model
 
-An invocation is one trace. Names and attributes follow the OpenTelemetry GenAI
-semantic conventions for tool execution (status: development in semconv), so any
-GenAI-aware backend renders Signet calls the same way it renders framework tool
-calls. Signet-specific detail lives under `signet.*`.
+An invocation is one root span. With no caller context it is also a standalone trace.
+When an agent host supplies W3C `traceparent`, the invocation span keeps that trace ID
+and uses the caller span as its parent, so several ordered tool calls appear inside one
+agent workflow trace. Names and attributes follow the OpenTelemetry GenAI semantic
+conventions for tool execution (status: development in semconv). Signet-specific
+detail lives under `signet.*`.
 
 ```text
-execute_tool cancel_order                     kind=INTERNAL   status=OK|ERROR
+execute_tool cancel_order                     kind=INTERNAL   status=UNSET|ERROR
 ├─ signet.validate                            (started → validated)
 ├─ signet.authorize                           (validated → authorized)
 ├─ signet.confirm                             (authorized → confirmed | declined)
@@ -134,28 +142,28 @@ Root span attributes:
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `gen_ai.operation.name`        | `execute_tool`                                                                                                                                                    |
 | `gen_ai.tool.name`             | tool name                                                                                                                                                         |
-| `gen_ai.tool.call.id`          | invocation ID                                                                                                                                                     |
+| `gen_ai.tool.call.id`          | actual host tool-call ID, only when supplied                                                                                                                      |
 | `gen_ai.tool.type`             | `function`                                                                                                                                                        |
-| `gen_ai.tool.description`      | tool description when known to the emitter (interface path)                                                                                                       |
-| `signet.outcome`               | `succeeded` · `failed` · `declined` · `outcome_unknown`                                                                                                           |
+| `signet.invocation.id`         | Signet-local invocation ID                                                                                                                                        |
+| `signet.invocation.sequence`   | caller-supplied or locally assigned call order                                                                                                                    |
+| `signet.outcome`               | `succeeded` · `replayed` · `recovered` · `denied` · `declined` · `cancelled` · `failed` · `unknown`                                                               |
 | `signet.result_source`         | `executed` · `replayed` · `recovered` (when the call reached execution)                                                                                           |
 | `signet.output.status`         | `validated` · `oversized` · `unmeasurable` (when measured)                                                                                                        |
 | `signet.completed_after_abort` | `true` when a completed handler outran a cancellation                                                                                                             |
 | `error.type`                   | error class for Signet errors (`ToolError`, `ValidationError`, `AuthorizationError`, `VerificationError`, `OutcomeUnknownError`, `AbortError`), otherwise `Error` |
-| `signet.error.code`            | `SignetError.code` when present                                                                                                                                   |
-| `signet.error.retryable`       | boolean when present                                                                                                                                              |
+| `error.code`                   | `SignetError.code` when present                                                                                                                                   |
+| `error.retryable`              | boolean when present                                                                                                                                              |
 
 Phase span attributes: `signet.stage` (the terminal stage of that phase). A phase
 that ends in failure carries the same `error.*` attributes and ERROR status as the
 root.
 
-Registration is a separate, short trace: `register_tool <name>` with
+Registration will become a separate, short trace: `register_tool <name>` with
 `signet.registration.status` ∈ `registered | unsupported | failed | unregistered`.
 
-Resource attributes on every export: `service.name` (application-provided, default
-`location.hostname` in browsers and `signet-eval` in the runner),
-`telemetry.sdk.name = "signet"`, `telemetry.sdk.language = "webjs"`,
-`telemetry.sdk.version = <package version>`.
+Resource attributes on every current export include `service.name`
+(application-provided, default `signet-webmcp`) plus application-provided resource
+attributes. Evaluation will use `signet-eval` as its default.
 
 Timing: root start is the `started` event's wall-clock `timestamp`. Every later
 boundary is `start + durationMs` of the corresponding event, so phase widths keep
@@ -165,28 +173,21 @@ boundary is `start + durationMs` of the corresponding event, so phase widths kee
 
 Small, backward-compatible additions to what `guard()` and the interface emit.
 
-1. **W3C-compatible IDs.** `defaultInvocationId()` returns 32 lowercase hex
-   characters instead of a UUID string so an invocation ID is directly a valid OTLP
-   `traceId`. Span IDs are derived per phase (16 hex chars) inside the encoder.
-   Applications that pass their own `invocationId` keep working; the encoder hashes
-   non-conforming IDs into a trace ID and keeps the original in
-   `gen_ai.tool.call.id`.
+1. **Caller correlation envelope.** A versioned, optional `callerTelemetry` envelope
+   carries `traceparent`, `tracestate`, the actual host tool-call ID, call sequence,
+   agent ID/name/version, and model provider/name. Values are untrusted, bounded to 128
+   UTF-8 bytes, and never reach application execution. Trace and span IDs are generated
+   independently when the host does not provide a valid parent.
 2. **Error classification.** New exported pure function
    `describeError(error): { type: string; code?: string; retryable?: boolean }`
    used by every sink. It reads only class name, `code`, and `retryable`. Messages
    and stacks are never read here.
-3. **Static tool metadata for the interface path.** Events dispatched through
-   `createSignet()` are already tool-scoped; the encoder receives the tool snapshot
-   (description, annotations) from `signet.tools()` so `gen_ai.tool.description`
-   and `readOnlyHint` can be attached without changing `GuardEvent`.
-4. **Trace record assembly.** A tiny internal `TraceAssembler` folds the ordered
+3. **Trace record assembly.** A tiny `TraceAssembler` folds the ordered
    `GuardEvent` stream for one `invocationId` into one `InvocationTrace`
    `{ traceId, name, startedAt, endedAt, outcome, phases[], error? }`. All sinks
    (OTLP encoder, Inspector, User Timing) consume `InvocationTrace`, so the stage
-   arithmetic exists once. Incomplete invocations are flushed after a bounded
-   idle timeout with `signet.outcome = "unknown"` so a crashed page still leaves a
-   span.
-5. **DevTools hook.** `createSignet()` and `guard()` check once for
+   arithmetic exists once. Bounded expiry for incomplete invocations is pending.
+4. **DevTools hook (pending).** `createSignet()` and `guard()` can later check once for
    `globalThis.__SIGNET_DEVTOOLS_HOOK__`. If it exists and exposes
    `attach({ observe, tools })`, Signet subscribes it exactly like any observer.
    Signet never creates the global. This is the React DevTools pattern: the tool
@@ -196,37 +197,39 @@ Small, backward-compatible additions to what `guard()` and the interface emit.
    evaluation and future browser tooling zero-configuration for application
    developers.
 
-`GuardEvent`'s public shape does not change in this phase.
+`GuardEvent` adds optional `callerTelemetry` on `started`. Existing observers remain
+source-compatible.
 
 ### 3. Sinks (`@signet/webmcp/opentelemetry`, `@signet/webmcp/inspector`)
 
 All sinks are opt-in, isolated from execution, and drop rather than block.
 
-**`toOtlpJson(traces: InvocationTrace[], resource): OtlpExportTraceServiceRequest`**
+**`toOtlpJson(traces: InvocationTrace[], options): OtlpExportTraceServiceRequest`**
 A dependency-free encoder to the OTLP/JSON `ExportTraceServiceRequest` shape
 (`resourceSpans[].scopeSpans[].spans[]`, nanosecond string timestamps, typed
 `attributes[].value`). Exported for tests, the Inspector, and `@signet/eval`.
 
-**`otlpObserver({ url, headers?, resource?, flushIntervalMs = 2000, maxQueue = 1000, redaction? }): GuardObserver`**
+**`otlpObserver({ url, headers?, resource?, serviceName?, flushIntervalMs = 1000, maxQueue = 100 }): OtlpObserver`**
 Batches finished traces and `POST`s OTLP/JSON to `url` (for example
 `http://localhost:4318/v1/traces`) using `fetch` with `keepalive: true`. Flushes on
-interval, on batch size, and on `pagehide`/`visibilitychange` where those exist. All
+interval, on batch size, and on `pagehide` where it exists. All
 failures are swallowed; the queue is bounded. Also usable as
 `createSignet({ telemetry: { otlp: url } })`, which is sugar for adding this
 observer.
 
 **`openTelemetryObserver(tracer, options)` upgrades** for applications that already
-run the OpenTelemetry SDK: per-phase child spans, the attribute table above,
-`span.setStatus` with `error.type`, and `recordException` only when
-`options.redaction?.errorMessages === true`. Existing call sites keep working; span
-names change from `webmcp <name>` to `execute_tool <name>`, noted as a breaking
-change for the pre-release adapter.
+run the OpenTelemetry SDK: GenAI attributes, `span.setStatus` with bounded error
+attributes, no exception message/stack capture, and correct closure of unknown-outcome
+spans. Existing call sites keep working; span names change from `webmcp <name>` to
+`execute_tool <name>`, noted as a breaking change for the pre-release adapter. Phase
+child spans for this adapter remain follow-up work; the dependency-free OTLP path
+already emits them.
 
 **Inspector additions.** A "Calls" section above "Lifecycle": one row per
 invocation showing tool name, outcome badge, total milliseconds, a proportional
 phase bar, and `error.type`/code when present; expanding a row lists the phases.
-A "Copy OTLP JSON" control puts the buffered traces on the clipboard for pasting
-into a viewer or an issue. With `userTiming: true` (default when the Inspector is
+A future "Copy OTLP JSON" control can put buffered traces on the clipboard. With
+`userTiming: true` (default when the Inspector is
 mounted) each finished invocation calls `performance.measure("execute_tool <name>",
 { start, end, detail: { outcome } })`, so the Chrome DevTools Performance panel
 shows Signet calls in its Timings track next to network and rendering work with no
@@ -331,7 +334,7 @@ panel via User Timing, both described above.
 
 ### 6. Privacy and redaction
 
-Default exports contain: tool name and description, invocation ID, stages, timings,
+Default exports contain: tool name, invocation ID, stages, timings,
 outcome, error class, error code, retryable flag, and resource attributes. They never
 contain input, output, application context, idempotency keys, error messages, or
 stack traces. `ToolError.details`, `ValidationError.issues`, and confirmation
@@ -351,12 +354,12 @@ input and asserts the OTLP payload contains none of it.
 - **Application developer, first day.** Runs the app with `mountSignetInspector`.
   Sees each agent call as a bar with phases and outcome. Opens DevTools Performance
   and sees the same calls in the Timings track. Writes nothing new.
-- **Application developer, tuning latency or errors.** Starts `npm run trace:ui`,
-  adds `telemetry: { otlp }` to `createSignet`, and reads Jaeger's waterfall and
-  Monitor tab. One option.
+- **Application developer, tuning latency or errors.** Starts a local Jaeger container,
+  adds `telemetry: { otlp }` to `createSignet`, and reads Jaeger's waterfall. One
+  option.
 - **Team already on OpenTelemetry.** Keeps `openTelemetryObserver(tracer)`; gains
   phase spans and GenAI attributes on upgrade.
-- **Evaluation author or reviewer.** Runs `signet eval`. Every Trial folder has a
+- **Evaluation author or reviewer (planned).** Runs `signet eval`. Every Trial folder has a
   trace file; `report.md` shows per-tool latency and error tables; with
   `--otlp-endpoint` the run is watchable live. Writes nothing new.
 
@@ -380,8 +383,9 @@ Against `docs/design.md`:
   `observe` remain the primitive. The hook is narrower than the concern it
   coordinates and has an obvious removal path.
 
-The performance guide's promise that nothing is allocated without an observer holds;
-the only new cost in the silent path is a global property read.
+The performance guide's promise that nothing is allocated without an observer holds.
+The exporter exists only when `telemetry` is configured; the Inspector and explicit
+observers remain opt-in.
 
 ## Testing
 
@@ -410,13 +414,12 @@ the only new cost in the silent path is a global property read.
 
 ## Rollout
 
-| Phase | Deliverable                                                                                                                                                                                                                             | Validation                                            |
-| ----: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-|     1 | Hex invocation IDs, `describeError`, trace assembler, `toOtlpJson`, `otlpObserver`, `telemetry.otlp` option, hook attach, adapter upgrades, privacy tests                                                                               | `npm run validate`                                    |
-|     2 | Runner intervals, hook-based capture in the payment adapter and MCP bridge, trace artifacts, report tables, `--otlp-endpoint`, `signet trace push`, nightly artifact upload                                                             | `npm run test:eval`, `test:reference`                 |
-|     3 | Inspector waterfall, clipboard export, User Timing; `tooling/observability/jaeger.yaml`, `trace:ui` script; docs page "Observability" under Production controls; update `docs/reference/opentelemetry.md`, README, production checklist | docs build, Inspector tests, manual Jaeger acceptance |
-
-Phases 1 and 2 are independent of 3 and can land as separate pull requests.
+| Phase | Status  | Deliverable                                                                                                                                                                         | Validation                            |
+| ----: | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+|     1 | Done    | Caller envelope, `describeError`, trace assembler, `toOtlpJson`, `otlpObserver`, `telemetry.otlp`, adapter privacy/status fixes                                                     | `npm run validate`                    |
+|     2 | Done    | Inspector waterfall, User Timing, Jaeger-enabled hello-world tutorial, reference/API docs                                                                                           | tutorial test/build, docs build       |
+|     3 | Pending | Trial root spans, hook-based in-page capture for evaluation, trace artifacts, per-tool report tables, `--otlp-endpoint`, replacement of the reference fixture's ad hoc event bridge | `npm run test:eval`, `test:reference` |
+|     4 | Pending | Registration spans, incomplete-invocation expiry, Inspector OTLP copy, optional local trace UI script, per-phase spans in the application-owned SDK adapter                         | focused tests and manual acceptance   |
 
 ## Later
 
