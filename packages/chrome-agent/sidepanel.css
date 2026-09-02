@@ -120,7 +120,7 @@ summary:focus-visible {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.app-header .icon-button {
+#settings-button {
   margin-left: auto;
 }
 .text-button {
