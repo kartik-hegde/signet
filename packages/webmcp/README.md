@@ -85,7 +85,14 @@ await signet.expose({
   description: "Cancel one unshipped order belonging to the signed-in user.",
   inputSchema: {
     type: "object",
-    properties: { orderId: { type: "string", minLength: 1 } },
+    properties: {
+      orderId: {
+        type: "string",
+        description: "Stable identifier of the order to cancel.",
+        minLength: 1,
+        maxLength: 128,
+      },
+    },
     required: ["orderId"],
     additionalProperties: false,
   },
@@ -188,10 +195,18 @@ await signet.expose({
   description: "Find products matching a query.",
   inputSchema: {
     type: "object",
-    properties: { query: { type: "string", minLength: 1 } },
+    properties: {
+      query: {
+        type: "string",
+        description: "Words from the product name.",
+        minLength: 1,
+        maxLength: 80,
+      },
+    },
     required: ["query"],
     additionalProperties: false,
   },
+  annotations: { readOnlyHint: true },
   execute: ({ query }: { query: string }) => searchProducts(query),
 });
 

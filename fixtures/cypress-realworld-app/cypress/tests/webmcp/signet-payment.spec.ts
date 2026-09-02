@@ -1,5 +1,6 @@
 /// <reference path="../../global.d.ts" />
 
+import { assertToolReady } from "../../../../../packages/webmcp/src/index";
 import {
   executeTool,
   paymentInput,
@@ -44,6 +45,23 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
     cy.window().then((win) => {
       expect(win.__webMcpTest.getToolNames()).to.deep.equal([]);
     });
+  });
+
+  it("keeps production-facing metadata variants readiness-clean", () => {
+    for (const variant of ["explicit", "guided"] as const) {
+      cy.window().then((win) => {
+        win.localStorage.setItem("signet:eval:metadata", variant);
+      });
+      cy.visitWithWebMcp("/");
+      waitForPaymentTools();
+      cy.document().then(async (document) => {
+        const tools = await document.modelContext?.getTools();
+        expect(tools, `${variant} tool inventory`).to.have.length(3);
+        for (const tool of tools ?? []) {
+          expect(() => assertToolReady(tool), `${variant}:${tool.name}`).not.to.throw();
+        }
+      });
+    }
   });
 
   it("makes one real payment and verifies authoritative state", () => {

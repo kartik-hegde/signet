@@ -3,6 +3,11 @@
 Signet makes a function in your website discoverable and callable by browser agents
 through native WebMCP. A tool can be as small as a function that returns a greeting.
 
+If you are deciding what your application should expose, start with the
+[User Jobs to Be Done workflow](./user-jobs-workflow). It takes one existing product
+outcome from a small capability sketch to deterministic proof, real-agent Evidence,
+and a regression baseline.
+
 ## Before you start
 
 Signet runs in browser code. Add it to a client-side module that loads with the page
