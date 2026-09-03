@@ -12,8 +12,8 @@
         class="icon-button"
         id="new-run-button"
         type="button"
-        aria-label="New run"
-        title="New run"
+        aria-label="New conversation"
+        title="New conversation"
         hidden
       >
         <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -21,7 +21,6 @@
           <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
         </svg>
       </button>
-      <span class="app-brand">Signett</span>
       <button
         class="icon-button"
         id="settings-button"
@@ -38,7 +37,7 @@
     </header>
 
     <main id="main-view">
-      <section class="workspace">
+      <section class="workspace" id="workspace">
         <div class="hero" id="hero">
           <h1>What do you want to do today?</h1>
         </div>
@@ -48,16 +47,7 @@
           id="conversation"
           hidden
           aria-live="polite"
-        >
-          <div class="prompt-message" id="prompt-message"></div>
-          <div
-            class="agent-activity"
-            id="agent-activity"
-            role="status"
-            hidden
-          ></div>
-          <div class="answer-message" id="answer-message"></div>
-        </section>
+        ></section>
       </section>
 
       <div class="control-dock">

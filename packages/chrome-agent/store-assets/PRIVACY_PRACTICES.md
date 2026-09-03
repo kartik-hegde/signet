@@ -33,8 +33,8 @@ settings.
 Used to store the user's selected provider endpoint and model locally. API keys
 are stored in `chrome.storage.session` by default and are retained in
 `chrome.storage.local` only when the user explicitly selects **Remember on this
-device**. Prompts, conversations, tool calls, and tool results are not
-persisted.
+device**. The active conversation is kept only in Chrome session storage and is
+not retained after Chrome or the extension restarts.
 
 ### Optional host access
 

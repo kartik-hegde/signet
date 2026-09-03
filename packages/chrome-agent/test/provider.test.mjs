@@ -248,6 +248,103 @@ test("keeps Gemini Interactions stateless while returning normalized calls", asy
   assert.equal(second.message.content, "Found it");
 });
 
+test("sends earlier Gemini assistant and tool messages on a follow-up turn", async () => {
+  const captured = [];
+  const replies = [
+    {
+      steps: [
+        {
+          type: "function_call",
+          id: "call_2",
+          name: "inspect_cart",
+          arguments: {},
+        },
+      ],
+    },
+    {
+      steps: [
+        {
+          type: "model_output",
+          content: [{ type: "text", text: "There are zero items." }],
+        },
+      ],
+    },
+  ];
+  const provider = createModelProvider(
+    {
+      provider: "gemini",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta/interactions",
+      model: "gemini-test",
+      apiKey: "gemini-secret",
+    },
+    async (_url, init) => {
+      captured.push(JSON.parse(init.body));
+      return new Response(JSON.stringify(replies.shift()), { status: 200 });
+    },
+  );
+
+  const history = [
+    { role: "system", content: "Use tools." },
+    { role: "user", content: "Inspect my cart." },
+    {
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        {
+          id: "call_1",
+          type: "function",
+          function: { name: "inspect_cart", arguments: "{}" },
+        },
+      ],
+    },
+    {
+      role: "tool",
+      tool_call_id: "call_1",
+      content: '{"ok":true,"value":{"items":[]}}',
+    },
+    { role: "assistant", content: "Your cart is empty.", tool_calls: [] },
+    { role: "user", content: "How many items is that?" },
+  ];
+  const first = await provider({
+    messages: history,
+    tools: [],
+    signal: new AbortController().signal,
+  });
+  await provider({
+    messages: [
+      ...history,
+      first.message,
+      {
+        role: "tool",
+        tool_call_id: "call_2",
+        content: '{"ok":true,"value":{"items":[]}}',
+      },
+    ],
+    tools: [],
+    signal: new AbortController().signal,
+  });
+
+  assert.deepEqual(
+    captured[0].input.map(({ type }) => type),
+    [
+      "user_input",
+      "function_call",
+      "function_result",
+      "model_output",
+      "user_input",
+    ],
+  );
+  assert.equal(captured[0].input[2].call_id, "call_1");
+  assert.equal(captured[0].input[2].name, "inspect_cart");
+  assert.equal(captured[0].input[3].content[0].text, "Your cart is empty.");
+  assert.deepEqual(
+    captured[1].input
+      .filter(({ type }) => type === "function_result")
+      .map(({ call_id: callId }) => callId),
+    ["call_1", "call_2"],
+  );
+});
+
 test("requires API keys for hosted provider presets", () => {
   assert.throws(
     () => createModelProvider({ provider: "openai", model: "gpt-test" }),

@@ -8,6 +8,7 @@ const iconOutput = join(output, "icons");
 const files = [
   "agent-core.mjs",
   "api-key-storage.mjs",
+  "conversation-history.mjs",
   "markdown.mjs",
   "manifest.json",
   "page-bridge.mjs",

@@ -156,6 +156,9 @@ function createGeminiProvider(config, fetchImpl) {
   return async ({ messages, tools, signal }) => {
     if (!history) {
       history = toGeminiInitialInput(messages);
+      consumedToolMessages = messages.filter(
+        (message) => message.role === "tool",
+      ).length;
     } else {
       const toolMessages = messages.filter(
         (message) => message.role === "tool",
@@ -273,12 +276,44 @@ function toAnthropicMessages(messages) {
 }
 
 function toGeminiInitialInput(messages) {
-  return messages
-    .filter((message) => message.role === "user")
-    .map((message) => ({
-      type: "user_input",
-      content: [{ type: "text", text: String(message.content ?? "") }],
-    }));
+  const input = [];
+  const names = toolCallNames(messages);
+  for (const message of messages) {
+    if (message.role === "user") {
+      input.push({
+        type: "user_input",
+        content: [{ type: "text", text: String(message.content ?? "") }],
+      });
+      continue;
+    }
+    if (message.role === "assistant") {
+      if (message.content) {
+        input.push({
+          type: "model_output",
+          content: [{ type: "text", text: String(message.content) }],
+        });
+      }
+      for (const call of message.tool_calls || []) {
+        input.push({
+          type: "function_call",
+          id: call.id,
+          name: call.function.name,
+          arguments: parseObject(call.function.arguments),
+        });
+      }
+      continue;
+    }
+    if (message.role === "tool") {
+      input.push({
+        type: "function_result",
+        call_id: message.tool_call_id,
+        name: names.get(message.tool_call_id),
+        result: [{ type: "text", text: String(message.content ?? "") }],
+        is_error: toolResultFailed(message.content),
+      });
+    }
+  }
+  return input;
 }
 
 function toolCallNames(messages) {
