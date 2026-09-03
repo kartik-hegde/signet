@@ -20,7 +20,7 @@ const racePlans = {
       "send_payment({ amount: 12, … })",
     ],
   },
-  webmcp_signet: {
+  webmcp_signett: {
     visualDuration: 2350,
     steps: [
       "Discover the same 3 tools",
@@ -129,16 +129,16 @@ function wireInteractions() {
 
 function hydrateEvidence() {
   const { effectiveness, safety, generatedAt } = evidence;
-  const signet = effectiveness.comparisons.signetWebMcpVsUi;
+  const signett = effectiveness.comparisons.signettWebMcpVsUi;
   const rawScore = safety.scores.find(({ arm }) => arm === "A1_raw");
   const guardedScore = safety.scores.find(
-    ({ arm }) => arm === "A3b_signet_durable",
+    ({ arm }) => arm === "A3b_signett_durable",
   );
 
-  document.querySelector("#signet-speedup").textContent =
-    `${signet.durationSpeedup}×`;
+  document.querySelector("#signett-speedup").textContent =
+    `${signett.durationSpeedup}×`;
   document.querySelector("#interaction-cut").textContent =
-    `${signet.interactionReductionPercent}%`;
+    `${signett.interactionReductionPercent}%`;
   document.querySelector("#raw-score").textContent = `${rawScore.overall}`;
   document.querySelector("#guarded-score").textContent =
     `${guardedScore.overall}`;
@@ -270,7 +270,7 @@ async function runFault() {
   button.querySelector("span:last-child").textContent = "Fault active…";
 
   const raw = findTrial(activeScenario, "A1_raw");
-  const guarded = findTrial(activeScenario, "A3b_signet_durable");
+  const guarded = findTrial(activeScenario, "A3b_signett_durable");
   const copy = scenarioCopy[activeScenario];
 
   await Promise.all([

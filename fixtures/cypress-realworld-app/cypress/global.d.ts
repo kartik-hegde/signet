@@ -22,12 +22,12 @@ declare namespace Cypress {
     publicTransactionService: typeof publicTransactionService;
     contactTransactionService: typeof contactsTransactionService;
     personalTransactionService: typeof personalTransactionService;
-    __signetGuardEvents?: Array<{
+    __signettGuardEvents?: Array<{
       name?: string;
       stage: string;
       invocationId: string;
     }>;
-    __webMcpBenchmarkMode?: "raw" | "signet";
+    __webMcpBenchmarkMode?: "raw" | "signett";
     __webMcpTest: {
       getToolNames(): string[];
       executeTool(
@@ -58,7 +58,7 @@ declare namespace Cypress {
     /** Visit after installing a capture-only implementation of the browser WebMCP API. */
     visitWithWebMcp(
       path?: string,
-      mode?: "raw" | "signet"
+      mode?: "raw" | "signett"
     ): Chainable<AUTWindow>;
 
     /**
@@ -92,7 +92,7 @@ declare namespace Cypress {
       event: "reference:record-metric",
       metric: {
         task: string;
-        mode: "ui" | "webmcp_raw" | "webmcp_signet";
+        mode: "ui" | "webmcp_raw" | "webmcp_signett";
         durationMs: number;
         interactionCount: number;
         toolCalls: number;

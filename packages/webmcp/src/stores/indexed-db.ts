@@ -48,7 +48,7 @@ export class IndexedDbIdempotencyStore implements IdempotencyStore {
   readonly #claims = new Map<string, Claim>();
 
   constructor(options: IndexedDbIdempotencyStoreOptions = {}) {
-    this.#databaseName = options.databaseName ?? "signet-idempotency";
+    this.#databaseName = options.databaseName ?? "signett-idempotency";
     this.#indexedDB =
       options.indexedDB === undefined
         ? globalThis.indexedDB
@@ -78,7 +78,7 @@ export class IndexedDbIdempotencyStore implements IdempotencyStore {
         let resolved = false;
         void locks
           .request(
-            `signet:idempotency:${key}`,
+            `signett:idempotency:${key}`,
             { signal: options.signal },
             async () => {
               const stored = await this.#read(key);

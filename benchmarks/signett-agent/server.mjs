@@ -5,7 +5,7 @@ import { extname, join, resolve } from "node:path";
 const benchmarkRoot = resolve(import.meta.dirname);
 const repositoryRoot = resolve(benchmarkRoot, "../..");
 const fixtureRoot = join(benchmarkRoot, "fixture");
-const signetRoot = join(repositoryRoot, "packages/webmcp/dist");
+const signettRoot = join(repositoryRoot, "packages/webmcp/dist");
 const schemaRoot = join(
   repositoryRoot,
   "node_modules/@cfworker/json-schema/dist/esm",
@@ -252,8 +252,8 @@ function resolveAsset(pathname) {
     return join(fixtureRoot, "index.html");
   if (pathname.startsWith("/fixture/"))
     return safeJoin(fixtureRoot, pathname.slice(9));
-  if (pathname.startsWith("/signet/"))
-    return safeJoin(signetRoot, pathname.slice(8));
+  if (pathname.startsWith("/signett/"))
+    return safeJoin(signettRoot, pathname.slice(8));
   if (pathname.startsWith("/vendor/json-schema/")) {
     return safeJoin(schemaRoot, pathname.slice(20));
   }

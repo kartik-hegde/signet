@@ -4,13 +4,13 @@
   "name": "Cal.diy Booker",
   "sourceLayout": "external-checkout",
   "application": {
-    "directory": ".external/cal-diy-signet",
+    "directory": ".external/cal-diy-signett",
     "upstream": "https://github.com/calcom/cal.diy.git",
     "revision": "176037d0afbe572f870a3c702985e7cd83fe6c0c",
     "integrationRevision": "f2b1fc9b66f2f718286f4e79cae52b008d415b2f",
     "license": "AGPL-3.0"
   },
-  "signet": {
+  "signett": {
     "directory": ".",
     "revision": "workspace"
   },

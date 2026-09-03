@@ -1,6 +1,6 @@
 # Getting started
 
-Signet makes a function in your website discoverable and callable by browser agents
+Signett makes a function in your website discoverable and callable by browser agents
 through native WebMCP. A tool can be as small as a function that returns a greeting.
 
 If you are deciding what your application should expose, start with the
@@ -10,17 +10,17 @@ and a regression baseline.
 
 ## Before you start
 
-Signet runs in browser code. Add it to a client-side module that loads with the page
+Signett runs in browser code. Add it to a client-side module that loads with the page
 where the capability should be available. It does not create a server, host your
 tools, or replace your application's API.
 
-WebMCP is still experimental. In a browser without WebMCP, Signet leaves the human
+WebMCP is still experimental. In a browser without WebMCP, Signett leaves the human
 website unchanged and reports the tool as `unsupported`.
 
-## Install Signet
+## Install Signett
 
 ```sh
-npm install @signet/webmcp
+npm install signett
 ```
 
 That is the only runtime package required to expose tools. Install `webmcp-types`
@@ -28,14 +28,14 @@ separately only when application code accesses the native `document.modelContext
 directly.
 
 To test those tools from a terminal, add the evaluation package as a development
-dependency. Its scoped package installs the `signet` executable:
+dependency. Its scoped package installs the `signett` executable:
 
 ```sh
-npm install --save-dev @signet/eval
-npx signet agent --help
+npm install --save-dev @signett/eval
+npx signett agent --help
 ```
 
-`@signet/webmcp` alone does not install the CLI, and the interactive Chrome extension
+`signett` alone does not install the CLI, and the interactive Chrome extension
 is distributed separately. See [test a WebMCP job from the terminal](../tutorials/headless-agent-testing)
 for the complete workflow.
 
@@ -44,11 +44,11 @@ for the complete workflow.
 Add this to a client-side module:
 
 ```ts
-import { createSignet } from "@signet/webmcp";
+import { createSignett } from "signett";
 
-const signet = createSignet();
+const signett = createSignett();
 
-const registration = await signet.expose({
+const registration = await signett.expose({
   name: "get_greeting",
   description: "Return a greeting from this website.",
   inputSchema: {
@@ -72,7 +72,7 @@ Every tool has four required fields:
 
 - `name`: a stable `verb_noun` identifier an agent can select;
 - `description`: what the tool does and any important constraint;
-- `inputSchema`: the JSON Schema Signet validates before execution;
+- `inputSchema`: the JSON Schema Signett validates before execution;
 - `execute`: the application function that returns the result.
 
 The optional `readOnlyHint` tells agents that calling this tool does not change state.
@@ -90,12 +90,12 @@ Use `unsupported: "warn"` while integrating if you want a console warning when t
 native browser API is missing:
 
 ```ts
-const signet = createSignet({ unsupported: "warn" });
+const signett = createSignett({ unsupported: "warn" });
 ```
 
-Signet does not poll for a bridge that may appear later. If an extension or test
+Signett does not poll for a bridge that may appear later. If an extension or test
 environment provides a `modelContext`, wait for it and pass it explicitly to
-`createSignet({ modelContext })`.
+`createSignett({ modelContext })`.
 
 ## Test it without a browser agent
 
@@ -103,13 +103,13 @@ The test harness supplies the same registration boundary and lets a test invoke 
 real tool callback:
 
 ```ts
-import { createSignet } from "@signet/webmcp";
-import { createWebMcpTestHarness } from "@signet/webmcp/testing";
+import { createSignett } from "signett";
+import { createWebMcpTestHarness } from "signett/testing";
 
 const harness = createWebMcpTestHarness();
-const signet = createSignet({ modelContext: harness.modelContext });
+const signett = createSignett({ modelContext: harness.modelContext });
 
-await signet.expose({
+await signett.expose({
   name: "get_greeting",
   description: "Return a greeting from this website.",
   inputSchema: {
@@ -140,12 +140,12 @@ registration.dispose();
 React applications can bind the same lifecycle to a component:
 
 ```ts
-import { useSignetTool } from "@signet/webmcp/react";
+import { useSignettTool } from "signett/react";
 
-const state = useSignetTool(signet, greetingTool, [greetingTool]);
+const state = useSignettTool(signett, greetingTool, [greetingTool]);
 ```
 
-Next, learn the [core Signet abstractions](./core-concepts) and how each one maps to
+Next, learn the [core Signett abstractions](./core-concepts) and how each one maps to
 application code. To run this example as a website and let an agent invoke it, follow
 the [first agent call codelab](../tutorials/first-agent-call). To turn prompts into a
 repeatable regression suite, continue to

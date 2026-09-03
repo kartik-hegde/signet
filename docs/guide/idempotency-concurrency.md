@@ -1,7 +1,7 @@
 # Idempotency and concurrency
 
 Agents retry. Networks time out. A caller may not know whether an earlier mutation
-finished. Signet delegates duplicate suppression to a store that can coordinate the
+finished. Signett delegates duplicate suppression to a store that can coordinate the
 operation atomically.
 
 ## The store contract
@@ -49,12 +49,12 @@ journal: {
 ```
 
 Include the principal and tenant when their permissions or results differ. Include an
-operation version when semantics change. Signet requires the operation journal so it
+operation version when semantics change. Signett requires the operation journal so it
 can distinguish a proven pre-effect failure from an interrupted effect.
 
 ## Parallel where safe
 
-Signet has no global lock or queue. Coordination is per store key:
+Signett has no global lock or queue. Coordination is per store key:
 
 | Invocations          | Expected behavior                                       |
 | -------------------- | ------------------------------------------------------- |
@@ -86,12 +86,12 @@ await Promise.all([
 
 ## Production storage
 
-`IndexedDbIdempotencyStore` from `@signet/webmcp/stores` is the conservative browser
+`IndexedDbIdempotencyStore` from `signett/stores` is the conservative browser
 adapter. It combines IndexedDB durability with a Web Lock per key, allowing it to tell
 live work from an abandoned record across tabs. It is scoped to one browser profile;
 server-side enforcement is still required when requests can arrive elsewhere.
 
-`MemoryIdempotencyStore` from `@signet/webmcp/testing` demonstrates the same phases in
+`MemoryIdempotencyStore` from `signett/testing` demonstrates the same phases in
 tests. It is process-local, unbounded, and unsafe for real effects.
 
 A durable adapter must define:
@@ -107,7 +107,7 @@ A durable adapter must define:
 reporting, completion, explicit release, cancellation, and per-key concurrency with
 fresh keys on every run, so it can safely exercise a persistent store repeatedly.
 
-Signet intentionally does not claim “exactly once.” A database and every downstream
+Signett intentionally does not claim “exactly once.” A database and every downstream
 system would need compatible transaction semantics for that claim to be meaningful.
 
 Idempotency remembers the returned result. An [operation journal](./operation-journal)

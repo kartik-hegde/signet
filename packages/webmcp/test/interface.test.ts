@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createSignet, type ModelContextLike } from "../src/index.js";
+import { createSignett, type ModelContextLike } from "../src/index.js";
 import { MemoryIdempotencyStore } from "../src/testing.js";
 
 function modelContext() {
@@ -36,18 +36,18 @@ const schema = {
   additionalProperties: false,
 };
 
-describe("createSignet", () => {
+describe("createSignett", () => {
   it("observes registration and invocation as one privacy-safe lifecycle", async () => {
     const native = modelContext();
     const events: import("../src/index.js").GuardEvent[] = [];
-    const signet = createSignet({
+    const signett = createSignett({
       modelContext: native.context,
       observe: (event) => {
         events.push(event);
       },
     });
 
-    const registration = await signet.expose({
+    const registration = await signett.expose({
       name: "observed",
       description: "An observed tool.",
       inputSchema: schema,
@@ -77,13 +77,13 @@ describe("createSignet", () => {
       expect(options).not.toHaveProperty("callerTelemetry");
       return "ok";
     });
-    const signet = createSignet({
+    const signett = createSignett({
       modelContext: native.context,
       observe: (event) => {
         events.push(event);
       },
     });
-    await signet.expose({
+    await signett.expose({
       name: "correlated",
       description: "Correlate one agent call.",
       inputSchema: schema,
@@ -112,11 +112,11 @@ describe("createSignet", () => {
     );
   });
 
-  it("exports OTLP with one createSignet option", async () => {
+  it("exports OTLP with one createSignett option", async () => {
     const native = modelContext();
     const send = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
     vi.stubGlobal("fetch", send);
-    const signet = createSignet({
+    const signett = createSignett({
       modelContext: native.context,
       telemetry: {
         otlp: "http://collector.example/v1/traces",
@@ -124,7 +124,7 @@ describe("createSignet", () => {
         flushIntervalMs: 60_000,
       },
     });
-    await signet.expose({
+    await signett.expose({
       name: "exported",
       description: "Export one call.",
       inputSchema: schema,
@@ -133,19 +133,19 @@ describe("createSignet", () => {
     await native.registrations
       .get("exported")
       ?.tool.execute({ value: 1 }, { signal: new AbortController().signal });
-    await signet.telemetry?.flush();
+    await signett.telemetry?.flush();
 
     expect(send).toHaveBeenCalledOnce();
     expect(String(send.mock.calls[0]?.[1]?.body)).toContain("storefront");
-    await signet.telemetry?.shutdown();
+    await signett.telemetry?.shutdown();
     vi.unstubAllGlobals();
   });
 
   it("exposes a four-field tool through native registration", async () => {
     const native = modelContext();
-    const signet = createSignet({ modelContext: native.context });
+    const signett = createSignett({ modelContext: native.context });
 
-    const registration = await signet.expose({
+    const registration = await signett.expose({
       name: "double",
       description: "Double one number.",
       inputSchema: schema,
@@ -153,7 +153,7 @@ describe("createSignet", () => {
     });
 
     expect(registration.status).toBe("registered");
-    expect(signet.tools()).toEqual([
+    expect(signett.tools()).toEqual([
       expect.objectContaining({
         name: "double",
         status: "registered",
@@ -172,9 +172,9 @@ describe("createSignet", () => {
 
   it("supplies a signal when a WebMCP host passes empty execution options", async () => {
     const native = modelContext();
-    const signet = createSignet({ modelContext: native.context });
+    const signett = createSignett({ modelContext: native.context });
 
-    await signet.expose({
+    await signett.expose({
       name: "host_compatible",
       description: "Run through a host that omits its execution signal.",
       inputSchema: schema,
@@ -193,15 +193,15 @@ describe("createSignet", () => {
 
   it("allows a development observer to attach after registration", async () => {
     const native = modelContext();
-    const signet = createSignet({ modelContext: native.context });
-    await signet.expose({
+    const signett = createSignett({ modelContext: native.context });
+    await signett.expose({
       name: "late_observer",
       description: "Return a value to a late observer.",
       inputSchema: schema,
       execute: ({ value }: { value: number }) => value,
     });
     const stages: string[] = [];
-    const stop = signet.observe(({ stage }) => {
+    const stop = signett.observe(({ stage }) => {
       stages.push(stage);
     });
 
@@ -231,12 +231,12 @@ describe("createSignet", () => {
         return input.value;
       },
     );
-    const signet = createSignet({
+    const signett = createSignett({
       modelContext: native.context,
       context: () => ({ userId: "user-1" }),
     });
 
-    await signet.expose({
+    await signett.expose({
       name: "contextual",
       description: "Use current application context.",
       inputSchema: schema,
@@ -251,8 +251,8 @@ describe("createSignet", () => {
 
   it("composes authoritative recovery into an exposed tool", async () => {
     const native = modelContext();
-    const signet = createSignet({ modelContext: native.context });
-    await signet.expose<{ value: number }, number>({
+    const signett = createSignett({ modelContext: native.context });
+    await signett.expose<{ value: number }, number>({
       name: "recoverable",
       description: "Recover a committed operation whose response was lost.",
       inputSchema: schema,
@@ -275,8 +275,8 @@ describe("createSignet", () => {
 
   it("disposes the native registration idempotently", async () => {
     const native = modelContext();
-    const signet = createSignet({ modelContext: native.context });
-    const registration = await signet.expose({
+    const signett = createSignett({ modelContext: native.context });
+    const registration = await signett.expose({
       name: "temporary",
       description: "A temporary tool.",
       inputSchema: schema,
@@ -291,8 +291,8 @@ describe("createSignet", () => {
   });
 
   it("does not break an ordinary browser without WebMCP", async () => {
-    const signet = createSignet({ unsupported: "ignore" });
-    const registration = await signet.expose({
+    const signett = createSignett({ unsupported: "ignore" });
+    const registration = await signett.expose({
       name: "optional",
       description: "Only available with WebMCP.",
       inputSchema: schema,
@@ -305,10 +305,10 @@ describe("createSignet", () => {
   });
 
   it("can fail strictly when WebMCP is unavailable", async () => {
-    const signet = createSignet({ unsupported: "throw" });
+    const signett = createSignett({ unsupported: "throw" });
 
     await expect(
-      signet.expose({
+      signett.expose({
         name: "strict",
         description: "Require native WebMCP.",
         inputSchema: schema,
@@ -319,7 +319,7 @@ describe("createSignet", () => {
 
   it("rejects invalid and duplicate definitions", async () => {
     const native = modelContext();
-    const signet = createSignet({ modelContext: native.context });
+    const signett = createSignett({ modelContext: native.context });
     const tool = {
       name: "stable",
       description: "A stable tool.",
@@ -327,16 +327,16 @@ describe("createSignet", () => {
       execute: () => undefined,
     };
 
-    await signet.expose(tool);
-    await expect(signet.expose(tool)).rejects.toThrow("already exposed");
+    await signett.expose(tool);
+    await expect(signett.expose(tool)).rejects.toThrow("already exposed");
     await expect(
-      signet.expose({ ...tool, name: "not valid!" }),
+      signett.expose({ ...tool, name: "not valid!" }),
     ).rejects.toThrow("name must be");
     await expect(
-      signet.expose({ ...tool, name: "bad_limit", outputBudgetBytes: 0 }),
+      signett.expose({ ...tool, name: "bad_limit", outputBudgetBytes: 0 }),
     ).rejects.toThrow("outputBudgetBytes must be a positive integer");
     await expect(
-      signet.expose({
+      signett.expose({
         ...tool,
         name: "missing_journal",
         idempotency: {
@@ -348,25 +348,25 @@ describe("createSignet", () => {
   });
 
   it("rejects duplicate unsupported definitions until disposal", async () => {
-    const signet = createSignet({ unsupported: "ignore" });
+    const signett = createSignett({ unsupported: "ignore" });
     const tool = {
       name: "unsupported_duplicate",
       description: "A tool unavailable in this browser.",
       inputSchema: schema,
       execute: () => undefined,
     };
-    const registration = await signet.expose(tool);
-    await expect(signet.expose(tool)).rejects.toThrow("already exposed");
+    const registration = await signett.expose(tool);
+    await expect(signett.expose(tool)).rejects.toThrow("already exposed");
     registration.dispose();
-    await expect(signet.expose(tool)).resolves.toMatchObject({
+    await expect(signett.expose(tool)).resolves.toMatchObject({
       status: "unsupported",
     });
   });
 
   it("rejects duplicate names across interfaces in one WebMCP context", async () => {
     const native = modelContext();
-    const first = createSignet({ modelContext: native.context });
-    const second = createSignet({ modelContext: native.context });
+    const first = createSignett({ modelContext: native.context });
+    const second = createSignett({ modelContext: native.context });
     const tool = {
       name: "shared_name",
       description: "A tool whose name is unique within the document.",

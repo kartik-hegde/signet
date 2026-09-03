@@ -1,6 +1,6 @@
-import type { SignetTool } from "@signet/webmcp";
+import type { SignettTool } from "signett";
 
-export const greetingTool: SignetTool<
+export const greetingTool: SignettTool<
   Record<string, never>,
   { message: string },
   undefined

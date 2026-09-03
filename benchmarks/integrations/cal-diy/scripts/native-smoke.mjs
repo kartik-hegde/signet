@@ -24,7 +24,7 @@ function normalize(value) {
   }
 }
 
-const profileDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "signet-cal-diy-native-"));
+const profileDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "signett-cal-diy-native-"));
 const debugPort = await unusedPort();
 let chrome;
 let cdp;
@@ -112,14 +112,14 @@ try {
     expectedDurationMinutes: event.durationMinutes,
     startTime,
     timeZone: "America/New_York",
-    attendeeName: "Signet Native Proof",
+    attendeeName: "Signett Native Proof",
     attendeeEmail,
   };
-  await cdp.evaluate("window.__calSignetArmLostResponse() ");
+  await cdp.evaluate("window.__calSignettArmLostResponse() ");
   const first = await callTool("book_event", bookingInput);
   const second = await callTool("book_event", bookingInput);
   const stages = await cdp.evaluate(
-    "(window.__signetGuardEvents || []).filter(event => event.name === 'book_event').map(event => event.stage)"
+    "(window.__signettGuardEvents || []).filter(event => event.name === 'book_event').map(event => event.stage)"
   );
 
   if (first.uid !== second.uid) throw new Error("Exact replay returned a different Cal.diy booking.");

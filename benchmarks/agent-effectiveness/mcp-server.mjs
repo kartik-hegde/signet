@@ -284,7 +284,7 @@ async function fillElement(ref, value) {
 async function executeWebMcpTool(name, input) {
   const started = performance.now();
   const lifecycleOffset = await cdp.evaluate(
-    "(window.__signetGuardEvents || []).length",
+    "(window.__signettGuardEvents || []).length",
   );
   const nativeTool = nativeTools.get(name);
   const execution = nativeTool
@@ -309,7 +309,7 @@ async function executeWebMcpTool(name, input) {
       );
   const durationMs = Math.round((performance.now() - started) * 100) / 100;
   const lifecycle = await cdp.evaluate(
-    `(window.__signetGuardEvents || []).slice(${lifecycleOffset})`,
+    `(window.__signettGuardEvents || []).slice(${lifecycleOffset})`,
   );
   record({
     type: "webmcp_call",

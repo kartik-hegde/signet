@@ -1,6 +1,6 @@
 # Authorization
 
-Signet provides an authorization boundary, not an identity provider.
+Signett provides an authorization boundary, not an identity provider.
 
 Your application resolves the signed-in principal and decides whether that principal
 may perform the exact requested operation.
@@ -27,7 +27,7 @@ const protectedExecute = guard(updateRole, {
 });
 ```
 
-Context stays inside the application. Signet never sends it to the model or reads
+Context stays inside the application. Signett never sends it to the model or reads
 cookies, local storage, or framework state implicitly.
 
 ## Fail closed

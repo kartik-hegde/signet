@@ -231,7 +231,7 @@ function markKnownCalls(calls, inventoryByName) {
   return calls;
 }
 
-/** Validate recorded arguments with the same JSON Schema engine as Signet tools. */
+/** Validate recorded arguments with the same JSON Schema engine as Signett tools. */
 export function validateAgainstSchema(value, schema, path = "") {
   if (!isRecord(schema)) return [];
   const label = path || "input";

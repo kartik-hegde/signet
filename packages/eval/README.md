@@ -1,4 +1,4 @@
-# `@signet/eval`
+# `@signett/eval`
 
 Portable, application-owned evaluations for agent-ready websites.
 
@@ -12,7 +12,7 @@ The format uses four precise terms:
 Application, browser, agent, oracle, and fault adapters keep the runner independent of any particular browser or model provider.
 
 ```ts
-import { defineCase, defineSuite } from "@signet/eval";
+import { defineCase, defineSuite } from "@signett/eval";
 
 const suite = defineSuite({
   id: "checkout",
@@ -32,22 +32,22 @@ const suite = defineSuite({
 });
 ```
 
-The package installs a `signet` command. From the Signet monorepo, the complete authenticated-payment evaluation is:
+The package installs a `signett` command. From the Signett monorepo, the complete authenticated-payment evaluation is:
 
 ```bash
-signet eval fixtures/cypress-realworld-app/eval/index.mjs --trials 5
+signett eval fixtures/cypress-realworld-app/eval/index.mjs --trials 5
 ```
 
-## Run the headless Signet Agent
+## Run the headless Signett Agent
 
-`signet agent` opens a fresh headless Chrome profile, discovers the page's exact
+`signett agent` opens a fresh headless Chrome profile, discovers the page's exact
 WebMCP inventory, gives a prompt and those tools to a Chat Completions-compatible
 model, and records bounded evidence:
 
 ```bash
-npm install --save-dev @signet/eval
+npm install --save-dev @signett/eval
 
-npx signet agent \
+npx signett agent \
   --url http://127.0.0.1:3000 \
   --prompt "Add two notebooks to my cart and report the total." \
   --endpoint http://127.0.0.1:8000/v1/chat/completions \
@@ -58,7 +58,7 @@ npx signet agent \
 For repeatable tasks, define an application-owned suite:
 
 ```js
-import { defineAgentTestSuite } from "@signet/eval/agent";
+import { defineAgentTestSuite } from "@signett/eval/agent";
 
 export default defineAgentTestSuite({
   schemaVersion: 1,
@@ -92,11 +92,11 @@ export default defineAgentTestSuite({
 ```
 
 ```bash
-npx signet agent ./signet.agent.mjs --trials 5
+npx signett agent ./signett.agent.mjs --trials 5
 ```
 
 The Chrome extension remains a separate interactive UI. It is not installed by
-`@signet/eval`.
+`@signett/eval`.
 
 For a guided setup, authoritative oracle example, automation strategy, and
 troubleshooting, follow the
@@ -136,9 +136,9 @@ Keep a reviewed `report.json` as the baseline for an important workflow, then co
 the next run directly:
 
 ```bash
-signet eval scenarios/send-payment.eval.mjs \
+signett eval scenarios/send-payment.eval.mjs \
   --trials 5 \
-  --against .signet/baselines/send-payment.report.json
+  --against .signett/baselines/send-payment.report.json
 ```
 
 The run writes `check.json` for CI and `check.md` for code review next to its normal
@@ -163,9 +163,9 @@ Agent evaluations are probabilistic, so teams can declare an explicit tolerance 
 keeping safety failures strict:
 
 ```bash
-signet eval scenarios/send-payment.eval.mjs \
+signett eval scenarios/send-payment.eval.mjs \
   --trials 10 \
-  --against .signet/baselines/send-payment.report.json \
+  --against .signett/baselines/send-payment.report.json \
   --max-safe-regression 0.1 \
   --max-duration-ratio 1.25 \
   --max-token-ratio 1.2
@@ -179,7 +179,7 @@ rate. Tighten or loosen one of them independently with
 Existing reports can also be checked without rerunning an agent:
 
 ```bash
-signet check evidence/candidate/report.json \
+signett check evidence/candidate/report.json \
   --against evidence/baseline/report.json
 ```
 

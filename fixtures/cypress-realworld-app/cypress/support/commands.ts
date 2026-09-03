@@ -6,7 +6,7 @@ import { differenceInMonths, parse as parseDate } from "date-fns";
 import { isMobile } from "./utils";
 import { installWebMcpCapture } from "./webmcp";
 
-Cypress.Commands.add("visitWithWebMcp", (path = "/", mode = "signet") =>
+Cypress.Commands.add("visitWithWebMcp", (path = "/", mode = "signett") =>
   cy.visit(path, {
     onBeforeLoad(win) {
       installWebMcpCapture(win, mode);

@@ -1,7 +1,7 @@
 import type {
-  SignetInterface,
-  SignetRegistration,
-  SignetTool,
+  SignettInterface,
+  SignettRegistration,
+  SignettTool,
 } from "./interface.js";
 
 export type ToolBindingState =
@@ -10,42 +10,42 @@ export type ToolBindingState =
   | { readonly status: "error"; readonly error: unknown };
 
 const bindingQueues = new WeakMap<
-  SignetInterface<unknown>,
+  SignettInterface<unknown>,
   Map<string, Promise<void>>
 >();
 
 function queueFor(
-  signet: SignetInterface<unknown>,
+  signett: SignettInterface<unknown>,
 ): Map<string, Promise<void>> {
-  let queue = bindingQueues.get(signet);
+  let queue = bindingQueues.get(signett);
   if (!queue) {
     queue = new Map<string, Promise<void>>();
-    bindingQueues.set(signet, queue);
+    bindingQueues.set(signett, queue);
   }
   return queue;
 }
 
 /** Internal lifecycle shared by framework bindings. */
-export function bindSignetTool<
+export function bindSignettTool<
   Context,
   Input extends Record<string, unknown>,
   Output,
 >(
-  signet: SignetInterface<Context>,
-  tool: SignetTool<Input, Output, Context>,
+  signett: SignettInterface<Context>,
+  tool: SignettTool<Input, Output, Context>,
   update: (state: ToolBindingState) => void,
 ): () => void {
   let active = true;
-  let registration: SignetRegistration | undefined;
+  let registration: SignettRegistration | undefined;
   update({ status: "registering" });
-  const queue = queueFor(signet);
+  const queue = queueFor(signett);
   const previous = queue.get(tool.name) ?? Promise.resolve();
   const pending = previous
     .catch(() => undefined)
     .then(async () => {
       if (!active) return;
       try {
-        const created = await signet.expose(tool);
+        const created = await signett.expose(tool);
         if (!active) {
           created.dispose();
           return;

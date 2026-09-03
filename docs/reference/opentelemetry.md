@@ -1,12 +1,12 @@
 # OpenTelemetry
 
-Signet has a dependency-free OTLP/HTTP JSON path for most applications and an adapter
+Signett has a dependency-free OTLP/HTTP JSON path for most applications and an adapter
 for teams that already run the OpenTelemetry JavaScript SDK.
 
 ## Send directly to an OTLP collector
 
 ```ts
-const signet = createSignet({
+const signett = createSignett({
   telemetry: {
     otlp: "https://collector.example/v1/traces",
     serviceName: "storefront",
@@ -26,13 +26,13 @@ or `toOtlpJson(...)` when another transport owns delivery.
 
 ## Use an existing OpenTelemetry SDK
 
-The optional adapter maps Signet lifecycle events to an application-owned tracer. It
+The optional adapter maps Signett lifecycle events to an application-owned tracer. It
 does not configure a provider, exporter, collector, endpoint, or sampling policy.
 
 ```ts
 import { trace } from "@opentelemetry/api";
-import { guard } from "@signet/webmcp";
-import { openTelemetryObserver } from "@signet/webmcp/opentelemetry";
+import { guard } from "signett";
+import { openTelemetryObserver } from "signett/opentelemetry";
 
 const tracer = trace.getTracer("storefront");
 
@@ -58,11 +58,11 @@ They do not record handler inputs, outputs, application context, error messages,
 stacks, or causes.
 
 Tool identity uses OpenTelemetry GenAI attributes such as `gen_ai.tool.name`.
-Signet-specific lifecycle detail uses the `signet.*` namespace. Applications still own
+Signett-specific lifecycle detail uses the `signett.*` namespace. Applications still own
 collector access, retention, sampling, and any additional attributes they attach.
 
 Agent hosts may supply a versioned `callerTelemetry` envelope with W3C `traceparent`,
-tool-call ID, call sequence, agent identity, and model provider/name. Signet validates
+tool-call ID, call sequence, agent identity, and model provider/name. Signett validates
 and bounds those values, connects the tool span to that trace, and never passes the
 envelope into the application callback. Without it, calls remain complete standalone
 traces and receive local sequence numbers.

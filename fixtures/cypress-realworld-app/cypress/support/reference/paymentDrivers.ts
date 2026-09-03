@@ -50,7 +50,7 @@ export function runPaymentThroughUi(): Cypress.Chainable<ReferenceMetric> {
 }
 
 export function runPaymentThroughWebMcp(
-  mode: "raw" | "signet"
+  mode: "raw" | "signett"
 ): Cypress.Chainable<ReferenceMetric> {
   let startedAt = 0;
   let httpRequests = 0;
@@ -91,7 +91,7 @@ export function runPaymentThroughWebMcp(
 
   return cy.then(() => ({
     task: referencePaymentTask.id,
-    mode: mode === "raw" ? ("webmcp_raw" as const) : ("webmcp_signet" as const),
+    mode: mode === "raw" ? ("webmcp_raw" as const) : ("webmcp_signett" as const),
     durationMs: Number((performance.now() - startedAt).toFixed(2)),
     interactionCount: 3,
     toolCalls: 3,

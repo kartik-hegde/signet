@@ -32,9 +32,9 @@ jobs:
       - run: npm run test:eval
         if: inputs.package == 'eval' || inputs.package == 'both'
       - run: mkdir -p .artifacts/release
-      - run: npm pack --workspace=@signet/webmcp --pack-destination=.artifacts/release
+      - run: npm pack --workspace=signett --pack-destination=.artifacts/release
         if: inputs.package == 'webmcp' || inputs.package == 'both'
-      - run: npm pack --workspace=@signet/eval --pack-destination=.artifacts/release
+      - run: npm pack --workspace=@signett/eval --pack-destination=.artifacts/release
         if: inputs.package == 'eval' || inputs.package == 'both'
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -60,11 +60,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         if: inputs.package == 'webmcp' || inputs.package == 'both'
-      - run: npm publish --workspace=@signet/webmcp --access public --provenance
+      - run: npm publish --workspace=signett --access public --provenance
         if: inputs.package == 'webmcp' || inputs.package == 'both'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: npm publish --workspace=@signet/eval --access public --provenance
+      - run: npm publish --workspace=@signett/eval --access public --provenance
         if: inputs.package == 'eval' || inputs.package == 'both'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

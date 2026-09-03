@@ -1,5 +1,5 @@
-/** The equivalent application adapter when the execution controls come from Signet. */
-export function buildWithSignet({ handler, store, journal, key, validate, recover, verify, guard }) {
+/** The equivalent application adapter when the execution controls come from Signett. */
+export function buildWithSignett({ handler, store, journal, key, validate, recover, verify, guard }) {
   return guard(handler, {
     validate,
     idempotency: {

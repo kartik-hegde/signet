@@ -13,7 +13,7 @@ export const CASE_SCHEMA_VERSION = 1;
 /** Define one portable user intent and its independently graded expectations. */
 export function defineCase(definition) {
   if (!isRecord(definition))
-    throw new TypeError("A Signet Case must be an object.");
+    throw new TypeError("A Signett Case must be an object.");
   const value = {
     ...definition,
     schemaVersion: definition.schemaVersion ?? CASE_SCHEMA_VERSION,
@@ -25,12 +25,12 @@ export function defineCase(definition) {
 /** Define an ordered collection of Cases without changing the Cases themselves. */
 export function defineSuite(definition) {
   if (!isRecord(definition))
-    throw new TypeError("A Signet Suite must be an object.");
+    throw new TypeError("A Signett Suite must be an object.");
   if (!CASE_ID.test(definition.id ?? "")) {
     throw new TypeError("Suite id must be lower-kebab-case.");
   }
   if (!Array.isArray(definition.cases) || definition.cases.length === 0) {
-    throw new TypeError("A Signet Suite must contain at least one Case.");
+    throw new TypeError("A Signett Suite must contain at least one Case.");
   }
   const ids = new Set();
   for (const value of definition.cases) {
@@ -43,7 +43,8 @@ export function defineSuite(definition) {
 }
 
 export function validateCase(value) {
-  if (!isRecord(value)) throw new TypeError("A Signet Case must be an object.");
+  if (!isRecord(value))
+    throw new TypeError("A Signett Case must be an object.");
   if (value.schemaVersion !== CASE_SCHEMA_VERSION) {
     throw new TypeError(
       `Unsupported Case schema version: ${value.schemaVersion}`,

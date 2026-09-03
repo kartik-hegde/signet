@@ -28,7 +28,7 @@ const cli = Object.fromEntries(
 const testAgentMode = process.argv.includes("--test-agent");
 const smokeMode = process.argv.includes("--smoke");
 const appDir = resolve(root, "fixtures/cypress-realworld-app");
-const signetDir = resolve(root, process.env.SIGNET_DIR ?? "packages/webmcp");
+const signettDir = resolve(root, process.env.SIGNETT_DIR ?? "packages/webmcp");
 const taskDocument = JSON.parse(
   readFileSync(
     resolve(root, "benchmarks/agent-effectiveness/tasks.json"),
@@ -41,14 +41,14 @@ const tasks = requestedTaskIds.length
   : taskDocument.tasks;
 const conditions = csv(
   cli.conditions ?? process.env.P1_CONDITIONS,
-  testAgentMode ? ["webmcp_signet"] : ["ui_dom", "hybrid_raw", "hybrid_signet"],
+  testAgentMode ? ["webmcp_signett"] : ["ui_dom", "hybrid_raw", "hybrid_signett"],
 );
 const validConditions = new Set([
   "ui_dom",
   "hybrid_raw",
-  "hybrid_signet",
+  "hybrid_signett",
   "webmcp_raw",
-  "webmcp_signet",
+  "webmcp_signett",
 ]);
 const trialsPerCondition = positiveInteger(
   cli.trials ?? process.env.P1_TRIALS ?? (testAgentMode ? "1" : "10"),
@@ -170,7 +170,7 @@ try {
     ),
   );
   process.stdout.write(
-    `\n${testAgentMode ? "SIGNET TEST AGENT" : smokeMode ? "P1 REAL-AGENT SMOKE" : "P1 REAL-AGENT PILOT"}\n${tasks.length} tasks × ${trialsPerCondition} trials × ${conditions.length} conditions · ${model} (${reasoning})\n\n`,
+    `\n${testAgentMode ? "SIGNETT TEST AGENT" : smokeMode ? "P1 REAL-AGENT SMOKE" : "P1 REAL-AGENT PILOT"}\n${tasks.length} tasks × ${trialsPerCondition} trials × ${conditions.length} conditions · ${model} (${reasoning})\n\n`,
   );
 
   for (const entry of schedule) {
@@ -217,7 +217,7 @@ async function runTrial(entry, label) {
   const tracePath = resolve(rawDir, `${label}-trace.json`);
   const stdoutPath = resolve(rawDir, `${label}-agent.jsonl`);
   const stderrPath = resolve(rawDir, `${label}-agent.stderr.log`);
-  const workspace = mkdtempSync(path.join(os.tmpdir(), "signet-p1-agent-"));
+  const workspace = mkdtempSync(path.join(os.tmpdir(), "signett-p1-agent-"));
 
   try {
     const prompt = [
@@ -255,7 +255,7 @@ async function runTrial(entry, label) {
     const runtimeEvidence = await withTimeout(
       browser.cdp.evaluate(`({
         benchmarkMode: window.__webMcpBenchmarkMode || null,
-        guardStages: (window.__signetGuardEvents || []).map(event => event.stage)
+        guardStages: (window.__signettGuardEvents || []).map(event => event.stage)
       })`),
       5_000,
       "runtime evidence",
@@ -316,7 +316,7 @@ async function runTrial(entry, label) {
         ...runtimeEvidence,
         conditionVerified:
           runtimeEvidence.benchmarkMode ===
-          (entry.condition.endsWith("_raw") ? "raw" : "signet"),
+          (entry.condition.endsWith("_raw") ? "raw" : "signett"),
       },
       actions: {
         ui: uiActions.length,
@@ -343,7 +343,7 @@ async function runTrial(entry, label) {
 
 async function startBrowser(condition, task) {
   const debugPort = await unusedPort();
-  const profile = mkdtempSync(path.join(os.tmpdir(), "signet-p1-chrome-"));
+  const profile = mkdtempSync(path.join(os.tmpdir(), "signett-p1-chrome-"));
   const chrome = spawn(
     chromePath,
     [
@@ -400,7 +400,7 @@ async function startBrowser(condition, task) {
     "the authenticated application",
   );
   await cdp.evaluate(
-    `window.__webMcpBenchmarkMode = ${JSON.stringify(condition.endsWith("_raw") ? "raw" : "signet")}`,
+    `window.__webMcpBenchmarkMode = ${JSON.stringify(condition.endsWith("_raw") ? "raw" : "signett")}`,
   );
   if (condition !== "ui_dom") {
     await waitFor(
@@ -558,18 +558,18 @@ function buildScorecard(runs) {
     schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     status: testAgentMode
-      ? "signet_test_agent"
+      ? "signett_test_agent"
       : smokeMode
         ? "p1_real_agent_smoke"
         : "p1_real_agent_baseline",
     note: testAgentMode
       ? "A local WebMCP-only agent test. Success is graded by an application-owned oracle, not agent narration or tool output."
       : smokeMode
-        ? "Two-task real-agent smoke check. WebMCP receives credit for interface efficiency; Signet comparisons are only against raw WebMCP."
-        : "Two-task real-agent reference baseline. WebMCP receives credit for interface efficiency; Signet comparisons are only against raw WebMCP.",
+        ? "Two-task real-agent smoke check. WebMCP receives credit for interface efficiency; Signett comparisons are only against raw WebMCP."
+        : "Two-task real-agent reference baseline. WebMCP receives credit for interface efficiency; Signett comparisons are only against raw WebMCP.",
     provenance: {
       benchmarkCommit: gitRevision(root),
-      signetCommit: gitRevision(signetDir),
+      signettCommit: gitRevision(signettDir),
       application: "Cypress Real World App payment fixture",
       browser: chromePath,
       agentProvider: provider.providerName ?? providerPath,
@@ -613,36 +613,36 @@ function forPublicResult(scorecard) {
 function buildComparisons(aggregates) {
   const ui = aggregates.ui_dom;
   const raw = aggregates.hybrid_raw ?? aggregates.webmcp_raw;
-  const signet = aggregates.hybrid_signet ?? aggregates.webmcp_signet;
+  const signett = aggregates.hybrid_signett ?? aggregates.webmcp_signett;
   return {
     ...(ui && raw ? { rawWebMcpVsUi: compare(ui, raw) } : {}),
-    ...(ui && signet ? { signetWebMcpVsUi: compare(ui, signet) } : {}),
-    ...(raw && signet ? { signetVsRawWebMcp: compare(raw, signet) } : {}),
-    ...(ui && raw && signet
+    ...(ui && signett ? { signettWebMcpVsUi: compare(ui, signett) } : {}),
+    ...(raw && signett ? { signettVsRawWebMcp: compare(raw, signett) } : {}),
+    ...(ui && raw && signett
       ? {
           selectedWebMcpPath: {
             rawVsUi: compareSelectedPath(ui, raw),
-            signetVsUi: compareSelectedPath(ui, signet),
-            signetVsRaw: compareWebMcpPaths(raw, signet),
+            signettVsUi: compareSelectedPath(ui, signett),
+            signettVsRaw: compareWebMcpPaths(raw, signett),
           },
         }
       : {}),
   };
 }
 
-function compareWebMcpPaths(raw, signet) {
+function compareWebMcpPaths(raw, signett) {
   if (
     raw.medianWebMcpPathDurationMs === null ||
-    signet.medianWebMcpPathDurationMs === null
+    signett.medianWebMcpPathDurationMs === null
   ) {
     return { medianDurationDeltaMs: null, medianDurationRatio: null };
   }
   return {
     medianDurationDeltaMs: round(
-      signet.medianWebMcpPathDurationMs - raw.medianWebMcpPathDurationMs,
+      signett.medianWebMcpPathDurationMs - raw.medianWebMcpPathDurationMs,
     ),
     medianDurationRatio: round(
-      signet.medianWebMcpPathDurationMs / raw.medianWebMcpPathDurationMs,
+      signett.medianWebMcpPathDurationMs / raw.medianWebMcpPathDurationMs,
     ),
   };
 }
@@ -717,7 +717,7 @@ function aggregate(group) {
     ).length,
     guardedToolRunsVerified: group.filter(
       ({ condition, completedViaWebMcp, runtimeEvidence }) =>
-        condition === "hybrid_signet" &&
+        condition === "hybrid_signett" &&
         completedViaWebMcp &&
         runtimeEvidence.guardStages.includes("succeeded"),
     ).length,
@@ -789,7 +789,7 @@ function renderConsole(scorecard) {
   if (testAgentMode) {
     const run = scorecard.runs[0];
     return (
-      `\nSIGNET TEST AGENT RESULT\n\n` +
+      `\nSIGNETT TEST AGENT RESULT\n\n` +
       `  Task       ${run.taskId}\n` +
       `  Outcome    ${run.safeSuccess ? "PASS" : "FAIL"}\n` +
       `  Tools      ${run.toolSequence.join(" → ") || "none"}\n` +
@@ -808,8 +808,8 @@ function renderConsole(scorecard) {
   return (
     `\nP1 KPI SCORECARD\n\n${rows}\n\n` +
     `Raw WebMCP vs UI: ${scorecard.comparisons.rawWebMcpVsUi.medianDurationRatio}x median speed, ${scorecard.comparisons.rawWebMcpVsUi.medianActionReductionPercent}% fewer actions\n` +
-    `Signet vs UI:     ${scorecard.comparisons.signetWebMcpVsUi.medianDurationRatio}x median speed, ${scorecard.comparisons.signetWebMcpVsUi.medianActionReductionPercent}% fewer actions\n` +
-    `Signet vs raw:    ${signedChange(scorecard.comparisons.signetVsRawWebMcp.medianDurationReductionPercent, "faster", "slower")} median duration\n\n` +
+    `Signett vs UI:     ${scorecard.comparisons.signettWebMcpVsUi.medianDurationRatio}x median speed, ${scorecard.comparisons.signettWebMcpVsUi.medianActionReductionPercent}% fewer actions\n` +
+    `Signett vs raw:    ${signedChange(scorecard.comparisons.signettVsRawWebMcp.medianDurationReductionPercent, "faster", "slower")} median duration\n\n` +
     `Wrote evidence/${resultName}/latest.json and evidence/${resultName}/latest.md\n`
   );
 }
@@ -823,8 +823,8 @@ function renderMarkdown(scorecard) {
     })
     .join("\n");
   const raw = scorecard.comparisons.rawWebMcpVsUi;
-  const signet = scorecard.comparisons.signetWebMcpVsUi;
-  const direct = scorecard.comparisons.signetVsRawWebMcp;
+  const signett = scorecard.comparisons.signettWebMcpVsUi;
+  const direct = scorecard.comparisons.signettVsRawWebMcp;
   const selected = scorecard.comparisons.selectedWebMcpPath;
   const directDuration = signedChange(
     direct.medianDurationReductionPercent,
@@ -866,10 +866,10 @@ ${rows}
 ${taskRows}
 
 - Raw WebMCP was **${raw.medianDurationRatio}x** the UI condition's median speed with **${raw.medianActionReductionPercent}%** fewer actions.
-- Signet WebMCP was **${signet.medianDurationRatio}x** the UI condition's median speed with **${signet.medianActionReductionPercent}%** fewer actions.
-- Signet's all-run median was **${directDuration}** and used **${directTokens}** than raw WebMCP.
-- On runs where the agent selected WebMCP, raw median time was **${Math.round(scorecard.aggregates.hybrid_raw.medianWebMcpPathDurationMs)} ms** and Signet median time was **${Math.round(scorecard.aggregates.hybrid_signet.medianWebMcpPathDurationMs)} ms**.
-- Conditional on WebMCP selection, raw was **${selected.rawVsUi.medianDurationRatio}x** and Signet was **${selected.signetVsUi.medianDurationRatio}x** the UI condition's median speed; these conditional figures diagnose the interface mechanism and are not the primary hybrid result.
+- Signett WebMCP was **${signett.medianDurationRatio}x** the UI condition's median speed with **${signett.medianActionReductionPercent}%** fewer actions.
+- Signett's all-run median was **${directDuration}** and used **${directTokens}** than raw WebMCP.
+- On runs where the agent selected WebMCP, raw median time was **${Math.round(scorecard.aggregates.hybrid_raw.medianWebMcpPathDurationMs)} ms** and Signett median time was **${Math.round(scorecard.aggregates.hybrid_signett.medianWebMcpPathDurationMs)} ms**.
+- Conditional on WebMCP selection, raw was **${selected.rawVsUi.medianDurationRatio}x** and Signett was **${selected.signettVsUi.medianDurationRatio}x** the UI condition's median speed; these conditional figures diagnose the interface mechanism and are not the primary hybrid result.
 
 ## Protocol
 
@@ -889,13 +889,13 @@ function renderTestAgentMarkdown(scorecard) {
         `| ${run.taskId} | ${run.safeSuccess ? "PASS" : "FAIL"} | ${run.toolSequence.join(" → ") || "none"} | ${Math.round(run.durationMs)} | ${run.usage.totalTokens} | ${run.runtimeEvidence.guardStages.join(" → ") || "none"} |`,
     )
     .join("\n");
-  return `# Signet Test Agent run
+  return `# Signett Test Agent run
 
 Generated: ${scorecard.generatedAt}
 
 > ${scorecard.note}
 
-| Task | Oracle | Tool sequence | Duration (ms) | Tokens | Signet lifecycle |
+| Task | Oracle | Tool sequence | Duration (ms) | Tokens | Signett lifecycle |
 |---|---|---|---:|---:|---|
 ${rows}
 

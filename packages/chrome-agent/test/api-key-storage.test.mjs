@@ -9,8 +9,8 @@ test("keeps an API key in session storage by default", async () => {
   const saved = await saveApiKey("sk-session", { storage });
 
   assert.equal(saved.remembered, false);
-  assert.equal(storage.session.data.signetAgentKey, "sk-session");
-  assert.equal(storage.local.data.signetAgentSavedKey, undefined);
+  assert.equal(storage.session.data.signettAgentKey, "sk-session");
+  assert.equal(storage.local.data.signettAgentSavedKey, undefined);
 });
 
 test("remembers an API key locally only when explicitly requested", async () => {
@@ -24,7 +24,7 @@ test("remembers an API key locally only when explicitly requested", async () => 
   });
 
   await saveApiKey("sk-local", { remember: false, storage });
-  assert.equal(storage.local.data.signetAgentSavedKey, undefined);
+  assert.equal(storage.local.data.signettAgentSavedKey, undefined);
 });
 
 function fakeStorage() {

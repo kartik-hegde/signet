@@ -10,7 +10,7 @@ npm run bench:build-vs-buy
 ```
 
 The runnable baseline compares raw execution, one benchmark-authored hand-rolled
-adapter, and Signet against the same application operations, durable store, faults, and
+adapter, and Signett against the same application operations, durable store, faults, and
 authoritative verifiers. It reports safety beside bespoke adapter SLOC and runtime
 overhead. Results are written to `evidence/build-vs-buy/`.
 
@@ -20,8 +20,8 @@ below.
 ## Publication design
 
 Several independent implementers receive the same application, WebMCP handlers,
-production requirements, and time budget. One cohort may use Signet; the other builds
-equivalent controls without importing Signet or copying its implementation. The hidden
+production requirements, and time budget. One cohort may use Signett; the other builds
+equivalent controls without importing Signett or copying its implementation. The hidden
 conformance suite is frozen before work starts and revealed only for scoring.
 
 Measure:

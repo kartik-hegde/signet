@@ -74,7 +74,7 @@ test("completes the packaged agent loop against the demo provider", async () => 
     ],
     complete: createChatCompletionsProvider({
       endpoint: `${baseUrl}/v1/chat/completions`,
-      model: "signet-demo",
+      model: "signett-demo",
     }),
     invoke: async ({ name, arguments: input }) => {
       if (name === "inspect_cart") return { items: cart, total: 0 };

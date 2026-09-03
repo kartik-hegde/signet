@@ -21,7 +21,7 @@ function assertSupportedType(schema: object): void {
     )
   ) {
     throw new TypeError(
-      "Invalid Signet tool: inputSchema is not a valid JSON Schema.",
+      "Invalid Signett tool: inputSchema is not a valid JSON Schema.",
     );
   }
 }
@@ -44,7 +44,7 @@ export function compileInputValidator(
     validator = new Validator(schema, "2020-12", false);
   } catch (error) {
     throw new TypeError(
-      "Invalid Signet tool: inputSchema is not a valid JSON Schema.",
+      "Invalid Signett tool: inputSchema is not a valid JSON Schema.",
       { cause: error },
     );
   }

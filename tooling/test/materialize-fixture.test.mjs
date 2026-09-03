@@ -4,20 +4,20 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { materializeSignetLink } from "../materialize-fixture.mjs";
+import { materializeSignettLink } from "../materialize-fixture.mjs";
 
-test("materializeSignetLink creates and reuses the external compatibility link", () => {
-  const directory = mkdtempSync(path.join(os.tmpdir(), "signet-materialize-"));
+test("materializeSignettLink creates and reuses the external compatibility link", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "signett-materialize-"));
   const root = path.join(directory, "repository");
   const external = path.join(directory, "external");
   mkdirSync(root);
   try {
-    assert.equal(materializeSignetLink({ root, external }).created, true);
+    assert.equal(materializeSignettLink({ root, external }).created, true);
     assert.equal(
-      realpathSync(path.join(external, "signet")),
+      realpathSync(path.join(external, "signett")),
       realpathSync(root),
     );
-    assert.equal(materializeSignetLink({ root, external }).created, false);
+    assert.equal(materializeSignettLink({ root, external }).created, false);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

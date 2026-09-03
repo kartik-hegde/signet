@@ -1,6 +1,6 @@
 # Patterns from real integrations
 
-Cal.diy booking and Saleor checkout are different products, but their Signet
+Cal.diy booking and Saleor checkout are different products, but their Signett
 integrations have the same shape. This page turns that shape into a repeatable
 integration sequence and shows exactly which abstractions each tool uses.
 
@@ -38,11 +38,11 @@ inspect current state -> list valid choices -> perform one bounded action
 
 ### 3. Resolve live application context
 
-Create one stable Signet interface for the page and resolve current state on every
+Create one stable Signett interface for the page and resolve current state on every
 invocation:
 
 ```ts
-const signet = createSignet({
+const signett = createSignett({
   context: () => readCurrentPageContext(),
 });
 ```
@@ -56,13 +56,13 @@ The agent supplies intent. The application supplies identity and live state.
 
 Use the smallest control set that answers the risks of that tool:
 
-| Tool kind                                 | Required Signet abstractions                                                |
+| Tool kind                                 | Required Signett abstractions                                                |
 | ----------------------------------------- | --------------------------------------------------------------------------- |
 | Read current state                        | Tool definition, closed schema, read-only annotation, lifecycle             |
 | Reversible update                         | Context, authorization when relevant, execution, authoritative verification |
 | Irreversible or externally visible effect | Confirmation, idempotency, operation journal, recovery, verification        |
 
-Idempotency and journals are a pair. Signet rejects idempotency without a journal
+Idempotency and journals are a pair. Signett rejects idempotency without a journal
 because an execution error otherwise cannot prove whether the operation is safe to
 release or must remain recoverable.
 
@@ -70,7 +70,7 @@ release or must remain recoverable.
 
 Both integrations define tool objects in plain TypeScript and inject application
 dependencies. A small client component then owns live state, creates stores and the
-Signet interface, and registers tools with `useSignetTool()`.
+Signett interface, and registers tools with `useSignettTool()`.
 
 That separation makes the definitions easy to test without rendering the full
 application and keeps React lifecycle details out of business policy.
@@ -94,7 +94,7 @@ Then exercise representative tasks through a supported native browser agent.
 
 The Cal.diy integration exposes three tools:
 
-| Tool                   | Signet abstractions                                                                                           |
+| Tool                   | Signett abstractions                                                                                           |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------- |
 | `inspect_event`        | Tool definition, empty closed schema, read-only annotation                                                    |
 | `list_available_slots` | Bounded input/output, read-only annotation, live page state                                                   |
@@ -116,12 +116,12 @@ The Cal.diy integration exposes three tools:
    authoritative booking state.
 
 The mutation still calls Cal.diy's existing form validation, booking mapper, and
-`createBooking()` path. Signet does not reproduce scheduling logic.
+`createBooking()` path. Signett does not reproduce scheduling logic.
 
 The reviewed implementation is on the Cal.diy integration branch
-`feat/signet-webmcp-demo` at commit `f2b1fc9`. Start with
-`apps/web/modules/bookings/signet/tools.ts` and
-`apps/web/modules/bookings/signet/SignetBookerTools.tsx`. The branch is not currently
+`feat/signett-webmcp-demo` at commit `f2b1fc9`. Start with
+`apps/web/modules/bookings/signett/tools.ts` and
+`apps/web/modules/bookings/signett/SignettBookerTools.tsx`. The branch is not currently
 published on the `calcom/cal.diy` remote, so a stable public source link must be added
 after it is pushed.
 
@@ -129,7 +129,7 @@ after it is pushed.
 
 The Saleor integration exposes a five-tool workflow:
 
-| Tool                     | Signet abstractions                                                                                  |
+| Tool                     | Signett abstractions                                                                                  |
 | ------------------------ | ---------------------------------------------------------------------------------------------------- |
 | `inspect_checkout`       | Tool definition, empty closed schema, read-only annotation                                           |
 | `set_checkout_contact`   | Context, active-checkout authorization, verification                                                 |
@@ -158,11 +158,11 @@ The Saleor integration exposes a five-tool workflow:
 The integration calls the storefront's existing checkout provider, server actions,
 and configured payment adapter. Saleor remains the source of truth.
 
-[Browse the Saleor integration branch](https://github.com/kartik-hegde/storefront/tree/feat/signet-webmcp-demo),
+[Browse the Saleor integration branch](https://github.com/kartik-hegde/storefront/tree/feat/signett-webmcp-demo),
 starting with
-[`checkout-tools.ts`](https://github.com/kartik-hegde/storefront/blob/feat/signet-webmcp-demo/src/checkout/signet/checkout-tools.ts)
+[`checkout-tools.ts`](https://github.com/kartik-hegde/storefront/blob/feat/signett-webmcp-demo/src/checkout/signett/checkout-tools.ts)
 and
-[`signet-checkout-tools.tsx`](https://github.com/kartik-hegde/storefront/blob/feat/signet-webmcp-demo/src/checkout/signet/signet-checkout-tools.tsx).
+[`signett-checkout-tools.tsx`](https://github.com/kartik-hegde/storefront/blob/feat/signett-webmcp-demo/src/checkout/signett/signett-checkout-tools.tsx).
 
 The [Saleor case study](../case-studies/saleor) explains the lost-response and payment
 recovery findings in more depth.

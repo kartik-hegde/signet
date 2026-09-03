@@ -119,7 +119,7 @@ chrome.tabs.onUpdated.addListener((tabId, change) => {
     startDiscoveryCycle();
 });
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === "signet:refresh-tools") startDiscoveryCycle();
+  if (message?.type === "signett:refresh-tools") startDiscoveryCycle();
 });
 
 startDiscoveryCycle();
@@ -453,7 +453,7 @@ async function saveSettings() {
       throw new Error("Enter an API key.");
     await ensureEndpointPermission(settings.endpoint);
     await chrome.storage.local.set({
-      signetAgent: {
+      signettAgent: {
         provider: settings.provider,
         endpoint: settings.endpoint,
         model: settings.model,
@@ -475,10 +475,10 @@ async function saveSettings() {
 
 async function loadSettings() {
   const [local, keyState] = await Promise.all([
-    chrome.storage.local.get("signetAgent"),
+    chrome.storage.local.get("signettAgent"),
     loadApiKey(),
   ]);
-  const stored = local.signetAgent ?? {};
+  const stored = local.signettAgent ?? {};
   const provider =
     stored.provider ?? inferProvider(stored.endpoint) ?? "openai";
   elements.provider.value = provider;
@@ -556,7 +556,7 @@ function updateModelSummary() {
 function updateKeyStorageNote() {
   elements.apiKeyStorageNote.textContent = elements.rememberKey.checked
     ? "Stored locally by Chrome; not encrypted."
-    : "Cleared when Chrome or Signet restarts.";
+    : "Cleared when Chrome or Signett restarts.";
 }
 
 function setActivity(message) {

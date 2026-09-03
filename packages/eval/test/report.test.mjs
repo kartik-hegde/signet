@@ -60,22 +60,22 @@ test("reports aggregate oracle grades and compare hill-climbing conditions", () 
   const report = buildReport({
     suite: "payments",
     evidence: [
-      evidence("signet-baseline", 1, false, 200, 4),
-      evidence("signet-baseline", 2, true, 100, 2),
-      evidence("signet-guided", 1, true, 80, 1),
-      evidence("signet-guided", 2, true, 120, 2),
+      evidence("signett-baseline", 1, false, 200, 4),
+      evidence("signett-baseline", 2, true, 100, 2),
+      evidence("signett-guided", 1, true, 80, 1),
+      evidence("signett-guided", 2, true, 120, 2),
     ],
   });
-  assert.equal(report.conditions["signet-baseline"].safeSuccessRate, 0.5);
-  assert.equal(report.conditions["signet-guided"].safeSuccessRate, 1);
-  assert.equal(report.comparisons["signet-guided"].safeSuccessRateDelta, 0.5);
-  assert.equal(report.comparisons["signet-guided"].medianDurationRatio, 2 / 3);
+  assert.equal(report.conditions["signett-baseline"].safeSuccessRate, 0.5);
+  assert.equal(report.conditions["signett-guided"].safeSuccessRate, 1);
+  assert.equal(report.comparisons["signett-guided"].safeSuccessRateDelta, 0.5);
+  assert.equal(report.comparisons["signett-guided"].medianDurationRatio, 2 / 3);
 });
 
 test("Markdown identifies the authoritative grader and confidence interval", () => {
   const report = buildReport({
     suite: "payments",
-    evidence: [evidence("signet-baseline", 1, true, 100, 1)],
+    evidence: [evidence("signett-baseline", 1, true, 100, 1)],
   });
   const markdown = renderMarkdownReport(report);
   assert.match(markdown, /authoritative application oracle/);
@@ -173,20 +173,23 @@ test("interface-quality dimensions aggregate per condition", () => {
   const report = buildReport({
     suite: "payments",
     evidence: [
-      scoredEvidence("signet-baseline", 1, paidByTool),
-      scoredEvidence("signet-baseline", 2, paidByUi),
-      scoredEvidence("signet-guided", 1, paidByTool),
-      scoredEvidence("signet-guided", 2, paidByTool),
+      scoredEvidence("signett-baseline", 1, paidByTool),
+      scoredEvidence("signett-baseline", 2, paidByUi),
+      scoredEvidence("signett-guided", 1, paidByTool),
+      scoredEvidence("signett-guided", 2, paidByTool),
     ],
   });
-  const baseline = report.conditions["signet-baseline"].interfaceQuality;
+  const baseline = report.conditions["signett-baseline"].interfaceQuality;
   assert.equal(baseline.selection.accuracy, 0.5);
   assert.equal(baseline.discovery.completeRate, 1);
   assert.equal(
-    report.conditions["signet-guided"].interfaceQuality.selection.accuracy,
+    report.conditions["signett-guided"].interfaceQuality.selection.accuracy,
     1,
   );
-  assert.equal(report.comparisons["signet-guided"].selectionAccuracyDelta, 0.5);
+  assert.equal(
+    report.comparisons["signett-guided"].selectionAccuracyDelta,
+    0.5,
+  );
   assert.match(renderMarkdownReport(report), /Selection accuracy/);
 });
 

@@ -39,7 +39,7 @@ export function createPaymentBrowserAdapter({ chromePath = findChrome() } = {}) 
       if (!chromePath)
         throw new Error("Google Chrome or Chromium is required for payment evaluation.");
       const debugPort = await unusedPort();
-      const profile = mkdtempSync(path.join(os.tmpdir(), "signet-eval-chrome-"));
+      const profile = mkdtempSync(path.join(os.tmpdir(), "signett-eval-chrome-"));
       const chrome = spawn(
         chromePath,
         [
@@ -76,7 +76,7 @@ export function createPaymentBrowserAdapter({ chromePath = findChrome() } = {}) 
         if (!native) throw new Error("Chrome did not expose native WebMCP.");
         const metadata = condition.parameters?.metadata ?? "baseline";
         await cdp.evaluate(
-          `localStorage.setItem('signet:eval:metadata', ${JSON.stringify(metadata)})`
+          `localStorage.setItem('signett:eval:metadata', ${JSON.stringify(metadata)})`
         );
         await cdp.evaluate(`(() => {
           const setValue = (selector, value) => {
@@ -93,7 +93,7 @@ export function createPaymentBrowserAdapter({ chromePath = findChrome() } = {}) 
           () => cdp.evaluate('location.pathname === "/" && document.readyState === "complete"'),
           "the authenticated payment app"
         );
-        const runtime = condition.parameters?.runtime ?? "signet";
+        const runtime = condition.parameters?.runtime ?? "signett";
         await cdp.evaluate(`window.__webMcpBenchmarkMode = ${JSON.stringify(runtime)}`);
         if (condition.parameters?.surface !== "ui") {
           await waitFor(

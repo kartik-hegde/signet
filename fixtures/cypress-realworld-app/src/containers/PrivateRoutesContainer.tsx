@@ -22,7 +22,7 @@ import { SnackbarContext, SnackbarSchema, SnackbarEvents } from "../machines/sna
 import { useActor } from "@xstate/react";
 import UserOnboardingContainer from "./UserOnboardingContainer";
 import { registerPaymentTools } from "../webmcp/paymentTools";
-import SignetInspector from "../components/SignetInspector";
+import SignettInspector from "../components/SignettInspector";
 
 export interface Props {
   isLoggedIn: boolean;
@@ -109,7 +109,7 @@ const PrivateRoutesContainer: React.FC<Props> = ({
           </PrivateRoute>
         </Switch>
       </MainLayout>
-      <SignetInspector />
+      <SignettInspector />
     </>
   );
 };

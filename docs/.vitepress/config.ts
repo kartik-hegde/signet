@@ -4,7 +4,7 @@ const base = process.env.DOCS_BASE ?? "/";
 
 export default defineConfig({
   base,
-  title: "Signet WebMCP",
+  title: "Signett WebMCP",
   description:
     "Agent-interface tooling for exposing and verifying product capabilities through native WebMCP.",
   cleanUrls: true,
@@ -12,25 +12,25 @@ export default defineConfig({
   appearance: false,
   head: [["meta", { name: "theme-color", content: "#ffffff" }]],
   themeConfig: {
-    siteTitle: "Signet",
+    siteTitle: "Signett",
     nav: [
       { text: "Docs", link: "/guide/getting-started" },
       { text: "Tutorials", link: "/tutorials/" },
       {
         text: "Examples",
-        link: "https://github.com/kartik-hegde/signet/tree/main/fixtures",
+        link: "https://github.com/signettai/signett/tree/main/fixtures",
       },
       { text: "Resources", link: "/resources" },
       {
         text: "Benchmarks",
-        link: "https://github.com/kartik-hegde/signet/tree/main/benchmarks",
+        link: "https://github.com/signettai/signett/tree/main/benchmarks",
       },
     ],
     sidebar: [
       {
         text: "Start",
         items: [
-          { text: "Why Signet", link: "/guide/why-signet" },
+          { text: "Why Signett", link: "/guide/why-signett" },
           {
             text: "User jobs workflow",
             link: "/guide/user-jobs-workflow",
@@ -106,7 +106,7 @@ export default defineConfig({
     ],
     outline: { level: [2, 3] },
     editLink: {
-      pattern: "https://github.com/kartik-hegde/signet/edit/main/docs/:path",
+      pattern: "https://github.com/signettai/signett/edit/main/docs/:path",
       text: "Edit this page on GitHub",
     },
     footer: {

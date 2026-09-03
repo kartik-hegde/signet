@@ -54,7 +54,7 @@ export function classifyFiles(files) {
         "packages/eval/",
         "packages/chrome-agent/",
         "benchmarks/agent-effectiveness/",
-        "benchmarks/signet-agent/",
+        "benchmarks/signett-agent/",
         "fixtures/cypress-realworld-app/eval/",
       ),
     evidence:

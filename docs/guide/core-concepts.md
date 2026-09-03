@@ -1,11 +1,11 @@
 # Core concepts
 
-Signet has one small registration API and a set of optional execution controls. The
+Signett has one small registration API and a set of optional execution controls. The
 application still owns its business functions, identity, policy, data, and backend.
 
 | Abstraction        | What it represents                                                           |
 | ------------------ | ---------------------------------------------------------------------------- |
-| Signet interface   | One WebMCP-facing surface and its shared application context                 |
+| Signett interface   | One WebMCP-facing surface and its shared application context                 |
 | Tool definition    | One bounded capability an agent can discover and invoke                      |
 | Registration       | The lifetime of that capability in the current document                      |
 | Execution controls | Application-owned authorization, consent, replay, recovery, and verification |
@@ -13,16 +13,16 @@ application still owns its business functions, identity, policy, data, and backe
 
 Start with the first three. Add execution controls only when the operation needs them.
 
-## The Signet interface
+## The Signett interface
 
-`createSignet()` creates an interface between one application surface and native
+`createSignett()` creates an interface between one application surface and native
 WebMCP. It can also resolve trusted context and receive lifecycle events shared by the
 tools on that surface.
 
 ```ts
-import { createSignet } from "@signet/webmcp";
+import { createSignett } from "signett";
 
-const signet = createSignet({
+const signett = createSignett({
   context: ({ signal }) => currentSession({ signal }),
   observe: (event) => recordLifecycleEvent(event),
   unsupported: "warn",
@@ -69,11 +69,11 @@ const searchProductsTool = {
   ) => searchProducts(query, { signal }),
 };
 
-await signet.expose(searchProductsTool);
+await signett.expose(searchProductsTool);
 ```
 
 Use lower-snake-case `verb_noun` names, closed object schemas, bounded strings and
-arrays, and small structured results. Signet compiles the schema once and rejects
+arrays, and small structured results. Signett compiles the schema once and rejects
 invalid invocation input before application code runs.
 
 `annotations` maps to native WebMCP metadata. Mark reads with
@@ -91,7 +91,7 @@ type Session = {
   scopes: string[];
 };
 
-const signet = createSignet<Session>({
+const signett = createSignett<Session>({
   context: ({ signal }) => currentSession({ signal }),
 });
 ```
@@ -124,7 +124,7 @@ Otherwise a valid retry can be denied before its stored result is replayed.
 
 ## Confirmation
 
-Signet does not render confirmation UI. A tool calls the application's existing review
+Signett does not render confirmation UI. A tool calls the application's existing review
 or consent experience and returns the person's decision.
 
 ```ts
@@ -145,11 +145,11 @@ Use `effect-only` together with idempotency and an operation journal.
 
 ## Idempotency
 
-Agents and networks retry. `idempotency` gives Signet an application-chosen operation
+Agents and networks retry. `idempotency` gives Signett an application-chosen operation
 key and a store that atomically coordinates equal keys.
 
 ```ts
-import { IndexedDbIdempotencyStore } from "@signet/webmcp/stores";
+import { IndexedDbIdempotencyStore } from "signett/stores";
 
 const idempotencyStore = new IndexedDbIdempotencyStore();
 
@@ -175,16 +175,16 @@ devices, or clients.
 
 ## Operation journals and recovery
 
-Signet requires an operation journal whenever idempotency is configured. The
+Signett requires an operation journal whenever idempotency is configured. The
 idempotency store remembers completed output; the journal stores the small correlation
 needed to determine what happened when a response is lost.
 
 ```ts
-import { WebStorageOperationJournal } from "@signet/webmcp";
+import { WebStorageOperationJournal } from "signett";
 
 const operationJournal = new WebStorageOperationJournal(
   sessionStorage,
-  "signet:operation:",
+  "signett:operation:",
 );
 
 // Inside the same tool definition:
@@ -212,7 +212,7 @@ recover: async ({ input, context, operation, signal }) => {
 
 Write non-secret correlation immediately before crossing the effect boundary.
 Recovery may report success only after reading authoritative state. When neither
-success nor non-execution can be proven, return `outcome: "unknown"`; Signet never
+success nor non-execution can be proven, return `outcome: "unknown"`; Signett never
 blindly retries the effect.
 
 ## Verification
@@ -248,7 +248,7 @@ The budget emits a diagnostic without changing the outcome of completed work.
 `expose()` returns a registration with `name`, `status`, and an idempotent `dispose()`.
 
 ```ts
-const registration = await signet.expose(searchProductsTool);
+const registration = await signett.expose(searchProductsTool);
 
 // Logout, navigation, or component teardown:
 registration.dispose();
@@ -260,9 +260,9 @@ not remain callable after leaving checkout or signing out.
 React applications can bind registration to a component:
 
 ```ts
-import { useSignetTool } from "@signet/webmcp/react";
+import { useSignettTool } from "signett/react";
 
-const registrationState = useSignetTool(signet, searchProductsTool, [
+const registrationState = useSignettTool(signett, searchProductsTool, [
   searchProductsTool,
 ]);
 ```
@@ -275,9 +275,9 @@ An observer receives stages and timings, not tool input, output, context, or sta
 traces.
 
 ```ts
-const signet = createSignet({
+const signett = createSignett({
   observe: ({ name, stage, durationMs }) => {
-    metrics.record("signet.lifecycle", durationMs, { name, stage });
+    metrics.record("signett.lifecycle", durationMs, { name, stage });
   },
 });
 ```
@@ -291,14 +291,14 @@ OpenTelemetry adapter when lifecycle events should become spans.
 the real registration and execution contract:
 
 ```ts
-import { assertToolReady, createSignet } from "@signet/webmcp";
-import { createWebMcpTestHarness } from "@signet/webmcp/testing";
+import { assertToolReady, createSignett } from "signett";
+import { createWebMcpTestHarness } from "signett/testing";
 
 assertToolReady(searchProductsTool);
 
 const harness = createWebMcpTestHarness();
-const testSignet = createSignet({ modelContext: harness.modelContext });
-const registration = await testSignet.expose(searchProductsTool);
+const testSignett = createSignett({ modelContext: harness.modelContext });
+const registration = await testSignett.expose(searchProductsTool);
 
 expect(harness.tools().map(({ name }) => name)).toContain("search_products");
 await expect(

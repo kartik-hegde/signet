@@ -110,7 +110,7 @@ test("derives the narrow optional origin permission", () => {
   );
 });
 
-test("adapts Signet tools and tool calls to Anthropic Messages", async () => {
+test("adapts Signett tools and tool calls to Anthropic Messages", async () => {
   let captured;
   const provider = createModelProvider(
     {

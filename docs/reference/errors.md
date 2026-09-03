@@ -1,6 +1,6 @@
 # Errors
 
-Signet introduces errors only for decisions it owns. Context, storage, handler, and
+Signett introduces errors only for decisions it owns. Context, storage, handler, and
 verifier exceptions otherwise retain their original identity.
 
 ## `ValidationError`
@@ -23,8 +23,8 @@ throw new ToolError({
 });
 ```
 
-Signet never retries the operation automatically. Set `retry` to `never`, `as_is`, or
-`after_repair`. The legacy `retryable` boolean remains supported; Signet maps false to
+Signett never retries the operation automatically. Set `retry` to `never`, `as_is`, or
+`after_repair`. The legacy `retryable` boolean remains supported; Signett maps false to
 `never`, true without a repair to `as_is`, and true with a repair to `after_repair`.
 The portable message includes the precise policy so an agent does not blindly repeat a
 call that cannot yet succeed.
@@ -48,13 +48,13 @@ throw new ToolError({
 });
 ```
 
-Signet appends a bounded `Next action:` sentence to `Error.message`, because native
+Signett appends a bounded `Next action:` sentence to `Error.message`, because native
 browser-agent boundaries do not consistently preserve custom error properties. The
 `call_tool` action explicitly tells the agent to wait for that tool before continuing,
 so a dependent repair is not launched against stale state. The
 structured `repair` property remains available to application code. The supported
 actions are `change_input`, `call_tool`, `refresh_state`, `retry_same_operation`,
-`ask_user`, `reconcile`, and `stop`. Signet communicates the instruction but never
+`ask_user`, `reconcile`, and `stop`. Signett communicates the instruction but never
 performs the retry or calls another tool itself.
 
 Use an ordered plan when recovery needs multiple dependent calls:

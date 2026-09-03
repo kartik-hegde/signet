@@ -4,15 +4,15 @@ Date: Mon, 31 Aug 2026 19:24:35 -0400
 Subject: [PATCH] fix: keep repeatable checkout setters retryable
 
 ---
- src/checkout/signet/checkout-model.ts      |  2 -
- src/checkout/signet/checkout-tools.test.ts | 45 +++++++++++++++++++++-
- src/checkout/signet/checkout-tools.ts      | 38 +-----------------
+ src/checkout/signett/checkout-model.ts      |  2 -
+ src/checkout/signett/checkout-tools.test.ts | 45 +++++++++++++++++++++-
+ src/checkout/signett/checkout-tools.ts      | 38 +-----------------
  3 files changed, 46 insertions(+), 39 deletions(-)
 
-diff --git a/src/checkout/signet/checkout-model.ts b/src/checkout/signet/checkout-model.ts
+diff --git a/src/checkout/signett/checkout-model.ts b/src/checkout/signett/checkout-model.ts
 index 37b6708e..f6f24b8c 100644
---- a/src/checkout/signet/checkout-model.ts
-+++ b/src/checkout/signet/checkout-model.ts
+--- a/src/checkout/signett/checkout-model.ts
++++ b/src/checkout/signett/checkout-model.ts
 @@ -14,7 +14,6 @@ export type CheckoutContext = {
  };
  
@@ -29,10 +29,10 @@ index 37b6708e..f6f24b8c 100644
  	deliveryId: string;
  };
  
-diff --git a/src/checkout/signet/checkout-tools.test.ts b/src/checkout/signet/checkout-tools.test.ts
+diff --git a/src/checkout/signett/checkout-tools.test.ts b/src/checkout/signett/checkout-tools.test.ts
 index e48032b9..29ba98ce 100644
---- a/src/checkout/signet/checkout-tools.test.ts
-+++ b/src/checkout/signet/checkout-tools.test.ts
+--- a/src/checkout/signett/checkout-tools.test.ts
++++ b/src/checkout/signett/checkout-tools.test.ts
 @@ -52,6 +52,7 @@ function setup(
  		liveCheckout?: ServerCheckout;
  		lostResponse?: boolean;
@@ -56,7 +56,7 @@ index e48032b9..29ba98ce 100644
  
 +async function harnessForContact(contact: ReturnType<typeof setup>["tools"]["contact"]) {
 +	const harness = createWebMcpTestHarness();
-+	const signet = createSignet({
++	const signett = createSignett({
 +		modelContext: harness.modelContext,
 +		context: () => ({
 +			checkoutId: "checkout-1",
@@ -67,14 +67,14 @@ index e48032b9..29ba98ce 100644
 +			currency: "USD",
 +		}),
 +	});
-+	await signet.expose(contact);
++	await signett.expose(contact);
 +	return harness;
 +}
 +
- describe("Saleor Signet checkout tools", () => {
+ describe("Saleor Signett checkout tools", () => {
  	it("keeps all five production tools agent-ready", () => {
  		const { tools } = setup();
-@@ -132,6 +150,31 @@ describe("Saleor Signet checkout tools", () => {
+@@ -132,6 +150,31 @@ describe("Saleor Signett checkout tools", () => {
  		}
  	});
  
@@ -106,10 +106,10 @@ index e48032b9..29ba98ce 100644
  	it("places one order and replays the result for the same intent", async () => {
  		const { confirm, payment, tools } = setup();
  		const harness = await harnessFor(tools.placeOrder);
-diff --git a/src/checkout/signet/checkout-tools.ts b/src/checkout/signet/checkout-tools.ts
+diff --git a/src/checkout/signett/checkout-tools.ts b/src/checkout/signett/checkout-tools.ts
 index 5394ec9b..02cb0850 100644
---- a/src/checkout/signet/checkout-tools.ts
-+++ b/src/checkout/signet/checkout-tools.ts
+--- a/src/checkout/signett/checkout-tools.ts
++++ b/src/checkout/signett/checkout-tools.ts
 @@ -72,16 +72,10 @@ export function createCheckoutTools(dependencies: CheckoutToolDependencies): Che
  		name: "set_checkout_contact",
  		title: "Set checkout contact and shipping address",

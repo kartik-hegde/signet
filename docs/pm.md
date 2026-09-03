@@ -10,7 +10,7 @@ frozen.
 |   1 | Deferred | Publish a real release         | Publish only after local API and reference integrations settle.                                                                                                       |
 |   2 | Done     | Agent-legible failures         | Field-level capped validation messages and coded tool errors cross the native boundary.                                                                               |
 |   3 | Resolved | Agent arrives after page load  | Native WebMCP owns `modelContext` from document creation; late agents see registered tools. Late extension/polyfill bridges are injected explicitly, without polling. |
-|   4 | Done     | React binding                  | Race-safe `useSignetTool` with status, error state, and explicit closure dependencies.                                                                                |
+|   4 | Done     | React binding                  | Race-safe `useSignettTool` with status, error state, and explicit closure dependencies.                                                                                |
 |   5 | Done     | Confirmation stage             | App-owned confirmation runs after authorization and before idempotency with auditable events.                                                                         |
 |   6 | Done     | Durable idempotency path       | Phased store conformance, a shipped IndexedDB/Web Locks adapter, and a PostgreSQL recipe distinguish live, abandoned, completed, and safely released work.            |
 |   7 | Done     | Completed mutation after abort | A completed handler wins with or without idempotency; verification has an optional independent deadline and the outcome remains observable.                           |

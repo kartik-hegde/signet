@@ -179,7 +179,7 @@ export async function runHeadlessTest({
   const evidence = {
     schemaVersion: HEADLESS_EVIDENCE_SCHEMA_VERSION,
     generatedAt: new Date().toISOString(),
-    runner: "@signet/eval",
+    runner: "@signett/eval",
     task: {
       id: task.id,
       prompt: task.prompt,

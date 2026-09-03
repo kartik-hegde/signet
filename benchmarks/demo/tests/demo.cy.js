@@ -1,4 +1,4 @@
-describe("Signet customer demo", () => {
+describe("Signett customer demo", () => {
   it("replays the speed and trust stories from benchmark evidence", () => {
     cy.visit("/demo/");
     cy.contains("The fast path").should("be.visible");
@@ -9,8 +9,8 @@ describe("Signet customer demo", () => {
       .should("be.visible");
     cy.get('[data-lane="ui"] [data-metric="duration"]').should("contain", "ms");
     cy.get('[data-lane="webmcp_raw"] [data-result]').should("contain", "DB");
-    cy.get('[data-lane="webmcp_signet"] [data-result]').should("contain", "DB");
-    cy.screenshot("signet-demo-speed", { capture: "viewport" });
+    cy.get('[data-lane="webmcp_signett"] [data-result]').should("contain", "DB");
+    cy.screenshot("signett-demo-speed", { capture: "viewport" });
 
     cy.get('.view-button[data-view-target="safety"]').click();
     cy.get("#run-fault").click();
@@ -21,7 +21,7 @@ describe("Signet customer demo", () => {
     cy.get("#raw-state .state-row").should("have.length", 4).and("be.visible");
     cy.get("#guarded-state .state-row").should("have.length", 4).and("be.visible");
     cy.wait(150);
-    cy.screenshot("signet-demo-trust", { capture: "viewport" });
+    cy.screenshot("signett-demo-trust", { capture: "viewport" });
   });
 
   it("keeps the story usable on a phone-sized screen", () => {

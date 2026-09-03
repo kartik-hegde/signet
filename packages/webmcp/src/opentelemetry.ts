@@ -29,7 +29,7 @@ export interface OpenTelemetryObserverOptions {
   readonly spanName?: (event: GuardEvent) => string;
 }
 
-/** Maps Signet lifecycle events to standard OpenTelemetry spans. */
+/** Maps Signett lifecycle events to standard OpenTelemetry spans. */
 export function openTelemetryObserver(
   tracer: Tracer,
   options: OpenTelemetryObserverOptions = {},
@@ -47,10 +47,10 @@ export function openTelemetryObserver(
               ? {}
               : { "gen_ai.tool.name": event.name }),
             "gen_ai.tool.type": "function",
-            "signet.invocation.id": event.invocationId,
+            "signett.invocation.id": event.invocationId,
             ...(event.name === undefined
               ? {}
-              : { "signet.operation.name": event.name }),
+              : { "signett.operation.name": event.name }),
             ...options.attributes,
           },
         },
@@ -62,8 +62,8 @@ export function openTelemetryObserver(
     const span = spans.get(event.invocationId);
     if (!span) return;
 
-    span.addEvent(`signet.${event.stage}`, {
-      "signet.duration_ms": event.durationMs,
+    span.addEvent(`signett.${event.stage}`, {
+      "signett.duration_ms": event.durationMs,
     });
 
     if (event.stage === "failed") {
@@ -73,12 +73,12 @@ export function openTelemetryObserver(
       spans.delete(event.invocationId);
     } else if (event.stage === "outcome_unknown") {
       setErrorAttributes(span, event.error);
-      span.setAttribute("signet.outcome", "unknown");
+      span.setAttribute("signett.outcome", "unknown");
       span.setStatus({ code: SpanStatusCode.ERROR });
       span.end();
       spans.delete(event.invocationId);
     } else if (event.stage === "succeeded") {
-      span.setAttribute("signet.outcome", "succeeded");
+      span.setAttribute("signett.outcome", "succeeded");
       span.setStatus({ code: SpanStatusCode.UNSET });
       span.end();
       spans.delete(event.invocationId);

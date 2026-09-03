@@ -1,8 +1,8 @@
-# Case study: a real agent books Cal.diy safely with Signet
+# Case study: a real agent books Cal.diy safely with Signett
 
 ## Result
 
-A real Codex agent completed a live booking through Cal.diy's existing `/api/book/event` path. The run deliberately discarded the mutation response after Cal.diy committed. Signet recovered the booking from an independent server-side lookup, validated the returned proof, and reported success without issuing a second mutation.
+A real Codex agent completed a live booking through Cal.diy's existing `/api/book/event` path. The run deliberately discarded the mutation response after Cal.diy committed. Signett recovered the booking from an independent server-side lookup, validated the returned proof, and reported success without issuing a second mutation.
 
 The independent Postgres oracle observed zero matching bookings before the run and exactly one afterward:
 
@@ -28,7 +28,7 @@ The Cal.diy checkout is based on `176037d0afbe572f870a3c702985e7cd83fe6c0c`. The
 2. `list_available_slots` reads the Booker's current slot data and returns only future start times.
 3. `book_event` maps a typed input into Cal.diy's existing booking-form mutation.
 
-The read tools have read-only annotations. `book_event` is the sole consequential capability and passes through Signet's full guard pipeline:
+The read tools have read-only annotations. `book_event` is the sole consequential capability and passes through Signett's full guard pipeline:
 
 ```text
 validate → authorize → confirm → claim idempotency key
@@ -42,7 +42,7 @@ The authorization rule allows only the event that the agent inspected, with the 
 
 Immediately before mutation, the integration journals the event ID, start time, and attendee email. After Cal.diy returns a UID, it journals that UID too. The benchmark then injects an exception at exactly that boundary to model a committed request whose response was lost.
 
-Signet invokes `recover`, which calls a server action that queries Prisma by the journaled correlation. Recovery succeeds only for one unique match. Zero or multiple matches produce `outcome_unknown`, which prevents a blind retry. A separate `verify` lookup checks the UID, event ID, attendee, start time, and derived duration before Signet marks the operation complete.
+Signett invokes `recover`, which calls a server action that queries Prisma by the journaled correlation. Recovery succeeds only for one unique match. Zero or multiple matches produce `outcome_unknown`, which prevents a blind retry. A separate `verify` lookup checks the UID, event ID, attendee, start time, and derived duration before Signett marks the operation complete.
 
 The operation journal uses session storage. The idempotency record uses IndexedDB and Web Locks, which gives durable replay and live-owner coordination within the local browser profile. This is appropriate for the proof, but a production deployment that must coordinate across devices or browser profiles should move the claim to an app-owned server-side store.
 
@@ -66,13 +66,13 @@ A deterministic native smoke test also invokes the same booking input twice afte
 
 The first real-agent attempt stalled before issuing a tool call. The harness timed it out, the trace showed only registration and inventory, and the database oracle remained at zero. A minimal agent probe then passed, and an identical retry produced the successful result above. This distinguishes an upstream model-turn stall from a mutation or guard failure and demonstrates fail-closed behavior for that attempt.
 
-During setup, Cal.diy's root CI type-check entry point also hit an upstream Node 26 incompatibility in Prisma's postinstall path (`fs.rmdir` with recursive mode). Building the required tRPC types directly and running the web workspace type-check avoided changing upstream application code. Focused Signet booking tests and the web type-check both pass.
+During setup, Cal.diy's root CI type-check entry point also hit an upstream Node 26 incompatibility in Prisma's postinstall path (`fs.rmdir` with recursive mode). Building the required tRPC types directly and running the web workspace type-check avoided changing upstream application code. Focused Signett booking tests and the web type-check both pass.
 
 ## Reproduction boundary
 
 - Cal.diy base: `176037d0afbe572f870a3c702985e7cd83fe6c0c`
 - Cal.diy integration: `f2b1fc9b66f2f718286f4e79cae52b008d415b2f`
-- Signet: `87318dde1fbcb8a6677f4a49a8bd1d01b1165394`
+- Signett: `87318dde1fbcb8a6677f4a49a8bd1d01b1165394`
 - Chrome: `151.0.7922.174`
 - Codex CLI: `0.135.0`
 - Database: the seeded local Cal.diy Postgres Compose service

@@ -5,7 +5,7 @@ clear ownership and backend enforcement.
 
 ## Execution model
 
-For each invocation, Signet performs a fixed sequence:
+For each invocation, Signett performs a fixed sequence:
 
 ```text
 check cancellation
@@ -16,9 +16,9 @@ check cancellation
   -> return the application's output unchanged
 ```
 
-Signet checks cancellation before the application effect and passes the native
+Signett checks cancellation before the application effect and passes the native
 `AbortSignal` through context, authorization, keying, storage, and execution. Once the
-handler returns successfully, cancellation has lost the race: Signet finishes any
+handler returns successfully, cancellation has lost the race: Signett finishes any
 configured verification with a non-cancelled finalization signal and returns the
 verified result. A `completed_after_abort` event makes that outcome visible.
 

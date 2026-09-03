@@ -1,21 +1,21 @@
 # Saleor real-application demo
 
 This integration adds five page-registered WebMCP tools to Saleor's current
-production storefront and protects the consequential order operation with Signet.
+production storefront and protects the consequential order operation with Signett.
 It runs against a full local Saleor Core, Postgres, worker, dashboard, cache, and
 mail stack—not a benchmark fixture.
 
 ## Source layout
 
-The application is deliberately **not vendored** into Signet. The ignored `.external`
+The application is deliberately **not vendored** into Signett. The ignored `.external`
 directory contains two forks pinned in [`manifest.json`](./manifest.json):
 
 ```text
-signet/
+signett/
 ├── benchmarks/integrations/saleor/ # manifest, task, oracle, patches
 └── .external/
-    ├── saleor-storefront-signet/    # integration fork
-    └── saleor-platform-signet/      # unmodified local Saleor stack
+    ├── saleor-storefront-signett/    # integration fork
+    └── saleor-platform-signett/      # unmodified local Saleor stack
 ```
 
 This keeps Saleor's history and license intact, makes the integration a reviewable
@@ -50,7 +50,7 @@ the logical operation key in a transactional backend store.
 
 ## Run it
 
-From `saleor-platform-signet`:
+From `saleor-platform-signett`:
 
 ```sh
 /Applications/Docker.app/Contents/Resources/bin/docker compose up -d
@@ -59,7 +59,7 @@ From `saleor-platform-signet`:
 ```
 
 The seed creates `admin@example.com` / `admin`. Then configure
-`saleor-storefront-signet/.env.local` from `.env.signet.example`, install with the
+`saleor-storefront-signett/.env.local` from `.env.signett.example`, install with the
 pinned pnpm version, and start the storefront:
 
 ```sh
@@ -69,7 +69,7 @@ node node_modules/next/dist/bin/next dev
 ```
 
 Open `http://localhost:3000/en/default-channel`, add a product, and enter checkout.
-The black **Protected by Signet** panel confirms the five live registrations.
+The black **Protected by Signett** panel confirms the five live registrations.
 
 Run the health/revision check and independent database oracle from the benchmark:
 
@@ -85,9 +85,9 @@ npm run saleor:oracle -- --email proof@example.com
 3. Click **Arm lost-response proof**.
 4. Ask the agent to place the order. The shopper must approve the exact total.
 5. Saleor commits the paid order; the page intentionally throws away that response.
-6. Signet uses the correlation record to re-read Saleor, then reports `recovered`,
+6. Signett uses the correlation record to re-read Saleor, then reports `recovered`,
    `verified`, and `succeeded`.
-7. Retry the identical operation ID. Signet reports `replayed` without requesting a
+7. Retry the identical operation ID. Signett reports `replayed` without requesting a
    second approval; the Postgres oracle still reports exactly one order.
 
 The deterministic fault is one-shot and occurs only after Saleor returns an order ID.

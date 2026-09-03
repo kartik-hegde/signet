@@ -4,7 +4,7 @@ import type {
   IdempotencyStore,
   OperationJournal,
   OperationJournalOptions,
-  SignetCallerTelemetry,
+  SignettCallerTelemetry,
 } from "./types.js";
 import type { ModelContextLike } from "./interface.js";
 import type { MaybePromise } from "./types.js";
@@ -19,7 +19,7 @@ export interface WebMcpTestHarness {
     input: Record<string, unknown>,
     options?: {
       readonly signal?: AbortSignal;
-      readonly callerTelemetry?: SignetCallerTelemetry;
+      readonly callerTelemetry?: SignettCallerTelemetry;
     },
   ): Promise<unknown>;
   clear(): void;
@@ -194,13 +194,13 @@ export interface IdempotencyConformanceOptions {
   readonly concurrencyTimeoutMs?: number;
 }
 
-/** Verifies the concurrency and failure semantics required by Signet stores. */
+/** Verifies the concurrency and failure semantics required by Signett stores. */
 export async function checkIdempotencyStore(
   createStore: () => IdempotencyStore,
   options: IdempotencyConformanceOptions = {},
 ): Promise<IdempotencyConformanceResult> {
   const run = crypto.randomUUID();
-  const key = (name: string): string => `signet:${run}:${name}`;
+  const key = (name: string): string => `signett:${run}:${name}`;
   await checkFreshClaim(createStore(), key("fresh"));
   await checkEqualKeys(createStore(), key("same"));
   await checkAbandonedClaim(createStore(), key("abandoned"));

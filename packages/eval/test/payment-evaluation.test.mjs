@@ -18,9 +18,9 @@ test("authenticated payments are expressed as portable Cases", () => {
 
 test("payment conditions isolate runtime and information surface", () => {
   const guided = paymentEvaluation.conditions.find(
-    ({ id }) => id === "signet-guided",
+    ({ id }) => id === "signett-guided",
   );
-  assert.equal(guided.parameters.runtime, "signet");
+  assert.equal(guided.parameters.runtime, "signett");
   assert.equal(guided.parameters.metadata, "guided");
   assert.equal(
     paymentEvaluation.adapters.faults[0].id,

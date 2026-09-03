@@ -21,7 +21,7 @@ export interface CaseExpectations<Expected = Record<string, unknown>> {
   readonly forbiddenEffects?: readonly string[];
 }
 
-export interface SignetCase<
+export interface SignettCase<
   Parameters extends Record<string, unknown> = Record<string, unknown>,
   Expected = Record<string, unknown>,
 > {
@@ -39,16 +39,16 @@ export interface SignetCase<
   readonly budgets?: CaseBudgets;
 }
 
-export interface SignetCaseInput<
+export interface SignettCaseInput<
   Parameters extends Record<string, unknown> = Record<string, unknown>,
   Expected = Record<string, unknown>,
-> extends Omit<SignetCase<Parameters, Expected>, "schemaVersion"> {
+> extends Omit<SignettCase<Parameters, Expected>, "schemaVersion"> {
   readonly schemaVersion?: 1;
 }
 
-export interface SignetSuite {
+export interface SignettSuite {
   readonly id: string;
-  readonly cases: readonly SignetCase[];
+  readonly cases: readonly SignettCase[];
   readonly description?: string;
 }
 
@@ -57,10 +57,10 @@ export function defineCase<
   Parameters extends Record<string, unknown> = Record<string, unknown>,
   Expected = Record<string, unknown>,
 >(
-  definition: SignetCaseInput<Parameters, Expected>,
-): SignetCase<Parameters, Expected>;
-export function defineSuite(definition: SignetSuite): SignetSuite;
-export function validateCase(value: unknown): SignetCase;
+  definition: SignettCaseInput<Parameters, Expected>,
+): SignettCase<Parameters, Expected>;
+export function defineSuite(definition: SignettSuite): SignettSuite;
+export function validateCase(value: unknown): SignettCase;
 
 export type TrialStatus =
   "completed" | "failed" | "timed_out" | "environment_error";
@@ -121,7 +121,7 @@ export const TRACE_EVENTS: {
   readonly toolCall: "webmcp_call";
 };
 export function scoreInterfaceQuality(input: {
-  readonly caseDefinition: SignetCase;
+  readonly caseDefinition: SignettCase;
   readonly inventory?: readonly Record<string, unknown>[];
   readonly events?: readonly Record<string, unknown>[];
   readonly agent?: Record<string, unknown>;
@@ -183,11 +183,11 @@ export interface TrialEvidence {
 export const EVIDENCE_SCHEMA_VERSION: 1;
 export const TRIAL_STATUSES: readonly TrialStatus[];
 export const FAILURE_CATEGORIES: readonly FailureCategory[];
-export function hashCase(caseDefinition: SignetCase): string;
+export function hashCase(caseDefinition: SignettCase): string;
 export function createEvidence(input: {
   readonly evidenceId?: string;
   readonly generatedAt?: string;
-  readonly caseDefinition: SignetCase;
+  readonly caseDefinition: SignettCase;
   readonly trial: TrialEvidence["trial"];
   readonly provenance: TrialEvidence["provenance"];
   readonly inventory?: TrialEvidence["inventory"];
@@ -211,7 +211,7 @@ export interface TrialContext {
   readonly id: string;
   readonly trialId: string;
   readonly index: number;
-  readonly caseDefinition: SignetCase;
+  readonly caseDefinition: SignettCase;
   readonly condition: EvaluationCondition;
   readonly outputDir?: string;
   readonly signal: AbortSignal;
@@ -283,7 +283,7 @@ export interface OracleAdapter {
 }
 
 export interface EvaluationDefinition {
-  readonly suite: SignetSuite;
+  readonly suite: SignettSuite;
   readonly conditions?: readonly EvaluationCondition[];
   readonly adapters: {
     readonly application: ApplicationAdapter;
@@ -305,7 +305,7 @@ export function classifyFailure(
   timedOut?: boolean,
 ): TrialEvidence["failure"];
 export function runTrial(input: {
-  readonly caseDefinition: SignetCase;
+  readonly caseDefinition: SignettCase;
   readonly condition: EvaluationCondition;
   readonly index: number;
   readonly adapters: EvaluationDefinition["adapters"];
@@ -369,13 +369,13 @@ export interface EvaluationReport {
 
 export const REPORT_SCHEMA_VERSION: 1;
 export function buildReport(input: {
-  readonly suite: string | SignetSuite;
+  readonly suite: string | SignettSuite;
   readonly evidence: readonly TrialEvidence[];
   readonly baselineCondition?: string;
 }): EvaluationReport;
 export function renderMarkdownReport(report: EvaluationReport): string;
 export function writeReport(input: {
-  readonly suite: string | SignetSuite;
+  readonly suite: string | SignettSuite;
   readonly evidence: readonly TrialEvidence[];
   readonly outputDir: string;
   readonly baselineCondition?: string;

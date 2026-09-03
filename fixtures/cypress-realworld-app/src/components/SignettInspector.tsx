@@ -27,7 +27,7 @@ const panel = {
   boxShadow: 8,
 };
 
-const SignetInspector: React.FC = () => {
+const SignettInspector: React.FC = () => {
   const [tools, setTools] = useState<ToolSummary[]>([]);
   const [events, setEvents] = useState<InspectorEvent[]>([]);
   const supported = Boolean(document.modelContext);
@@ -53,20 +53,20 @@ const SignetInspector: React.FC = () => {
     };
 
     void refreshTools();
-    window.addEventListener("signet:event", record);
+    window.addEventListener("signett:event", record);
     document.modelContext?.addEventListener("toolchange", refreshTools);
 
     return () => {
       active = false;
-      window.removeEventListener("signet:event", record);
+      window.removeEventListener("signett:event", record);
       document.modelContext?.removeEventListener("toolchange", refreshTools);
     };
   }, []);
 
   return (
-    <Paper sx={panel} data-testid="signet-inspector">
+    <Paper sx={panel} data-testid="signett-inspector">
       <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Typography variant="h6">Signet Inspector</Typography>
+        <Typography variant="h6">Signett Inspector</Typography>
         <Chip
           size="small"
           color={supported ? "success" : "default"}
@@ -134,4 +134,4 @@ const SignetInspector: React.FC = () => {
   );
 };
 
-export default SignetInspector;
+export default SignettInspector;

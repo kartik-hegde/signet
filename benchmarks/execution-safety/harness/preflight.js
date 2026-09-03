@@ -1,5 +1,5 @@
 /**
- * Guarantees the benchmark is scoring the current Signet source.
+ * Guarantees the benchmark is scoring the current Signett source.
  *
  * A stale dist is the worst failure a hill-climbing loop can have, because the
  * score changes for a reason that is not the edit you just made. So freshness is
@@ -20,7 +20,7 @@ import {
 } from "node:fs";
 import { join, resolve, relative } from "node:path";
 
-const STAMP = ".cache/signet-stamp.json";
+const STAMP = ".cache/signett-stamp.json";
 
 function walk(dir, found = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -32,17 +32,17 @@ function walk(dir, found = []) {
 }
 
 /** Hashes every input the build depends on, so the identity is the source, not the clock. */
-function hashSources(signetDir) {
+function hashSources(signettDir) {
   const inputs = [
-    ...walk(join(signetDir, "src")),
-    join(signetDir, "tsconfig.build.json"),
-    join(signetDir, "tsconfig.json"),
-    join(signetDir, "package.json"),
+    ...walk(join(signettDir, "src")),
+    join(signettDir, "tsconfig.build.json"),
+    join(signettDir, "tsconfig.json"),
+    join(signettDir, "package.json"),
   ].filter((path) => existsSync(path));
 
   const hash = createHash("sha256");
   for (const path of inputs.sort()) {
-    hash.update(relative(signetDir, path));
+    hash.update(relative(signettDir, path));
     hash.update("\0");
     hash.update(readFileSync(path));
     hash.update("\0");
@@ -63,11 +63,11 @@ function writeStamp(benchDir, stamp) {
   writeFileSync(join(benchDir, STAMP), `${JSON.stringify(stamp, null, 2)}\n`);
 }
 
-function commitOf(signetDir) {
+function commitOf(signettDir) {
   try {
     // rev-parse only reads, so it cannot leave an index.lock behind on a mounted folder.
     return execFileSync("git", ["rev-parse", "--short", "HEAD"], {
-      cwd: signetDir,
+      cwd: signettDir,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
@@ -90,19 +90,19 @@ function run(command, args, cwd, label) {
 }
 
 export function preflight({
-  signetDir,
+  signettDir,
   benchDir,
   allowBuild = true,
   log = console.log,
 }) {
-  const resolved = resolve(signetDir);
+  const resolved = resolve(signettDir);
   const workspaceRoot = resolve(resolved, "../..");
   const installRoot = existsSync(join(workspaceRoot, "package.json"))
     ? workspaceRoot
     : resolved;
   if (!existsSync(join(resolved, "package.json"))) {
     throw new Error(
-      `No Signet checkout at ${resolved}.\nSet SIGNET_DIR to the repository root.`,
+      `No Signett checkout at ${resolved}.\nSet SIGNETT_DIR to the repository root.`,
     );
   }
 
@@ -115,7 +115,7 @@ export function preflight({
   if (stale) {
     if (!allowBuild) {
       throw new Error(
-        `The Signet build is stale (source hash ${hash}, stamp ${stamp?.srcHash ?? "none"}).\n` +
+        `The Signett build is stale (source hash ${hash}, stamp ${stamp?.srcHash ?? "none"}).\n` +
           `Re-run without --no-build, or build it yourself.`,
       );
     }
@@ -123,7 +123,7 @@ export function preflight({
       !existsSync(join(resolved, "node_modules", "typescript")) &&
       !existsSync(join(workspaceRoot, "node_modules", "typescript"))
     ) {
-      log("  installing Signet dependencies");
+      log("  installing Signett dependencies");
       run(
         "npm",
         ["install", "--no-audit", "--no-fund"],
@@ -131,7 +131,7 @@ export function preflight({
         "npm install",
       );
     }
-    log(`  rebuilding Signet (${fileCount} source files, hash ${hash})`);
+    log(`  rebuilding Signett (${fileCount} source files, hash ${hash})`);
     run("npm", ["run", "build"], resolved, "npm run build");
     if (!existsSync(distEntry)) {
       throw new Error(
@@ -145,12 +145,12 @@ export function preflight({
     commit: commitOf(resolved),
     builtAt: new Date(statSync(distEntry).mtimeMs).toISOString(),
     rebuilt: stale,
-    signetDir: resolved,
+    signettDir: resolved,
   };
   writeStamp(benchDir, { srcHash: hash, ...provenance });
 
   log(
-    `  Signet ${provenance.commit} source ${hash} ${stale ? "(rebuilt just now)" : "(already current)"}`,
+    `  Signett ${provenance.commit} source ${hash} ${stale ? "(rebuilt just now)" : "(already current)"}`,
   );
   return provenance;
 }

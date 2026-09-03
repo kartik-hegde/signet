@@ -8,11 +8,11 @@ and false success—without a browser or model in the loop.
 
 ```ts
 import { describe, expect, it, vi } from "vitest";
-import { guard } from "@signet/webmcp";
+import { guard } from "signett";
 import {
   MemoryIdempotencyStore,
   MemoryOperationJournal,
-} from "@signet/webmcp/testing";
+} from "signett/testing";
 
 const invocation = () => ({ signal: new AbortController().signal });
 
@@ -55,7 +55,7 @@ it("performs one effect for repeated input", async () => {
 Run the same concurrency contract against a production adapter:
 
 ```ts
-import { checkIdempotencyStore } from "@signet/webmcp/testing";
+import { checkIdempotencyStore } from "signett/testing";
 
 await checkIdempotencyStore(() => new PostgresIdempotencyStore(pool));
 ```
@@ -96,13 +96,13 @@ agent:
 
 Model-driven tests complement invariant tests. They do not replace them.
 
-For the complete browser path, install `@signet/eval` and run `signet agent`. It opens
+For the complete browser path, install `@signett/eval` and run `signett agent`. It opens
 a fresh headless Chrome profile, discovers the page's exact WebMCP inventory, lets a
 tool-capable model work on a prompt, and records bounded Evidence:
 
 ```sh
-npm install --save-dev @signet/eval
-npx signet agent \
+npm install --save-dev @signett/eval
+npx signett agent \
   --url http://127.0.0.1:3000 \
   --prompt "Find the prepared order and report its status." \
   --endpoint https://provider.example/v1/chat/completions \
@@ -117,7 +117,7 @@ on every pull request and repeated real-model Trials on a schedule. The
 the [CLI reference](../reference/cli) lists its budgets, expectations, and lifecycle
 hooks.
 
-Run Signet's complete local suite with:
+Run Signett's complete local suite with:
 
 ```sh
 npm run validate

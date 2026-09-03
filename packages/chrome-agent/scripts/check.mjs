@@ -10,13 +10,13 @@ const expectedPermissions = ["activeTab", "scripting", "sidePanel", "storage"];
 const expectedOptionalHostPermissions = ["http://*/*", "https://*/*"];
 
 if (manifest.manifest_version !== 3) {
-  throw new Error("Signet Agent must use Manifest V3.");
+  throw new Error("Signett Agent must use Manifest V3.");
 }
 if (
   JSON.stringify(manifest.permissions) !== JSON.stringify(expectedPermissions)
 ) {
   throw new Error(
-    "Signet Agent permissions changed; review the privacy boundary.",
+    "Signett Agent permissions changed; review the privacy boundary.",
   );
 }
 if (manifest.host_permissions) {
@@ -59,7 +59,7 @@ for (const id of ["tools-disclosure", "trace-disclosure", "prompt-form"]) {
 }
 if ((html.match(/class="app-brand"/g) ?? []).length !== 1) {
   throw new Error(
-    "The side panel must contain exactly one visible Signet brand.",
+    "The side panel must contain exactly one visible Signett brand.",
   );
 }
 
@@ -85,4 +85,4 @@ for (const size of [16, 32, 48, 128]) {
   await access(join(root, path));
 }
 
-console.log("Signet Agent manifest and privacy boundary are valid.");
+console.log("Signett Agent manifest and privacy boundary are valid.");

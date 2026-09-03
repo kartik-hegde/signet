@@ -6,17 +6,17 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-export function materializeSignetLink({
+export function materializeSignettLink({
   root = DEFAULT_ROOT,
   external = resolve(root, ".external"),
 } = {}) {
   mkdirSync(external, { recursive: true });
-  const link = resolve(external, "signet");
+  const link = resolve(external, "signett");
   try {
     const stat = lstatSync(link);
     if (!stat.isSymbolicLink() || realpathSync(link) !== realpathSync(root)) {
       throw new Error(
-        `${link} already exists and does not point to this Signet checkout.`,
+        `${link} already exists and does not point to this Signett checkout.`,
       );
     }
     return { link, created: false };
@@ -31,7 +31,7 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
-  const result = materializeSignetLink();
+  const result = materializeSignettLink();
   process.stdout.write(
     `${result.created ? "Created" : "Verified"} ${result.link} -> ${DEFAULT_ROOT}\n`,
   );

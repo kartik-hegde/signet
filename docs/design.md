@@ -2,7 +2,7 @@
 
 ## Product boundary
 
-Signet helps applications expose capabilities to agents through native WebMCP. It is
+Signett helps applications expose capabilities to agents through native WebMCP. It is
 developer tooling around the standard, not an alternate agent protocol, application
 framework, or production browser polyfill.
 
@@ -21,7 +21,7 @@ The toolkit should remain:
 6. **Application-owned.** Identity, policy, storage, confirmation UI, validation, and
    business logic remain application concerns.
 7. **Ejectable.** Definitions and generated code stay understandable and usable without
-   a hosted Signet runtime.
+   a hosted Signett runtime.
 8. **Private by default.** No network behavior, global patches, or production input and
    output capture occurs implicitly.
 
@@ -38,7 +38,7 @@ application function or endpoint
   -> optional execution controls
 ```
 
-Signet may make native registration easier, but it must not conceal origin options,
+Signett may make native registration easier, but it must not conceal origin options,
 registration signals, execution signals, schemas, annotations, or unsupported-browser
 status.
 
@@ -65,7 +65,7 @@ an injected store with appropriate durability; it is not an exactly-once claim.
 ## Explicit non-goals for the first exposure release
 
 - Inferring a production mutation from a website crawl
-- Inventing a Signet discovery protocol or mandatory response envelope
+- Inventing a Signett discovery protocol or mandatory response envelope
 - Providing a production browser polyfill
 - Retrying state-changing operations automatically
 - Treating browser-side authorization as sufficient

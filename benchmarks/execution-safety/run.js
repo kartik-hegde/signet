@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * One command. Verifies the Signet build is current, runs every scenario against
+ * One command. Verifies the Signett build is current, runs every scenario against
  * every measurable arm, scores it, records the result against the source hash, and
  * prints the delta since the last different build.
  */
@@ -21,7 +21,7 @@ if (flag("help")) {
   console.log(`
 Usage: ./run.js [options]
 
-  --signet=<path>    Signet package root (default ../../packages/webmcp, or SIGNET_DIR)
+  --signett=<path>    Signett package root (default ../../packages/webmcp, or SIGNETT_DIR)
   --no-build         fail instead of rebuilding when the build is stale
   --json             print the machine-readable record and nothing else
   --output=<path>    write the machine-readable record to a file
@@ -33,16 +33,16 @@ Usage: ./run.js [options]
 
 const quiet = flag("json");
 const log = quiet ? () => {} : console.log;
-const signetDir = resolve(
+const signettDir = resolve(
   benchDir,
-  option("signet", process.env.SIGNET_DIR ?? "../../packages/webmcp"),
+  option("signett", process.env.SIGNETT_DIR ?? "../../packages/webmcp"),
 );
 
 log("\nPreflight");
 let provenance;
 try {
   provenance = preflight({
-    signetDir,
+    signettDir,
     benchDir,
     allowBuild: !flag("no-build"),
     log,
@@ -57,7 +57,7 @@ try {
 // Pin the guard to the exact build preflight verified, then import. Setting this
 // before the first import of arms.js is what makes "latest build" a guarantee
 // rather than a convention.
-process.env.SIGNET_DIST = resolve(provenance.signetDir, "dist", "index.js");
+process.env.SIGNETT_DIST = resolve(provenance.signettDir, "dist", "index.js");
 
 // Imported after preflight so the guard is loaded from a dist we have just vouched for.
 const { scenarios } = await import("./scenarios/index.js");

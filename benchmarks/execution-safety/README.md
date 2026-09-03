@@ -2,14 +2,14 @@
 
 A deterministic conformance suite that measures what happens to application state
 when an agent invokes a mutation and something goes wrong. This is the execution-safety
-lane of the broader Signet benchmarks project; it does not measure agent task speed.
+lane of the broader Signett benchmarks project; it does not measure agent task speed.
 
 Other agent benchmarks ask whether the agent can finish the task. This one assumes
 it can, and asks what it left behind. Scenarios cover faults after commit, page
 reloads, live duplicate callers, stale preconditions, invented arguments, and
 concurrent writes.
 
-It is not a Signet benchmark. Signet is one of the arms, and on the current
+It is not a Signett benchmark. Signett is one of the arms, and on the current
 scenarios it does not win everything.
 
 ## Quick start
@@ -20,12 +20,12 @@ Node 22.5 or later. Install the root workspace dependencies first.
 npm run bench
 ```
 
-Roughly two seconds. It hashes the Signet source, rebuilds if needed, runs every
+Roughly two seconds. It hashes the Signett source, rebuilds if needed, runs every
 scenario against every measurable arm, then prints pass/fail by scenario and raw KPI
 counters. There is deliberately no public composite score.
 
 ```
---signet=<path>    Signet package root (default ../../packages/webmcp, or SIGNET_DIR)
+--signett=<path>    Signett package root (default ../../packages/webmcp, or SIGNETT_DIR)
 --no-build         fail instead of rebuilding when the build is stale
 --json             machine-readable record on stdout and nothing else
 --verbose          per-scenario counters and what the caller reported
@@ -41,7 +41,7 @@ Two blocks come out.
 ### Block one, pass or fail
 
 ```
-scenario                                     A1 raw tools            A3a Signet, shipped   A3b Signet, harness
+scenario                                     A1 raw tools            A3a Signett, shipped   A3b Signett, harness
 retry-after-lost-response                    FAIL duplicate_effects  FAIL duplicate_effects  pass
 retry-after-upstream-error-on-idempotent-op  pass                    pass                    FAIL needless_indeterminate
 concurrent-notes-overwrite                   FAIL lost_updates       FAIL lost_updates       FAIL lost_updates
@@ -64,11 +64,11 @@ turn a failure into a pass.
 | `A0_dom` | An agent driving the DOM or screenshots. **Not measured yet.** Needs a model and a browser, and produces efficiency numbers that belong to the tool-calling interface rather than to any guard. |
 | `A1_raw` | The tool handler with no controls at all. The floor. |
 | `A2_handrolled` | One benchmark-authored control adapter using the same durable store and verifier as A3b. It is a directional baseline, not an independent implementer cohort. |
-| `A3a_signet_memory` | The Signet guard with the explicitly test-only `MemoryIdempotencyStore`. It is expected to lose state on reload. |
-| `A3b_signet_durable` | The Signet guard with a phased SQLite adapter matching the shipped IndexedDB store contract. |
+| `A3a_signett_memory` | The Signett guard with the explicitly test-only `MemoryIdempotencyStore`. It is expected to lose state on reload. |
+| `A3b_signett_durable` | The Signett guard with a phased SQLite adapter matching the shipped IndexedDB store contract. |
 
-The distinction between the last two rows matters. Signet ships the conservative
-browser-profile adapter from `@signet/webmcp/stores`; SQLite remains a benchmark
+The distinction between the last two rows matters. Signett ships the conservative
+browser-profile adapter from `signett/stores`; SQLite remains a benchmark
 server adapter to exercise the same phased contract in Node.
 
 Arms that are not measured appear in the table as gaps rather than being quietly
@@ -103,7 +103,7 @@ help here. It is a control. A suite that rewards a guard on every operation is n
 measuring anything, and this scenario is what catches that.
 
 **`concurrent-notes-overwrite`.** Two invocations read the same booking and both
-write. Exactly one update is lost, in every arm including the guarded ones. Signet
+write. Exactly one update is lost, in every arm including the guarded ones. Signett
 does not prevent this today. What the guard does is notice, through verification,
 and report the outcome as unknown instead of success. Noticing is scored as a credit
 and does not make the scenario pass.
@@ -147,12 +147,12 @@ tsconfigs and `package.json`. A mismatch triggers a rebuild before anything runs
 failed build aborts with the compiler output and exit code 2, and the suite never
 scores artifacts it cannot vouch for.
 
-**The path.** `run.js` pins `SIGNET_DIST` to the absolute entry point of the build
+**The path.** `run.js` pins `SIGNETT_DIST` to the absolute entry point of the build
 its preflight just verified, before the arms are imported. Building one checkout and
 loading the guard from another was possible in an early draft and is not now.
 
 Every record in `evidence/raw/execution-safety/history.jsonl` carries the source hash, the commit and the
-build time, so scenario and KPI changes point at a specific state of Signet rather
+build time, so scenario and KPI changes point at a specific state of Signett rather
 than at a moment.
 
 ## Hill climbing
@@ -221,10 +221,10 @@ model enters the loop.
 
 ## Troubleshooting
 
-**Preflight fails with compiler output.** The Signet build is broken. The suite
+**Preflight fails with compiler output.** The Signett build is broken. The suite
 stops rather than scoring a stale `dist/`, which is deliberate. Exit code 2.
 
-**`No Signet checkout at ...`.** Pass `--signet=<path>` or set `SIGNET_DIR`.
+**`No Signett checkout at ...`.** Pass `--signett=<path>` or set `SIGNETT_DIR`.
 
 **`node:sqlite` warnings.** Run through `npm run bench`, which passes
 `--no-warnings=ExperimentalWarning`.
@@ -233,10 +233,10 @@ stops rather than scoring a stale `dist/`, which is deliberate. Exit code 2.
 of deleting, for example `: > evidence/raw/execution-safety/history.jsonl`.
 
 **The delta says "no earlier run".** Either this is the first run, or the scoring
-model changed, or the Signet source is unchanged since the last recorded run.
+model changed, or the Signett source is unchanged since the last recorded run.
 
 ## Relationship to the public benchmark
 
-This suite deliberately has a product-neutral name. Signet is one evaluated arm, not
+This suite deliberately has a product-neutral name. Signett is one evaluated arm, not
 the definition of success. Browser-agent effectiveness, UI speed, model cost, and the
 independent build-versus-buy comparison live in separate lanes at the repository root.

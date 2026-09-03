@@ -63,7 +63,7 @@ async function waitFor(
 function stores() {
   const indexedDB = new IDBFactory();
   const locks = new TestLockManager();
-  const databaseName = `signet-test-${crypto.randomUUID()}`;
+  const databaseName = `signett-test-${crypto.randomUUID()}`;
   const create = () =>
     new IndexedDbIdempotencyStore({ indexedDB, locks, databaseName });
   return { create };
@@ -75,7 +75,7 @@ describe("IndexedDbIdempotencyStore", () => {
     vi.stubGlobal("navigator", { locks: new TestLockManager() });
     try {
       const store = new IndexedDbIdempotencyStore({
-        databaseName: `signet-defaults-${crypto.randomUUID()}`,
+        databaseName: `signett-defaults-${crypto.randomUUID()}`,
       });
 
       await expect(store.begin("default", active())).resolves.toEqual({

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const host = "127.0.0.1";
-const port = Number(process.env.SIGNET_AGENT_DEMO_PORT ?? 4174);
+const port = Number(process.env.SIGNETT_AGENT_DEMO_PORT ?? 4174);
 
 export function createDemoServer() {
   return createServer(async (request, response) => {
@@ -41,7 +41,7 @@ if (
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   createDemoServer().listen(port, host, () => {
-    console.log(`Signet Agent demo: http://${host}:${port}`);
+    console.log(`Signett Agent demo: http://${host}:${port}`);
     console.log(
       `Provider endpoint: http://${host}:${port}/v1/chat/completions`,
     );
@@ -73,7 +73,7 @@ export function demoCompletion(payload) {
 
 function choice(message) {
   return {
-    id: "signet-demo",
+    id: "signett-demo",
     choices: [{ index: 0, message: { role: "assistant", ...message } }],
   };
 }

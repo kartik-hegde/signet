@@ -15,7 +15,7 @@ import type {
   OperationHandle,
   OperationJournal,
   RecoveryDecision,
-  SignetCallerTelemetry,
+  SignettCallerTelemetry,
   VerificationDecision,
 } from "./types.js";
 
@@ -36,7 +36,7 @@ export interface ModelContextLike {
         input: Record<string, unknown>,
         options: {
           signal: AbortSignal;
-          callerTelemetry?: SignetCallerTelemetry;
+          callerTelemetry?: SignettCallerTelemetry;
         },
       ): MaybePromise<unknown>;
     },
@@ -47,7 +47,7 @@ export interface ModelContextLike {
   ): Promise<void>;
 }
 
-export interface CreateSignetOptions<Context> {
+export interface CreateSignettOptions<Context> {
   readonly context?: (options: {
     readonly signal: AbortSignal;
   }) => MaybePromise<Context>;
@@ -65,7 +65,7 @@ export interface CreateSignetOptions<Context> {
   };
 }
 
-export interface SignetTool<
+export interface SignettTool<
   Input extends Record<string, unknown>,
   Output,
   Context,
@@ -127,24 +127,24 @@ export interface SignetTool<
   }) => MaybePromise<boolean | VerificationDecision>;
 }
 
-export interface SignetRegistration {
+export interface SignettRegistration {
   readonly name: string;
   readonly status: "registered" | "unsupported" | "disposed";
   dispose(): void;
   [Symbol.dispose](): void;
 }
 
-export interface SignetInterface<Context> {
+export interface SignettInterface<Context> {
   expose<Input extends Record<string, unknown>, Output>(
-    tool: SignetTool<Input, Output, Context>,
-  ): Promise<SignetRegistration>;
-  tools(): readonly SignetToolSnapshot[];
+    tool: SignettTool<Input, Output, Context>,
+  ): Promise<SignettRegistration>;
+  tools(): readonly SignettToolSnapshot[];
   observe(observer: GuardObserver): () => void;
   /** Present when `telemetry` is configured. Normal app code need not call it. */
   readonly telemetry?: Pick<OtlpObserver, "flush" | "shutdown">;
 }
 
-export interface SignetToolSnapshot {
+export interface SignettToolSnapshot {
   readonly name: string;
   readonly title?: string;
   readonly description: string;
@@ -154,7 +154,7 @@ export interface SignetToolSnapshot {
   readonly status: "registering" | "registered" | "unsupported";
 }
 
-// WebMCP names are unique within a document, not within a Signet instance.
+// WebMCP names are unique within a document, not within a Signett instance.
 // Keep that invariant even when an application creates more than one interface.
 const activeNamesByContext = new WeakMap<ModelContextLike, Set<string>>();
 
@@ -174,7 +174,7 @@ function browserModelContext(): ModelContextLike | undefined {
 }
 
 function definitionError(message: string): TypeError {
-  return new TypeError("Invalid Signet tool: " + message);
+  return new TypeError("Invalid Signett tool: " + message);
 }
 
 function validateDefinition(tool: {
@@ -221,20 +221,20 @@ function validateDefinition(tool: {
   }
 }
 
-class Registration implements SignetRegistration {
-  #status: SignetRegistration["status"];
+class Registration implements SignettRegistration {
+  #status: SignettRegistration["status"];
   readonly #disposeRegistration: () => void;
 
   constructor(
     readonly name: string,
-    status: SignetRegistration["status"],
+    status: SignettRegistration["status"],
     disposeRegistration: () => void,
   ) {
     this.#status = status;
     this.#disposeRegistration = disposeRegistration;
   }
 
-  get status(): SignetRegistration["status"] {
+  get status(): SignettRegistration["status"] {
     return this.#status;
   }
 
@@ -249,9 +249,9 @@ class Registration implements SignetRegistration {
   }
 }
 
-export function createSignet<Context = undefined>(
-  options: CreateSignetOptions<Context> = {},
-): SignetInterface<Context> {
+export function createSignett<Context = undefined>(
+  options: CreateSignettOptions<Context> = {},
+): SignettInterface<Context> {
   const observers = new Set<GuardObserver>();
   if (options.observe) observers.add(options.observe);
   const telemetry = options.telemetry
@@ -275,7 +275,7 @@ export function createSignet<Context = undefined>(
       })
     : undefined;
   if (telemetry) observers.add(telemetry);
-  const tools = new Map<string, SignetToolSnapshot>();
+  const tools = new Map<string, SignettToolSnapshot>();
   const localNames = new Set<string>();
 
   const dispatch = (event: GuardEvent): void => {
@@ -330,8 +330,8 @@ export function createSignet<Context = undefined>(
       const registrationId = crypto.randomUUID();
       const startedAt = performance.now();
       const snapshot = (
-        status: SignetToolSnapshot["status"],
-      ): SignetToolSnapshot => ({
+        status: SignettToolSnapshot["status"],
+      ): SignettToolSnapshot => ({
         name: tool.name,
         ...(tool.title === undefined ? {} : { title: tool.title }),
         description: tool.description,
@@ -354,7 +354,7 @@ export function createSignet<Context = undefined>(
         }
         if (options.unsupported === "warn") {
           console.warn(
-            "Signet: WebMCP is not available; tool was not exposed.",
+            "Signett: WebMCP is not available; tool was not exposed.",
           );
         }
         return new Registration(tool.name, "unsupported", () => {
@@ -380,7 +380,7 @@ export function createSignet<Context = undefined>(
         input: Record<string, unknown>,
         executeOptions?: {
           signal: AbortSignal;
-          callerTelemetry?: SignetCallerTelemetry;
+          callerTelemetry?: SignettCallerTelemetry;
         },
       ) => {
         // Some WebMCP hosts currently invoke tools with an empty options object.

@@ -45,13 +45,13 @@ describe("Payment task interface parity", { retries: 0 }, () => {
     });
   });
 
-  it("completes the same task through Signet-guarded WebMCP", () => {
-    cy.visitWithWebMcp("/signin", "signet");
+  it("completes the same task through Signett-guarded WebMCP", () => {
+    cy.visitWithWebMcp("/signin", "signett");
     cy.login(referencePaymentTask.sender.username, "s3cret");
     waitForPaymentTools();
 
     readPaymentBaseline().then((baseline) => {
-      runPaymentThroughWebMcp("signet").then((metric) => {
+      runPaymentThroughWebMcp("signett").then((metric) => {
         cy.task("reference:record-metric", metric);
       });
       assertPaymentOracle(baseline, { expectAgentOperation: true });

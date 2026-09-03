@@ -67,5 +67,5 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, host, () => {
-  console.log(`Signet demo: http://${host}:${port}/demo/`);
+  console.log(`Signett demo: http://${host}:${port}/demo/`);
 });

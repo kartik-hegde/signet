@@ -523,7 +523,7 @@ async function waitFor<Value>(
 
 function warnOutput(name: string | undefined, message: string): void {
   try {
-    console.warn(`Signet${name ? ` (${name})` : ""}: tool output ${message}.`);
+    console.warn(`Signett${name ? ` (${name})` : ""}: tool output ${message}.`);
   } catch {
     // Diagnostics cannot change an already completed operation.
   }
@@ -543,7 +543,7 @@ export function guard<
 ): Execute<Input, Output> {
   if (options.idempotency && !options.journal) {
     throw new TypeError(
-      "Signet idempotency requires an operation journal so failures can be classified safely.",
+      "Signett idempotency requires an operation journal so failures can be classified safely.",
     );
   }
   return (input, executeOptions) =>

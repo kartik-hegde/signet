@@ -1,6 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
-import { docker, platform, signet, storefront } from "./paths.mjs";
+import { docker, platform, signett, storefront } from "./paths.mjs";
 
 const manifest = JSON.parse(
   await readFile(new URL("../manifest.json", import.meta.url), "utf8"),
@@ -9,7 +9,7 @@ const expected = {
   storefront: manifest.storefront.revision,
   storefrontIntegration: manifest.storefront.integrationRevision,
   platform: manifest.platform.revision,
-  signet: manifest.signet.revision,
+  signett: manifest.signett.revision,
 };
 
 function git(directory, args) {
@@ -27,14 +27,14 @@ async function health(url, init) {
 await Promise.all([
   access(storefront),
   access(platform),
-  access(signet),
+  access(signett),
   access(docker),
 ]);
 
 const revisions = {
   storefront: git(storefront, ["rev-parse", "HEAD"]),
   platform: git(platform, ["rev-parse", "HEAD"]),
-  signet: git(signet, ["rev-parse", "HEAD"]),
+  signett: git(signett, ["rev-parse", "HEAD"]),
 };
 
 if (revisions.platform !== expected.platform) {
@@ -47,9 +47,9 @@ if (revisions.storefront !== expected.storefrontIntegration) {
     `storefront is at ${revisions.storefront}, expected integration ${expected.storefrontIntegration}`,
   );
 }
-if (expected.signet !== "workspace" && revisions.signet !== expected.signet) {
+if (expected.signett !== "workspace" && revisions.signett !== expected.signett) {
   throw new Error(
-    `signet is at ${revisions.signet}, expected ${expected.signet}`,
+    `signett is at ${revisions.signett}, expected ${expected.signett}`,
   );
 }
 const storefrontBase = spawnSync(

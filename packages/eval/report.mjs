@@ -9,7 +9,7 @@ export const REPORT_SCHEMA_VERSION = 1;
 export function buildReport({
   suite,
   evidence,
-  baselineCondition = "signet-baseline",
+  baselineCondition = "signett-baseline",
 }) {
   if (!Array.isArray(evidence) || evidence.length === 0) {
     throw new TypeError(

@@ -1,4 +1,4 @@
 import DefaultTheme from "vitepress/theme";
-import "./signet.css";
+import "./signett.css";
 
 export default DefaultTheme;

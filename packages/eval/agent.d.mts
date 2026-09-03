@@ -62,7 +62,7 @@ export interface AgentCompletionInput {
 export interface HeadlessEvidence {
   readonly schemaVersion: 1;
   readonly generatedAt: string;
-  readonly runner: "@signet/eval";
+  readonly runner: "@signett/eval";
   readonly status: "passed" | "failed" | "timed_out";
   readonly durationMs: number;
   readonly task: Readonly<Record<string, unknown>>;

@@ -32,4 +32,4 @@ await Promise.all(
   ),
 );
 
-console.log(`Built Signet Agent at ${output}`);
+console.log(`Built Signett Agent at ${output}`);

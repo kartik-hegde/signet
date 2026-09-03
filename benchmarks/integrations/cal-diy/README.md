@@ -1,10 +1,10 @@
-# Cal.diy + Signet benchmark
+# Cal.diy + Signett benchmark
 
 This fixture runs a real agent against native WebMCP tools on a local Cal.diy booking page. The agent can inspect the active event, read live availability, and create one guarded booking through Cal.diy's existing booking mutation.
 
 ## Layout
 
-- `manifest.json` pins the Cal.diy base and Signet revisions.
+- `manifest.json` pins the Cal.diy base and Signett revisions.
 - `tasks.json` defines the consequential booking scenario and oracle expectations.
 - `scripts/preflight.mjs` checks the app, database, and repository provenance.
 - `scripts/native-smoke.mjs` invokes the Chrome WebMCP domain directly and checks recovery plus replay.
@@ -13,7 +13,7 @@ This fixture runs a real agent against native WebMCP tools on a local Cal.diy bo
 
 ## Run
 
-The Cal.diy checkout is expected at `.external/cal-diy-signet`; `CAL_DIY_DIR` can override it. Start its Postgres service and web app using the local `.env`, then run from the Signet repository root:
+The Cal.diy checkout is expected at `.external/cal-diy-signett`; `CAL_DIY_DIR` can override it. Start its Postgres service and web app using the local `.env`, then run from the Signett repository root:
 
 ```sh
 npm run cal-diy:preflight

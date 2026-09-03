@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Signet Agent",
+  "name": "Signett Agent",
   "version": "0.1.0",
   "description": "Inspect and try the WebMCP tools exposed by the current page.",
   "minimum_chrome_version": "149",
@@ -17,7 +17,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "Open Signet Agent",
+    "default_title": "Open Signett Agent",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"

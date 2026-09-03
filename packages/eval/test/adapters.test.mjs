@@ -16,7 +16,7 @@ function fixture(agentRun) {
   const calls = [];
   const evaluation = defineEvaluation({
     suite: { id: "payments", cases: [caseDefinition] },
-    conditions: [{ id: "signet", parameters: { bridge: true } }],
+    conditions: [{ id: "signett", parameters: { bridge: true } }],
     adapters: {
       application: {
         id: "fake-payments",

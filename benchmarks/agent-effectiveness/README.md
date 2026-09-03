@@ -11,7 +11,7 @@ condition.
 | --------------- | -------------------------------------- | ----------------------- |
 | `ui_dom`        | Semantic DOM snapshot, click, and fill | Existing application UI |
 | `hybrid_raw`    | DOM actions plus native WebMCP tools   | Raw application handler |
-| `hybrid_signet` | DOM actions plus native WebMCP tools   | Signet-guarded handler  |
+| `hybrid_signett` | DOM actions plus native WebMCP tools   | Signett-guarded handler  |
 
 The WebMCP tools are registered by the page through `document.modelContext`. A small
 MCP adapter makes those exact live registrations available to the benchmark agent; it
@@ -52,7 +52,7 @@ Raw traces are written below `evidence/raw/p1/` and ignored by Git. The public a
 scorecard is written to `evidence/p1/latest.json` and `evidence/p1/latest.md`.
 
 To run one saved task through WebMCP only and retain its complete local diagnostic
-trace, use the [Signet Test Agent](./TEST_AGENT.md).
+trace, use the [Signett Test Agent](./TEST_AGENT.md).
 
 ## Interpretation
 
@@ -61,6 +61,6 @@ an internal hill-climbing pilot, not yet a population-level headline. Ten trials
 condition expose basic variance; publication should add tasks, a second model family,
 confidence intervals sized from the pilot variance, and an independent application.
 
-WebMCP deserves credit for replacing UI actuation. Signet should only receive credit
+WebMCP deserves credit for replacing UI actuation. Signett should only receive credit
 for changes relative to raw WebMCP, including safe execution, verified outcomes,
 diagnostic evidence, and measured overhead.

@@ -18,7 +18,7 @@ import {
   waitFor,
 } from "../../../agent-effectiveness/lib/cdp.mjs";
 import { createAgentRun } from "../../../agent-effectiveness/providers/codex.mjs";
-import { application, benchmark, databaseCompose, signet } from "./paths.mjs";
+import { application, benchmark, databaseCompose, signett } from "./paths.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appDirectory = path.resolve(here, "..");
@@ -31,7 +31,7 @@ const rawDirectory = path.join(
 const bookingUrl =
   process.env.CAL_DIY_BOOKING_URL ??
   "http://127.0.0.1:3000/pro/30min?date=2026-09-04";
-const attendeeEmail = "signet-case-study@example.test";
+const attendeeEmail = "signett-case-study@example.test";
 const model = process.env.CAL_DIY_MODEL ?? "gpt-5.4-mini";
 const reasoning = process.env.CAL_DIY_REASONING ?? "low";
 const task = JSON.parse(
@@ -52,10 +52,10 @@ mkdirSync(rawDirectory, { recursive: true });
 resetBenchmarkBooking();
 const before = oracle();
 const profile = mkdtempSync(
-  path.join(os.tmpdir(), "signet-cal-diy-agent-chrome-"),
+  path.join(os.tmpdir(), "signett-cal-diy-agent-chrome-"),
 );
 const agentWorkspace = mkdtempSync(
-  path.join(os.tmpdir(), "signet-cal-diy-agent-workspace-"),
+  path.join(os.tmpdir(), "signett-cal-diy-agent-workspace-"),
 );
 const debugPort = await unusedPort();
 const chrome = spawn(
@@ -95,12 +95,12 @@ try {
   await waitFor(
     () =>
       cdp.evaluate(
-        "window.__calSignetRegistrationStates?.every(status => status === 'registered')",
+        "window.__calSignettRegistrationStates?.every(status => status === 'registered')",
       ),
-    "Cal.diy Signet registrations",
+    "Cal.diy Signett registrations",
     90_000,
   );
-  await cdp.evaluate("window.__calSignetArmLostResponse()");
+  await cdp.evaluate("window.__calSignettArmLostResponse()");
 
   const tracePath = path.join(rawDirectory, "trace.json");
   const prompt = [
@@ -125,7 +125,7 @@ try {
     mcpArgs: [
       path.join(benchmark, "benchmarks/agent-effectiveness/mcp-server.mjs"),
       `--cdp=${target.webSocketDebuggerUrl}`,
-      "--condition=webmcp_signet",
+      "--condition=webmcp_signett",
       `--trace=${tracePath}`,
       "--accept-dialogs=true",
     ],
@@ -146,7 +146,7 @@ try {
 
   const after = oracle();
   const guardStages = await cdp.evaluate(
-    "(window.__signetGuardEvents || []).filter(event => event.name === 'book_event').map(event => event.stage)",
+    "(window.__signettGuardEvents || []).filter(event => event.name === 'book_event').map(event => event.stage)",
   );
   const trace = existsSync(tracePath)
     ? JSON.parse(readFileSync(tracePath, "utf8"))
@@ -275,15 +275,15 @@ function git(directory, args) {
 }
 
 function provenance() {
-  const signetDiff = git(signet, ["diff", "--binary"]);
+  const signettDiff = git(signett, ["diff", "--binary"]);
   return {
     applicationHead: git(application, ["rev-parse", "HEAD"]),
     applicationDiffSha256: createHash("sha256")
       .update(git(application, ["diff", "--binary"]))
       .digest("hex"),
-    signetHead: git(signet, ["rev-parse", "HEAD"]),
-    signetWorkingTreeDirty: Boolean(git(signet, ["status", "--porcelain"])),
-    signetDiffSha256: createHash("sha256").update(signetDiff).digest("hex"),
+    signettHead: git(signett, ["rev-parse", "HEAD"]),
+    signettWorkingTreeDirty: Boolean(git(signett, ["status", "--porcelain"])),
+    signettDiffSha256: createHash("sha256").update(signettDiff).digest("hex"),
     chrome: spawnSync(chromePath, ["--version"], {
       encoding: "utf8",
     }).stdout.trim(),

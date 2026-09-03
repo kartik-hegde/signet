@@ -7,30 +7,30 @@ import {
 } from "react";
 
 import {
-  createSignetActivityStore,
-  type SignetActivityOptions,
-  type SignetActivitySnapshot,
+  createSignettActivityStore,
+  type SignettActivityOptions,
+  type SignettActivitySnapshot,
 } from "./activity.js";
-import type { SignetInterface, SignetTool } from "./interface.js";
-import { bindSignetTool, type ToolBindingState } from "./lifecycle.js";
+import type { SignettInterface, SignettTool } from "./interface.js";
+import { bindSignettTool, type ToolBindingState } from "./lifecycle.js";
 
 /** Exposes a tool for the lifetime of a React component. */
-export function useSignetTool<
+export function useSignettTool<
   Context,
   Input extends Record<string, unknown>,
   Output,
 >(
-  signet: SignetInterface<Context>,
-  tool: SignetTool<Input, Output, Context>,
+  signett: SignettInterface<Context>,
+  tool: SignettTool<Input, Output, Context>,
   dependencies: DependencyList,
 ): ToolBindingState {
   const [state, setState] = useState<ToolBindingState>({
     status: "registering",
   });
   useEffect(
-    () => bindSignetTool(signet, tool, setState),
+    () => bindSignettTool(signett, tool, setState),
     // Requiring this list prevents silently freezing a first-render closure.
-    [signet, ...dependencies],
+    [signett, ...dependencies],
   );
   return state;
 }
@@ -39,13 +39,13 @@ export function useSignetTool<
  * Projects tool calls into metadata-only state an application can render in its own UI.
  * It never mutates the DOM or replaces an authoritative application-state refresh.
  */
-export function useSignetActivity<Context>(
-  signet: SignetInterface<Context>,
-  options: SignetActivityOptions = {},
-): SignetActivitySnapshot {
+export function useSignettActivity<Context>(
+  signett: SignettInterface<Context>,
+  options: SignettActivityOptions = {},
+): SignettActivitySnapshot {
   const { maxInvocations, toolName } = options;
   const [store] = useState(() =>
-    createSignetActivityStore({
+    createSignettActivityStore({
       ...(maxInvocations === undefined ? {} : { maxInvocations }),
       ...(toolName === undefined ? {} : { toolName }),
     }),
@@ -53,13 +53,13 @@ export function useSignetActivity<Context>(
   const subscribe = useCallback(
     (listener: () => void) => {
       const stopStore = store.subscribe(listener);
-      const stopSignet = signet.observe(store.observe);
+      const stopSignett = signett.observe(store.observe);
       return () => {
-        stopSignet();
+        stopSignett();
         stopStore();
       };
     },
-    [signet, store],
+    [signett, store],
   );
 
   return useSyncExternalStore(subscribe, store.getSnapshot, store.getSnapshot);
@@ -67,9 +67,9 @@ export function useSignetActivity<Context>(
 
 export type { ToolBindingState } from "./lifecycle.js";
 export type {
-  SignetActivity,
-  SignetActivityOptions,
-  SignetActivityPhase,
-  SignetActivityResolution,
-  SignetActivitySnapshot,
+  SignettActivity,
+  SignettActivityOptions,
+  SignettActivityPhase,
+  SignettActivityResolution,
+  SignettActivitySnapshot,
 } from "./activity.js";

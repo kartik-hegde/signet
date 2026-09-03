@@ -15,7 +15,7 @@ test("every task has a deterministic smoke workflow", async () => {
   }
 });
 
-test("fixture enforces consequential invariants independently of Signet", () => {
+test("fixture enforces consequential invariants independently of Signett", () => {
   const state = baselineState();
   assert.throws(
     () => applyAction(state, "cancel_order", { orderId: "ord-200" }),

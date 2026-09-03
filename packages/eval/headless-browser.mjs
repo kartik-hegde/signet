@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { CdpClient, unusedPort, waitFor } from "./cdp.mjs";
 
-const CALL_REGISTRY = "@signet/eval/headless-calls";
+const CALL_REGISTRY = "@signett/eval/headless-calls";
 
 export async function launchHeadlessWebMcpPage({
   url,
@@ -19,7 +19,7 @@ export async function launchHeadlessWebMcpPage({
   if (!chromePath) throw new Error("Google Chrome or Chromium was not found.");
 
   const debugPort = await unusedPort();
-  const profile = mkdtempSync(path.join(os.tmpdir(), "signet-agent-chrome-"));
+  const profile = mkdtempSync(path.join(os.tmpdir(), "signett-agent-chrome-"));
   const chrome = spawn(
     chromePath,
     [

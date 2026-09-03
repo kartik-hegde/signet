@@ -1,5 +1,5 @@
-const LOCAL_KEY = "signetAgentSavedKey";
-const SESSION_KEY = "signetAgentKey";
+const LOCAL_KEY = "signettAgentSavedKey";
+const SESSION_KEY = "signettAgentKey";
 
 export async function loadApiKey(storage = chrome.storage) {
   const [local, session] = await Promise.all([

@@ -20,7 +20,7 @@ export const PROVIDER_PRESETS = Object.freeze({
   demo: Object.freeze({
     label: "Local demo",
     endpoint: "http://127.0.0.1:4174/v1/chat/completions",
-    model: "signet-demo",
+    model: "signett-demo",
     keyRequired: false,
   }),
   custom: Object.freeze({

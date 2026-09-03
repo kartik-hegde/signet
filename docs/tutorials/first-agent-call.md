@@ -19,25 +19,25 @@ The deterministic test and the page itself work without model credentials.
 
 ## 1. Run the website
 
-Clone Signet if you do not already have it, then start the checked-in example:
+Clone Signett if you do not already have it, then start the checked-in example:
 
 ```sh
-git clone https://github.com/kartik-hegde/signet.git
-cd signet
+git clone https://github.com/signettai/signett.git
+cd signett
 npm install
 npm run tutorial:dev
 ```
 
 If you already have a checkout, start at `npm install`. Open
 `http://localhost:4173`. The page reports the registration state and mounts
-Signet's local inspector in the lower-right corner. Keep this terminal running for the
+Signett's local inspector in the lower-right corner. Keep this terminal running for the
 browser steps.
 
 Vite is the only server in this example. It serves the React application; the tool
 itself executes in the browser and does not need an API route.
 
 In a browser without native WebMCP, the page still works and the tool status is
-`unsupported`. That is expected: Signet does not make the human website depend on an
+`unsupported`. That is expected: Signett does not make the human website depend on an
 experimental browser API.
 
 ## 2. Read the complete tool
@@ -64,12 +64,12 @@ export const greetingTool = {
 The small delay is only there to make the execution segment easy to recognize in the
 trace waterfall.
 
-`App.tsx` creates one stable Signet interface and binds that definition to the React
+`App.tsx` creates one stable Signett interface and binds that definition to the React
 component lifetime:
 
 ```tsx
-const signet = useMemo(() => createSignet({ unsupported: "warn" }), []);
-const registration = useSignetTool(signet, greetingTool, [greetingTool]);
+const signett = useMemo(() => createSignett({ unsupported: "warn" }), []);
+const registration = useSignettTool(signett, greetingTool, [greetingTool]);
 ```
 
 Unmounting the component disposes the registration. A browser agent should only see a
@@ -91,7 +91,7 @@ for the manual inspection instructions.
 
 Open the codelab again, then open DevTools and select **Application → WebMCP**. You
 should see `get_greeting`, its empty input schema, description, and read-only hint.
-The status on the page and in the Signet inspector should now be `registered`.
+The status on the page and in the Signett inspector should now be `registered`.
 
 ## 4. Execute it in DevTools
 
@@ -107,10 +107,10 @@ The result is:
 { "message": "Hello, world!" }
 ```
 
-The Signet inspector now shows a **Calls** row for `get_greeting`: sequence number,
+The Signett inspector now shows a **Calls** row for `get_greeting`: sequence number,
 outcome, total latency, and a proportional waterfall. Expand the row to see the
 `validate` and `execute` phases and their individual durations. The same call also
-appears as a `Signet: get_greeting` measure in Chrome's **Performance** panel. This
+appears as a `Signett: get_greeting` measure in Chrome's **Performance** panel. This
 proves that Chrome invoked the same registered callback that an agent will use and
 shows where its time went.
 
@@ -131,36 +131,36 @@ Then open `http://localhost:4173/?otlp=1` and execute `get_greeting` again. The 
 flag makes the example equivalent to this application configuration:
 
 ```ts
-createSignet({
+createSignett({
   telemetry: {
     otlp: "/v1/traces",
-    serviceName: "signet-hello-world",
+    serviceName: "signett-hello-world",
   },
 });
 ```
 
 The checked-in Vite configuration proxies `/v1/traces` to Jaeger's OTLP/HTTP port,
 so the browser needs no CORS workaround. Open `http://localhost:16686`, choose the
-`signet-hello-world` service, and select **Find Traces**. Expanding the result shows
-the `execute_tool get_greeting` root span and its `signet.validate` and `signet.execute`
+`signett-hello-world` service, and select **Find Traces**. Expanding the result shows
+the `execute_tool get_greeting` root span and its `signett.validate` and `signett.execute`
 children. Stop the container with <kbd>Ctrl+C</kbd>; its in-memory traces are
 deliberately disposable.
 
-## 5. Let the Signet Agent call it
+## 5. Let the Signett Agent call it
 
-`@signet/eval` installs the `signet` terminal command. Its agent runner launches a
+`@signett/eval` installs the `signett` terminal command. Its agent runner launches a
 fresh headless Chrome profile, discovers the page's exact WebMCP inventory, and lets a
 tool-capable model work on your prompt. The repository already includes the package as
 a workspace, so no additional install is needed for this codelab. In your own
-application, install it with `npm install --save-dev @signet/eval`.
+application, install it with `npm install --save-dev @signett/eval`.
 
 Keep `npm run tutorial:dev` running. In another terminal, put your model provider key
 in an environment variable and run:
 
 ```sh
-export SIGNET_AGENT_API_KEY="<provider-key>"
+export SIGNETT_AGENT_API_KEY="<provider-key>"
 
-npx signet agent \
+npx signett agent \
   --url http://localhost:4173 \
   --prompt "Call get_greeting with an empty object and report its message." \
   --endpoint https://provider.example/v1/chat/completions \
@@ -186,20 +186,20 @@ the resulting database or another system of record instead. The
 [headless agent testing codelab](./headless-agent-testing) turns this command into a
 saved multi-Trial suite with reset and authoritative oracle hooks.
 
-If you prefer to drive an already-open tab interactively, install Signet's Chrome
+If you prefer to drive an already-open tab interactively, install Signett's Chrome
 extension separately. Chrome DevTools MCP is another independent agent-runtime option;
-neither is bundled with `@signet/eval`.
+neither is bundled with `@signett/eval`.
 
 ## 6. Prove it without a model
 
-In another terminal, from the Signet repository root, run the focused deterministic
+In another terminal, from the Signett repository root, run the focused deterministic
 test:
 
 ```sh
 npm run tutorial:test
 ```
 
-The test injects Signet's WebMCP harness, asserts that `get_greeting` is ready,
+The test injects Signett's WebMCP harness, asserts that `get_greeting` is ready,
 discovers the registered tool, invokes its actual callback, and checks the result. Use
 this style for fast CI coverage; reserve real-model runs for representative workflows.
 The expected summary is one passing test.
@@ -216,5 +216,5 @@ If the manually opened page remains `unsupported`, check that both Chrome flags 
 enabled, Chrome was relaunched, and the page was loaded after the native API became
 available. If the headless runner times out waiting for tools, confirm the page loads
 from a fresh profile and that Chrome supports WebMCP. Set `CHROME_PATH` when Chrome or
-Chromium is not installed in a standard location. Signet does not poll for a bridge
+Chromium is not installed in a standard location. Signett does not poll for a bridge
 injected after initialization.

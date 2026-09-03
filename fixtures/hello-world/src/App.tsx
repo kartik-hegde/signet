@@ -1,36 +1,36 @@
 import { useEffect, useMemo } from "react";
 
-import { createSignet } from "@signet/webmcp";
-import { mountSignetInspector } from "@signet/webmcp/inspector";
-import { useSignetTool } from "@signet/webmcp/react";
+import { createSignett } from "signett";
+import { mountSignettInspector } from "signett/inspector";
+import { useSignettTool } from "signett/react";
 
 import { greetingTool } from "./greeting";
 
 export function App() {
-  const signet = useMemo(() => {
+  const signett = useMemo(() => {
     const exportToJaeger = new URLSearchParams(location.search).has("otlp");
-    return createSignet({
+    return createSignett({
       unsupported: "warn",
       ...(exportToJaeger
         ? {
             telemetry: {
               otlp: "/v1/traces",
-              serviceName: "signet-hello-world",
+              serviceName: "signett-hello-world",
             },
           }
         : {}),
     });
   }, []);
-  const registration = useSignetTool(signet, greetingTool, [greetingTool]);
+  const registration = useSignettTool(signett, greetingTool, [greetingTool]);
 
   useEffect(() => {
-    const inspector = mountSignetInspector(signet);
+    const inspector = mountSignettInspector(signett);
     return () => inspector.dispose();
-  }, [signet]);
+  }, [signett]);
 
   return (
     <main className="shell">
-      <p className="eyebrow">Signet codelab 01</p>
+      <p className="eyebrow">Signett codelab 01</p>
       <h1>Hello from a browser tool.</h1>
       <p className="lede">
         This React page exposes one read-only WebMCP tool. Ask a connected
@@ -59,7 +59,7 @@ export function App() {
         <li>
           Execute the tool there, or ask an MCP-connected agent to call it.
         </li>
-        <li>Watch the Signet panel show the call and its latency waterfall.</li>
+        <li>Watch the Signett panel show the call and its latency waterfall.</li>
       </ol>
 
       <pre className="result" aria-label="Expected tool result">

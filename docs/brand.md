@@ -1,16 +1,16 @@
 ---
-title: Signet Signal design kit
-description: The visual and verbal system for Signet websites, product interfaces, diagrams, and materials.
+title: Signett Signal design kit
+description: The visual and verbal system for Signett websites, product interfaces, diagrams, and materials.
 aside: false
 sidebar: false
 outline: [2, 3]
 ---
 
 <div class="brand-page">
-  <div class="brand-kicker">Signet Signal / Design kit 01</div>
+  <div class="brand-kicker">Signett Signal / Design kit 01</div>
   <div class="brand-principle">Quiet infrastructure.<br>Visible proof.</div>
 
-  <p>This is Signet’s shared language for websites, product UI, documentation, decks, reports, diagrams, and launch materials. It should feel calm, technical, exact, and unmistakably made by people who care about the last five percent.</p>
+  <p>This is Signett’s shared language for websites, product UI, documentation, decks, reports, diagrams, and launch materials. It should feel calm, technical, exact, and unmistakably made by people who care about the last five percent.</p>
 
   <div class="brand-rule">
     <div><strong>Quiet by default</strong><p>Paper, ink, space, and hairlines do most of the work. Restraint creates confidence.</p></div>
@@ -178,7 +178,7 @@ heading bars. Use Signal for decisions and Proof for findings backed by evidence
 
 ### Social card
 
-One statement, one small process diagram, the Signet wordmark, and substantial empty space.
+One statement, one small process diagram, the Signett wordmark, and substantial empty space.
 Never shrink a full webpage into the frame.
 
 ## 9. Design checklist

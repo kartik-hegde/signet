@@ -1,4 +1,4 @@
-export type SignetErrorCode =
+export type SignettErrorCode =
   | "authorization_denied"
   | "confirmation_declined"
   | "invalid_input"
@@ -6,12 +6,12 @@ export type SignetErrorCode =
   | "outcome_unknown"
   | (string & {});
 
-export class SignetError extends Error {
-  readonly code: SignetErrorCode;
+export class SignettError extends Error {
+  readonly code: SignettErrorCode;
 
-  constructor(code: SignetErrorCode, message: string, options?: ErrorOptions) {
+  constructor(code: SignettErrorCode, message: string, options?: ErrorOptions) {
     super(message, options);
-    this.name = "SignetError";
+    this.name = "SignettError";
     this.code = code;
   }
 }
@@ -60,7 +60,7 @@ export interface ToolRepairPlan {
 
 export type ToolRepairGuidance = ToolRepairStep | ToolRepairPlan;
 
-export class ToolError extends SignetError {
+export class ToolError extends SignettError {
   readonly retryable: boolean;
   readonly retry: ToolRetryPolicy;
   readonly repair?: ToolRepairGuidance;
@@ -159,7 +159,7 @@ export interface ValidationIssue {
   readonly keyword: string;
 }
 
-export class ValidationError extends SignetError {
+export class ValidationError extends SignettError {
   readonly issues: readonly ValidationIssue[];
 
   constructor(issues: readonly ValidationIssue[], options?: ErrorOptions) {
@@ -209,7 +209,7 @@ function actionableIssues(
   return byPath.size > 0 ? [...byPath.values()] : issues;
 }
 
-export class AuthorizationError extends SignetError {
+export class AuthorizationError extends SignettError {
   constructor(
     reason = "The operation is not authorized.",
     options?: ErrorOptions,
@@ -219,7 +219,7 @@ export class AuthorizationError extends SignetError {
   }
 }
 
-export class ConfirmationError extends SignetError {
+export class ConfirmationError extends SignettError {
   constructor(
     reason = "The user declined this operation.",
     options?: ErrorOptions,
@@ -229,7 +229,7 @@ export class ConfirmationError extends SignetError {
   }
 }
 
-export class VerificationError extends SignetError {
+export class VerificationError extends SignettError {
   constructor(
     reason = "The operation's result could not be verified.",
     options?: ErrorOptions,
@@ -240,7 +240,7 @@ export class VerificationError extends SignetError {
 }
 
 /** The effect may exist, but authoritative recovery could not prove either state. */
-export class OutcomeUnknownError extends SignetError {
+export class OutcomeUnknownError extends SignettError {
   readonly retryable = false;
 
   constructor(

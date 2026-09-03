@@ -11,7 +11,7 @@ minimum tool surface. The codelabs below provide runnable examples for each proo
 
 | Codelab                                                   | What you build or run                           | What it teaches                                                                                                  | Time          |
 | --------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------- |
-| [1. First agent call](./first-agent-call)                 | A React page with `get_greeting`                | Registration, Chrome discovery, manual invocation, and your first `signet agent` run                             | 15 minutes    |
+| [1. First agent call](./first-agent-call)                 | A React page with `get_greeting`                | Registration, Chrome discovery, manual invocation, and your first `signett agent` run                             | 15 minutes    |
 | [2. Headless agent testing](./headless-agent-testing)     | A terminal-driven WebMCP regression suite       | Ad-hoc prompts, saved tasks, fresh browser Trials, authoritative grading, redaction, and automation              | 25 minutes    |
 | [3. Authenticated payment](../guide/real-browser-example) | The repository's React and Express payment app  | The complete loop: controls, browser and agent Trials, database grading, baselines, iteration, and change checks | 45–60 minutes |
 | [4. Cal.diy booking](./cal-diy)                           | A real booking through a local Cal.diy checkout | Discovery-before-mutation, human confirmation, ambiguous-outcome recovery, and a Postgres oracle                 | 45–90 minutes |
@@ -20,10 +20,10 @@ Start with the first codelab even if you already know React. It establishes the 
 systems involved in every example:
 
 ```text
-website + Signet -> native WebMCP tool -> agent runtime -> model
+website + Signett -> native WebMCP tool -> agent runtime -> model
 ```
 
-Signet defines and guards the website capability. The browser exposes that capability.
+Signett defines and guards the website capability. The browser exposes that capability.
 An agent runtime connects a model to the browser. A model does not call a webpage by
 itself.
 

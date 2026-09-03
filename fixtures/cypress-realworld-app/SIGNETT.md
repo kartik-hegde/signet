@@ -1,6 +1,6 @@
-# Using Signet in the Cypress Real World App
+# Using Signett in the Cypress Real World App
 
-This example shows how to add safe, agent-callable WebMCP tools to an existing React and Express application. It uses the Cypress Real World App's normal authentication, payment logic, and database; Signet is added around the consequential browser-side tool execution.
+This example shows how to add safe, agent-callable WebMCP tools to an existing React and Express application. It uses the Cypress Real World App's normal authentication, payment logic, and database; Signett is added around the consequential browser-side tool execution.
 
 The central example is `send_payment`. A signed-in user can ask a browser agent to send a real payment, while the application:
 
@@ -18,7 +18,7 @@ The example also exposes two ordinary read-only tools, `search_payment_users` an
 ```mermaid
 flowchart LR
     A[Browser agent] --> W[Native WebMCP tool]
-    W --> G[Signet guard]
+    W --> G[Signett guard]
     G --> C[Resolve signed-in context]
     C --> Z[Authorize]
     Z --> I[Local idempotency]
@@ -32,12 +32,12 @@ flowchart LR
     E -. durable operation record .-> D
 ```
 
-Signet and the server deliberately have different responsibilities:
+Signett and the server deliberately have different responsibilities:
 
 | Layer              | Responsibility                                                                                                                            |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | Native WebMCP      | Tool registration, discovery, input schema, execution signal, and registration lifecycle                                                  |
-| Signet             | Execution ordering, early authorization, local duplicate suppression, postcondition verification, cancellation, and lifecycle observation |
+| Signett             | Execution ordering, early authorization, local duplicate suppression, postcondition verification, cancellation, and lifecycle observation |
 | Application server | Authentication, final authorization, input validation, business logic, and durable idempotency                                            |
 | Cypress            | Drives the browser and asserts the resulting UI and database state                                                                        |
 
@@ -55,12 +55,12 @@ Browser-side authorization improves safety and avoids unnecessary mutations, but
 | [`cypress/support/reference/paymentTask.ts`](./cypress/support/reference/paymentTask.ts)       | Shared task, seeded identities, and authoritative database oracle              |
 | [`cypress/support/reference/paymentDrivers.ts`](./cypress/support/reference/paymentDrivers.ts) | Traditional UI and WebMCP drivers plus comparable measurements                 |
 | [`cypress/tests/webmcp/payment-parity.spec.ts`](./cypress/tests/webmcp/payment-parity.spec.ts) | Same task and oracle through both interfaces                                   |
-| [`cypress/tests/webmcp/signet-payment.spec.ts`](./cypress/tests/webmcp/signet-payment.spec.ts) | End-to-end safety and state assertions                                         |
+| [`cypress/tests/webmcp/signett-payment.spec.ts`](./cypress/tests/webmcp/signett-payment.spec.ts) | End-to-end safety and state assertions                                         |
 | [`scripts/nativeWebMcpSmoke.mjs`](./scripts/nativeWebMcpSmoke.mjs)                             | Opt-in native Chrome discovery, execution, and state smoke test                |
 
 ## 1. Start with a normal WebMCP handler
 
-Signet wraps a regular WebMCP-compatible execute function. The underlying payment handler still looks like normal application code:
+Signett wraps a regular WebMCP-compatible execute function. The underlying payment handler still looks like normal application code:
 
 ```ts
 const executePayment = async (input: SendPaymentInput, { signal }: { signal: AbortSignal }) => {
@@ -72,9 +72,9 @@ const executePayment = async (input: SendPaymentInput, { signal }: { signal: Abo
 };
 ```
 
-The native `AbortSignal` is passed to the network request. Signet preserves that signal and checks it between stages.
+The native `AbortSignal` is passed to the network request. Signett preserves that signal and checks it between stages.
 
-This repository imports Signet directly from its source tree so the regression suite always tests the current checkout:
+This repository imports Signett directly from its source tree so the regression suite always tests the current checkout:
 
 ```ts
 import { guard } from "../../../../packages/webmcp/src/index";
@@ -84,8 +84,8 @@ import { MemoryIdempotencyStore } from "../../../../packages/webmcp/src/testing"
 A normal application would import the package instead:
 
 ```ts
-import { guard } from "@signet/webmcp";
-import { MemoryIdempotencyStore } from "@signet/webmcp/testing";
+import { guard } from "signett";
+import { MemoryIdempotencyStore } from "signett/testing";
 ```
 
 `MemoryIdempotencyStore` is appropriate here because this is a test fixture. It is process-local and must not be used as the application's durable exactly-once guarantee.
@@ -128,11 +128,11 @@ Each hook has a narrow job.
 
 ### Context
 
-`context` calls `GET /webmcp/context`, which reads the existing authenticated session and returns the current user ID plus their usable source accounts. Signet does not create or manage identity.
+`context` calls `GET /webmcp/context`, which reads the existing authenticated session and returns the current user ID plus their usable source accounts. Signett does not create or manage identity.
 
 ### Authorization
 
-`authorize` runs before the payment handler. The example rejects self-payment and any source account not present in the signed-in user's context. A denial raises Signet's `AuthorizationError`, and Cypress proves that no `POST /webmcp/payments` request occurs.
+`authorize` runs before the payment handler. The example rejects self-payment and any source account not present in the signed-in user's context. A denial raises Signett's `AuthorizationError`, and Cypress proves that no `POST /webmcp/payments` request occurs.
 
 ### Idempotency
 
@@ -156,15 +156,15 @@ The browser store disappears on reload. The backend therefore keeps its own oper
 - the transaction ID returned by execution; and
 - a final status of `complete`.
 
-A mismatch raises Signet's `VerificationError`. Verification reports whether the requested postcondition is observable; it does not roll back a mutation that already happened.
+A mismatch raises Signett's `VerificationError`. Verification reports whether the requested postcondition is observable; it does not roll back a mutation that already happened.
 
 ### Observation
 
-`observe` receives lifecycle metadata such as `started`, `authorized`, `executed`, `replayed`, `verified`, `succeeded`, and `failed`. Signet never includes tool inputs or outputs in those events. The example stores sanitized events on `window` solely so Cypress can assert the ordering.
+`observe` receives lifecycle metadata such as `started`, `authorized`, `executed`, `replayed`, `verified`, `succeeded`, and `failed`. Signett never includes tool inputs or outputs in those events. The example stores sanitized events on `window` solely so Cypress can assert the ordering.
 
 ## 3. Register with native WebMCP
 
-Signet is not a tool registry or WebMCP polyfill. The guarded function is assigned directly to the native tool's `execute` property:
+Signett is not a tool registry or WebMCP polyfill. The guarded function is assigned directly to the native tool's `execute` property:
 
 ```ts
 const registration = new AbortController();
@@ -191,7 +191,7 @@ useEffect(() => {
 
 Consequently, the tools appear after login and are removed when the authenticated subtree unmounts during logout. The JSON Schema helps agents call the tool correctly, while the backend still validates every field because browser input is untrusted.
 
-The two read-only discovery tools are registered without `guard(...)`. They have no consequential side effect, and their endpoints already require authentication. Signet is most valuable around mutations and other operations where authorization, replay, or verification matters.
+The two read-only discovery tools are registered without `guard(...)`. They have no consequential side effect, and their endpoints already require authentication. Signett is most valuable around mutations and other operations where authorization, replay, or verification matters.
 
 ## 4. Repeat the controls on the server
 
@@ -204,7 +204,7 @@ The two read-only discovery tools are registered without `guard(...)`. They have
 5. finds or creates the durable operation record; and
 6. returns the existing result for an identical retry or `409` for a conflicting retry.
 
-This is intentional defense in depth. An attacker can bypass browser JavaScript, so a Signet authorization hook can never replace server-side authorization.
+This is intentional defense in depth. An attacker can bypass browser JavaScript, so a Signett authorization hook can never replace server-side authorization.
 
 The authoritative read endpoint is also scoped to the signed-in user. It reads the committed transaction by the user's operation record instead of reflecting the mutation request back to the caller.
 
@@ -216,7 +216,7 @@ Everything after that capture point is real:
 
 - browser session and cookies;
 - React registration lifecycle;
-- Signet guard and memory store;
+- Signett guard and memory store;
 - HTTP requests;
 - Express authentication and authorization;
 - payment and balance mutations; and
@@ -226,7 +226,7 @@ The deterministic scenarios prove:
 
 1. tools exist only for a signed-in page;
 2. a payment changes both balances, creates a completed transaction, and navigates the UI;
-3. an unowned account is denied by Signet before the request and independently denied by the server;
+3. an unowned account is denied by Signett before the request and independently denied by the server;
 4. concurrent identical calls in one page produce one server mutation;
 5. retrying after a reload produces one durable effect; and
 6. reusing an operation ID for different arguments returns `409` and still produces one effect;
@@ -240,14 +240,14 @@ Cypress checks both the authenticated verification endpoint and the database end
 
 ## Run the example
 
-From the Signet repository root:
+From the Signett repository root:
 
 ```sh
 npm run test:reference:install
 npm run test:reference
 ```
 
-The first command installs the vendored application's pinned dependencies. The second command builds Signet and the application, starts the React and Express servers, runs only the focused WebMCP Cypress spec, and stops the servers.
+The first command installs the vendored application's pinned dependencies. The second command builds Signett and the application, starts the React and Express servers, runs only the focused WebMCP Cypress spec, and stops the servers.
 
 No LLM credentials are required. Cypress invokes the registered tools deterministically so failures identify an integration regression rather than model variance.
 
@@ -288,7 +288,7 @@ WebMCP is currently an [experimental Chrome feature](https://developer.chrome.co
 
 The native lane intentionally does not run inside Cypress. Cypress sets `document.domain` in the application under test, while Chrome disables WebMCP for documents that opt out of origin isolation. A small direct Chrome DevTools Protocol harness keeps a real `http://localhost` origin and avoids that test-runner distortion.
 
-The native lane also caught a real compatibility issue hidden by the capture harness: the tested Chrome 151 build omitted the tool callback's execution-options argument, although the current `webmcp-types` package declares it as required. The registration adapter now forwards `options.signal` when the host supplies it and creates a non-aborted fallback signal otherwise. No Signet core code needed to change.
+The native lane also caught a real compatibility issue hidden by the capture harness: the tested Chrome 151 build omitted the tool callback's execution-options argument, although the current `webmcp-types` package declares it as required. The registration adapter now forwards `options.signal` when the host supplies it and creates a non-aborted fallback signal otherwise. No Signett core code needed to change.
 
 The upstream application currently requires Node 22 or 24 because a legacy JWT dependency is incompatible with Node 26. These repository commands select an isolated Node 24 runtime through `npx`.
 
@@ -306,7 +306,7 @@ For each consequential tool:
 8. Observe metadata, not sensitive tool arguments or results.
 9. Test denial, replay, conflicting retry, and database postconditions—not only the happy-path return value.
 
-For the smaller standalone API example, see Signet's [native WebMCP example](../../examples/native-webmcp.ts). For production guidance, see the [production checklist](../../docs/production-checklist.md).
+For the smaller standalone API example, see Signett's [native WebMCP example](../../examples/native-webmcp.ts). For production guidance, see the [production checklist](../../docs/production-checklist.md).
 
 ## Scope and provenance
 

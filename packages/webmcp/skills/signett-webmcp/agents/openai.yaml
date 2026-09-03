@@ -1,0 +1,4 @@
+interface:
+  display_name: "Signett WebMCP"
+  short_description: "Make existing websites agent-ready with Signett"
+  default_prompt: "Use $signett-webmcp to expose this website workflow safely through WebMCP."

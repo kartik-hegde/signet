@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { bindSignetTool, type ToolBindingState } from "../src/lifecycle.js";
-import type { SignetInterface, SignetRegistration } from "../src/interface.js";
+import { bindSignettTool, type ToolBindingState } from "../src/lifecycle.js";
+import type {
+  SignettInterface,
+  SignettRegistration,
+} from "../src/interface.js";
 
 const tool = {
   name: "search_products",
@@ -10,7 +13,7 @@ const tool = {
   execute: () => undefined,
 };
 
-describe("bindSignetTool", () => {
+describe("bindSignettTool", () => {
   it("reports and disposes a mounted registration", async () => {
     const registration = {
       name: tool.name,
@@ -19,7 +22,7 @@ describe("bindSignetTool", () => {
       [Symbol.dispose]: vi.fn(),
     };
     const states: ToolBindingState[] = [];
-    const teardown = bindSignetTool(
+    const teardown = bindSignettTool(
       {
         expose: () => Promise.resolve(registration),
         tools: () => [],
@@ -39,14 +42,14 @@ describe("bindSignetTool", () => {
   });
 
   it("disposes a registration that resolves after teardown", async () => {
-    let resolve: ((value: SignetRegistration) => void) | undefined;
+    let resolve: ((value: SignettRegistration) => void) | undefined;
     const registration = {
       name: tool.name,
       status: "registered" as const,
       dispose: vi.fn(),
       [Symbol.dispose]: vi.fn(),
     };
-    const signet: SignetInterface<undefined> = {
+    const signett: SignettInterface<undefined> = {
       expose: () =>
         new Promise((done) => {
           resolve = done;
@@ -56,7 +59,7 @@ describe("bindSignetTool", () => {
     };
     const states: ToolBindingState[] = [];
 
-    const teardown = bindSignetTool(signet, tool, (state) => {
+    const teardown = bindSignettTool(signett, tool, (state) => {
       states.push(state);
     });
     await vi.waitFor(() => expect(resolve).toBeTypeOf("function"));
@@ -71,7 +74,7 @@ describe("bindSignetTool", () => {
   it("reports registration failure while mounted", async () => {
     const failure = new Error("registration failed");
     const states: ToolBindingState[] = [];
-    bindSignetTool(
+    bindSignettTool(
       {
         expose: () => Promise.reject(failure),
         tools: () => [],
@@ -88,7 +91,7 @@ describe("bindSignetTool", () => {
   });
 
   it("survives cleanup and remount while registration is in flight", async () => {
-    let resolveFirst: ((value: SignetRegistration) => void) | undefined;
+    let resolveFirst: ((value: SignettRegistration) => void) | undefined;
     const first = {
       name: tool.name,
       status: "registered" as const,
@@ -105,12 +108,12 @@ describe("bindSignetTool", () => {
       .fn()
       .mockImplementationOnce(
         () =>
-          new Promise<SignetRegistration>((resolve) => {
+          new Promise<SignettRegistration>((resolve) => {
             resolveFirst = resolve;
           }),
       )
       .mockResolvedValueOnce(second);
-    const signet = {
+    const signett = {
       expose,
       tools: () => [],
       observe: () => () => undefined,
@@ -118,12 +121,12 @@ describe("bindSignetTool", () => {
     const firstStates: ToolBindingState[] = [];
     const secondStates: ToolBindingState[] = [];
 
-    const cleanupFirst = bindSignetTool(signet, tool, (state) => {
+    const cleanupFirst = bindSignettTool(signett, tool, (state) => {
       firstStates.push(state);
     });
     await vi.waitFor(() => expect(expose).toHaveBeenCalledOnce());
     cleanupFirst();
-    bindSignetTool(signet, tool, (state) => {
+    bindSignettTool(signett, tool, (state) => {
       secondStates.push(state);
     });
     expect(expose).toHaveBeenCalledOnce();

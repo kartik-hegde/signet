@@ -8,19 +8,19 @@ The benchmark should make three claims testable without conflating them.
 
 Compared with UI-only operation, access to first-party WebMCP tools may improve task
 completion, elapsed time, action count, token use, cost, and resilience to UI changes.
-This is primarily a WebMCP claim. Signet should not receive credit for the structured
+This is primarily a WebMCP claim. Signett should not receive credit for the structured
 action interface itself.
 
-### Claim B: Signet improves consequential WebMCP execution
+### Claim B: Signett improves consequential WebMCP execution
 
-Compared with raw WebMCP handlers, Signet may prevent unsafe effects or truthfully
+Compared with raw WebMCP handlers, Signett may prevent unsafe effects or truthfully
 surface uncertain outcomes under duplicates, retries, failures, authorization errors,
 verification mismatches, concurrency, and cancellation. The cost of those controls
 must be reported beside the benefit.
 
-### Claim C: Signet reduces the cost of implementing those controls correctly
+### Claim C: Signett reduces the cost of implementing those controls correctly
 
-Compared with independent hand-built controls, Signet may reduce implementation time,
+Compared with independent hand-built controls, Signett may reduce implementation time,
 bespoke code, missed edge cases, and maintenance effort. This is the direct answer to
 "why not build it myself?"
 
@@ -35,9 +35,9 @@ No single pair of baselines can establish all three claims.
 | UI DOM | yes | no | existing application | Practical structured-browser baseline |
 | UI visual | visual only | no | existing application | Optional computer-use baseline |
 | Hybrid raw | yes | yes | none beyond the app | WebMCP effectiveness and safety floor |
-| Hybrid Signet | yes | yes | Signet | Primary product condition |
+| Hybrid Signett | yes | yes | Signett | Primary product condition |
 | Tool-only raw | no | yes | none beyond the app | Diagnostic WebMCP ceiling |
-| Tool-only Signet | no | yes | Signet | Diagnostic guard overhead |
+| Tool-only Signett | no | yes | Signett | Diagnostic guard overhead |
 
 Agents may choose UI or tools in hybrid conditions. Tool-only conditions are useful for
 mechanism isolation but should not be the main headline because real agents need the UI
@@ -49,10 +49,10 @@ for capabilities the site does not expose as tools.
 |---|---|
 | Raw WebMCP | Native registration around the unguarded application handler |
 | Hand-built controls | Independent implementation against the same written contract |
-| Signet | Same descriptor and handler wrapped with the pinned Signet release |
+| Signett | Same descriptor and handler wrapped with the pinned Signett release |
 
 The application must continue to enforce validation, authentication, authorization,
-and durable idempotency at its backend boundary. Signet is not treated as a substitute
+and durable idempotency at its backend boundary. Signett is not treated as a substitute
 for server security.
 
 ## 3. Benchmark applications
@@ -196,7 +196,7 @@ The model-free safety lane should eventually cover:
 - tool unregister/re-register and navigation lifecycle changes;
 - already-idempotent operations as negative controls.
 
-Run raw, hand-built, and Signet arms against identical operations and fault schedules.
+Run raw, hand-built, and Signett arms against identical operations and fault schedules.
 The oracle reads fresh authoritative state after callers stop.
 
 ## 8. WebArena decision
@@ -220,7 +220,7 @@ Use it for:
 
 Do not depend on it for:
 
-- the complete Signet safety matrix, which requires controlled faults and state oracles;
+- the complete Signett safety matrix, which requires controlled faults and state oracles;
 - official leaderboard comparability after adding a new WebMCP action space;
 - every initial application, because its deployment and reset infrastructure adds
   substantial operational surface;
@@ -243,7 +243,7 @@ Primary references:
 
 A public release includes:
 
-- source, task, app, container, model, browser, evaluator, and Signet revisions;
+- source, task, app, container, model, browser, evaluator, and Signett revisions;
 - application licenses and patch provenance;
 - machine-readable aggregate and per-run results where provider terms allow;
 - a benchmark card describing intended use, exclusions, known biases, and threats;
@@ -255,14 +255,14 @@ Recommended headline format:
 
 > On N tasks across M applications, WebMCP changed median task time by X% and actions by
 > Y% versus UI-only at A% versus B% task success. Under K injected execution failures,
-> Signet changed unsafe outcomes from C/K to D/K with Z ms p95 handler overhead.
+> Signett changed unsafe outcomes from C/K to D/K with Z ms p95 handler overhead.
 
 For the technical audience, add:
 
-> Independent implementations using Signet reached the conformance threshold in X time
+> Independent implementations using Signett reached the conformance threshold in X time
 > and Y bespoke lines versus the hand-built median of A time and B lines.
 
-The attribution must remain explicit: WebMCP supplies structured agent access; Signet
+The attribution must remain explicit: WebMCP supplies structured agent access; Signett
 supplies reusable controls around consequential execution.
 
 ## 10. Delivery plan and gates
@@ -274,13 +274,13 @@ supplies reusable controls around consequential execution.
 - pin the first app and document its license/provenance;
 - add CI for the model-free lane.
 
-Exit: a clean clone runs the safety suite against a pinned Signet revision.
+Exit: a clean clone runs the safety suite against a pinned Signett revision.
 
 ### Phase 2: one-app agent pilot
 
 - integrate the Cypress Real World App as an app fixture;
 - implement generic UI and WebMCP action adapters;
-- run three representative tasks in UI, hybrid raw, and hybrid Signet modes;
+- run three representative tasks in UI, hybrid raw, and hybrid Signett modes;
 - verify all paths with one database oracle;
 - emit machine-readable run records and an HTML/Markdown scorecard.
 

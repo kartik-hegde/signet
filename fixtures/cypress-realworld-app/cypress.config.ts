@@ -80,7 +80,7 @@ export default defineConfig({
       const testDataApiEndpoint = `${config.expose.apiUrl}/testData`;
       const referenceMetrics: Array<{
         task: string;
-        mode: "ui" | "webmcp_raw" | "webmcp_signet";
+        mode: "ui" | "webmcp_raw" | "webmcp_signett";
         durationMs: number;
         interactionCount: number;
         toolCalls: number;
@@ -96,9 +96,9 @@ export default defineConfig({
         const latestRaw = [...referenceMetrics]
           .reverse()
           .find(({ mode }) => mode === "webmcp_raw");
-        const latestSignet = [...referenceMetrics]
+        const latestSignett = [...referenceMetrics]
           .reverse()
-          .find(({ mode }) => mode === "webmcp_signet");
+          .find(({ mode }) => mode === "webmcp_signett");
         const compareToUi = (
           candidate: (typeof referenceMetrics)[number] | undefined
         ) =>
@@ -119,15 +119,15 @@ export default defineConfig({
             : null;
         const comparisons = {
           rawVsUi: compareToUi(latestRaw),
-          signetVsUi: compareToUi(latestSignet),
-          signetVsRaw:
-            latestRaw && latestSignet
+          signettVsUi: compareToUi(latestSignett),
+          signettVsRaw:
+            latestRaw && latestSignett
               ? {
                   durationDeltaMs: Number(
-                    (latestSignet.durationMs - latestRaw.durationMs).toFixed(2)
+                    (latestSignett.durationMs - latestRaw.durationMs).toFixed(2)
                   ),
                   durationRatio: Number(
-                    (latestSignet.durationMs / latestRaw.durationMs).toFixed(2)
+                    (latestSignett.durationMs / latestRaw.durationMs).toFixed(2)
                   ),
                 }
               : null,

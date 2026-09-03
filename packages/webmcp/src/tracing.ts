@@ -2,7 +2,7 @@ import type {
   GuardEvent,
   GuardObserver,
   GuardStage,
-  SignetCallerTelemetry,
+  SignettCallerTelemetry,
 } from "./types.js";
 
 export interface TraceError {
@@ -57,7 +57,7 @@ export interface InvocationTrace {
   readonly phases: readonly TracePhase[];
   readonly lifecycle: readonly TraceLifecycleEvent[];
   readonly error?: TraceError;
-  readonly callerTelemetry?: SignetCallerTelemetry;
+  readonly callerTelemetry?: SignettCallerTelemetry;
 }
 
 interface ActiveInvocation {
@@ -79,7 +79,7 @@ interface ActiveInvocation {
   phases: TracePhase[];
   lifecycle: TraceLifecycleEvent[];
   error?: TraceError;
-  callerTelemetry?: SignetCallerTelemetry;
+  callerTelemetry?: SignettCallerTelemetry;
 }
 
 export interface TraceAssemblerOptions {
@@ -87,7 +87,7 @@ export interface TraceAssemblerOptions {
   readonly onComplete?: (trace: InvocationTrace) => void;
 }
 
-/** Reconstructs invocation and phase spans from Signet's metadata-only events. */
+/** Reconstructs invocation and phase spans from Signett's metadata-only events. */
 export class TraceAssembler {
   readonly #active = new Map<string, ActiveInvocation>();
   readonly #completed: InvocationTrace[] = [];
@@ -208,32 +208,32 @@ function addPhase(
     ...(error === undefined ? {} : { error }),
   });
   active.lastBoundaryAt = endedAt;
-  if (name === "signet.execute") active.resultSource = "executed";
-  if (name === "signet.replay") active.resultSource = "replayed";
-  if (name === "signet.recover") active.resultSource = "recovered";
+  if (name === "signett.execute") active.resultSource = "executed";
+  if (name === "signett.replay") active.resultSource = "replayed";
+  if (name === "signett.recover") active.resultSource = "recovered";
 }
 
 function completedPhase(stage: GuardStage): string | undefined {
   switch (stage) {
     case "validated":
-      return "signet.validate";
+      return "signett.validate";
     case "authorized":
-      return "signet.authorize";
+      return "signett.authorize";
     case "confirmed":
     case "declined":
-      return "signet.confirm";
+      return "signett.confirm";
     case "executed":
-      return "signet.execute";
+      return "signett.execute";
     case "replayed":
-      return "signet.replay";
+      return "signett.replay";
     case "recovered":
-      return "signet.recover";
+      return "signett.recover";
     case "output_validated":
     case "output_oversized":
     case "output_unmeasurable":
-      return "signet.output";
+      return "signett.output";
     case "verified":
-      return "signet.verify";
+      return "signett.verify";
     default:
       return undefined;
   }
@@ -242,18 +242,18 @@ function completedPhase(stage: GuardStage): string | undefined {
 function failedPhase(stage: GuardStage): string {
   switch (stage) {
     case "started":
-      return "signet.validate";
+      return "signett.validate";
     case "confirmation_requested":
-      return "signet.confirm";
+      return "signett.confirm";
     case "executed":
     case "replayed":
     case "recovered":
     case "output_validated":
     case "output_oversized":
     case "output_unmeasurable":
-      return "signet.finalize";
+      return "signett.finalize";
     default:
-      return "signet.execute";
+      return "signett.execute";
   }
 }
 
@@ -337,8 +337,8 @@ export function describeError(error: unknown): TraceError | undefined {
 }
 
 function normalizeCallerTelemetry(
-  value: SignetCallerTelemetry | undefined,
-): SignetCallerTelemetry | undefined {
+  value: SignettCallerTelemetry | undefined,
+): SignettCallerTelemetry | undefined {
   if (!value || value.version !== 1) return undefined;
   const agent = compact({
     id: bounded(value.agent?.id),
@@ -449,7 +449,7 @@ export function toOtlpJson(
   options: OtlpJsonOptions = {},
 ): Record<string, unknown> {
   const resource = {
-    "service.name": options.serviceName ?? "signet-webmcp",
+    "service.name": options.serviceName ?? "signett-webmcp",
     ...options.resource,
   };
   return {
@@ -458,7 +458,7 @@ export function toOtlpJson(
         resource: { attributes: attributes(resource) },
         scopeSpans: [
           {
-            scope: { name: "@signet/webmcp", version: "0.0.0" },
+            scope: { name: "signett", version: "0.0.0" },
             spans: traces.flatMap((trace) => [
               invocationSpan(trace),
               ...trace.phases.map((phase) => phaseSpan(trace, phase)),
@@ -479,14 +479,14 @@ function invocationSpan(trace: InvocationTrace): Record<string, unknown> {
     "gen_ai.tool.call.id": caller?.toolCallId,
     "gen_ai.agent.id": caller?.agent?.id,
     "gen_ai.agent.name": caller?.agent?.name,
-    "signet.agent.version": caller?.agent?.version,
-    "signet.caller.model.provider": caller?.model?.provider,
-    "signet.caller.model.name": caller?.model?.name,
-    "signet.invocation.id": trace.invocationId,
-    "signet.invocation.sequence": trace.sequence,
-    "signet.outcome": trace.outcome,
-    "signet.result_source": trace.resultSource,
-    "signet.completed_after_abort": trace.completedAfterAbort,
+    "signett.agent.version": caller?.agent?.version,
+    "signett.caller.model.provider": caller?.model?.provider,
+    "signett.caller.model.name": caller?.model?.name,
+    "signett.invocation.id": trace.invocationId,
+    "signett.invocation.sequence": trace.sequence,
+    "signett.outcome": trace.outcome,
+    "signett.result_source": trace.resultSource,
+    "signett.completed_after_abort": trace.completedAfterAbort,
     "error.type": trace.error?.type,
     "error.code": trace.error?.code,
     "error.retryable": trace.error?.retryable,
@@ -506,8 +506,8 @@ function invocationSpan(trace: InvocationTrace): Record<string, unknown> {
     attributes: attributes(values),
     events: trace.lifecycle.map((event) => ({
       timeUnixNano: nanos(event.timestamp),
-      name: `signet.${event.stage}`,
-      attributes: attributes({ "signet.duration_ms": event.durationMs }),
+      name: `signett.${event.stage}`,
+      attributes: attributes({ "signett.duration_ms": event.durationMs }),
     })),
     status: {
       code:
@@ -535,7 +535,7 @@ function phaseSpan(
     startTimeUnixNano: nanos(phase.startedAt),
     endTimeUnixNano: nanos(phase.endedAt),
     attributes: attributes({
-      "signet.duration_ms": phase.durationMs,
+      "signett.duration_ms": phase.durationMs,
       "error.type": phase.error?.type,
       "error.code": phase.error?.code,
     }),

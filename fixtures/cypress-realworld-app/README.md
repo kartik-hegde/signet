@@ -1,4 +1,4 @@
-> This vendored copy is Signet's WebMCP regression fixture. See [SIGNET.md](./SIGNET.md) for provenance, scope, and focused test commands.
+> This vendored copy is Signett's WebMCP regression fixture. See [SIGNETT.md](./SIGNETT.md) for provenance, scope, and focused test commands.
 
 <p align="center">
   <!-- We use two SVGs here so that this displays correctly

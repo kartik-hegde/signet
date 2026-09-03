@@ -30,15 +30,15 @@ export interface ExecuteOptions {
   readonly signal: AbortSignal;
   readonly operation?: OperationHandle;
   /** Optional, untrusted correlation metadata supplied by the calling agent host. */
-  readonly callerTelemetry?: SignetCallerTelemetry;
+  readonly callerTelemetry?: SignettCallerTelemetry;
 }
 
 /**
  * A small, versioned envelope an agent host may attach to a tool call.
- * Signet treats every value as untrusted metadata and never exposes it to the
+ * Signett treats every value as untrusted metadata and never exposes it to the
  * application's execute function.
  */
-export interface SignetCallerTelemetry {
+export interface SignettCallerTelemetry {
   readonly version: 1;
   readonly traceparent?: string;
   readonly tracestate?: string;
@@ -166,7 +166,7 @@ export interface GuardEvent {
   readonly durationMs: number;
   readonly error?: unknown;
   /** Present only on `started`; consumers must still validate it. */
-  readonly callerTelemetry?: SignetCallerTelemetry;
+  readonly callerTelemetry?: SignettCallerTelemetry;
 }
 
 export type GuardObserver = (event: GuardEvent) => MaybePromise<void>;
@@ -182,7 +182,7 @@ export interface GuardOptions<
   /** Validates invocation input before application context or policy is resolved. */
   readonly validate?: (input: Input) => MaybePromise<void>;
 
-  /** Resolves app-owned session or principal context. Signet never authenticates users. */
+  /** Resolves app-owned session or principal context. Signett never authenticates users. */
   readonly context?: (
     input: Input,
     options: ExecuteOptions,

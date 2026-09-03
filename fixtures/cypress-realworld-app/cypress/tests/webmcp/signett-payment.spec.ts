@@ -10,7 +10,7 @@ import {
 
 const { sender, receiver, otherUsersAccountId } = referencePaymentTask;
 
-describe("Signet WebMCP payment integration", { retries: 0 }, () => {
+describe("Signett WebMCP payment integration", { retries: 0 }, () => {
   beforeEach(() => {
     cy.task("db:seed");
     cy.visitWithWebMcp("/signin");
@@ -50,7 +50,7 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
   it("keeps production-facing metadata variants readiness-clean", () => {
     for (const variant of ["explicit", "guided"] as const) {
       cy.window().then((win) => {
-        win.localStorage.setItem("signet:eval:metadata", variant);
+        win.localStorage.setItem("signett:eval:metadata", variant);
       });
       cy.visitWithWebMcp("/");
       waitForPaymentTools();
@@ -102,7 +102,7 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
       .should("be.a", "string");
 
     cy.window().then((win) => {
-      expect(win.__signetGuardEvents?.map((event) => event.stage)).to.deep.equal([
+      expect(win.__signettGuardEvents?.map((event) => event.stage)).to.deep.equal([
         "started",
         "authorized",
         "executed",
@@ -135,7 +135,7 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
       1
     );
     cy.window().then((win) => {
-      expect(win.__signetGuardEvents?.map((event) => event.stage)).to.deep.equal([
+      expect(win.__signettGuardEvents?.map((event) => event.stage)).to.deep.equal([
         "started",
         "authorized",
         "recovered",
@@ -145,7 +145,7 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
     });
   });
 
-  it("denies an unowned account in Signet and independently at the server", () => {
+  it("denies an unowned account in Signett and independently at the server", () => {
     const input = { ...paymentInput("authorization-denial"), sourceAccountId: otherUsersAccountId };
     let browserMutationAttempts = 0;
     cy.intercept("POST", "/webmcp/payments", (request) => {
@@ -156,7 +156,7 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
     cy.window().then(async (win) => {
       try {
         await win.__webMcpTest.executeTool("send_payment", input);
-        throw new Error("Expected Signet to deny the payment.");
+        throw new Error("Expected Signett to deny the payment.");
       } catch (error: any) {
         expect(error.code).to.equal("authorization_denied");
       }
@@ -203,11 +203,11 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
       1
     );
     cy.window().then((win) => {
-      expect(win.__signetGuardEvents?.map((event) => event.stage)).to.include("replayed");
+      expect(win.__signettGuardEvents?.map((event) => event.stage)).to.include("replayed");
     });
   });
 
-  it("preserves exactly-once behavior after the page-local Signet store is lost", () => {
+  it("preserves exactly-once behavior after the page-local Signett store is lost", () => {
     const input = paymentInput("server-replay-after-reload");
     executeTool("send_payment", input).its("replayed").should("equal", false);
 
@@ -333,7 +333,7 @@ describe("Signet WebMCP payment integration", { retries: 0 }, () => {
       1
     );
     cy.window().then((win) => {
-      expect(win.__signetGuardEvents?.map((event) => event.stage)).to.include("failed");
+      expect(win.__signettGuardEvents?.map((event) => event.stage)).to.include("failed");
     });
   });
 

@@ -5,7 +5,7 @@ important outcome that people already achieve in the product, describe the small
 successful path, define how the application will prove it happened, and then expose
 only the capabilities an agent needs to complete it.
 
-This is Signet's User Jobs to Be Done workflow:
+This is Signett's User Jobs to Be Done workflow:
 
 ```text
 choose a user job
@@ -18,23 +18,23 @@ choose a user job
   -> review Evidence, retain a baseline, and improve
 ```
 
-The application remains the source of truth throughout. Signet helps define the agent
+The application remains the source of truth throughout. Signett helps define the agent
 interface, guard its execution, test it without a model, and measure whether agents
 achieve the application outcome safely.
 
 ## The workflow at a glance
 
-| Developer job                                 | Signet support                                                                          | Output                                                          |
+| Developer job                                 | Signett support                                                                          | Output                                                          |
 | --------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | Choose what to make agentic                   | User-job framing and integration examples                                               | A short list of valuable product outcomes                       |
 | Understand one outcome                        | Capability-flow sketch                                                                  | The smallest successful path through existing application logic |
 | Specify success before implementation         | `defineCase()` plus an application-owned oracle                                         | A versioned Case with outcomes, forbidden effects, and budgets  |
-| Expose the required capabilities              | `createSignet().expose()` or `guard()`                                                  | A minimal native WebMCP tool surface                            |
+| Expose the required capabilities              | `createSignett().expose()` or `guard()`                                                  | A minimal native WebMCP tool surface                            |
 | Make consequential work reliable              | Context, authorization, confirmation, idempotency, journals, recovery, and verification | A guarded application operation                                 |
 | Catch interface and contract mistakes quickly | Readiness diagnostics and the WebMCP test harness                                       | Fast deterministic evidence without a model or browser          |
 | Prove the browser boundary                    | Native discovery and invocation                                                         | Evidence that the intended page state exposes working tools     |
 | Measure real agent behavior                   | Cases, adapters, repeated Trials, Evidence, and Reports                                 | Oracle-graded results across controlled conditions              |
-| Improve without losing working behavior       | Reviewed baselines and `signet check`                                                   | A per-Case regression decision                                  |
+| Improve without losing working behavior       | Reviewed baselines and `signett check`                                                   | A per-Case regression decision                                  |
 
 ## 1. Choose one important user job
 
@@ -56,7 +56,7 @@ finish. Classify it as:
 - **recovery-sensitive**: an interrupted response could leave the final outcome
   uncertain.
 
-The classification tells you which Signet controls may be needed later. It does not
+The classification tells you which Signett controls may be needed later. It does not
 require designing those controls yet.
 
 ### A useful first-job test
@@ -136,7 +136,7 @@ product contract; it should describe the intended outcome without scripting an e
 tool transcript.
 
 ```ts
-import { defineCase } from "@signet/eval";
+import { defineCase } from "@signett/eval";
 
 export const checkoutCase = defineCase({
   id: "checkout-current-cart",
@@ -185,12 +185,12 @@ Use the flow to choose one bounded user intent per tool. Prefer discovery tools 
 return authoritative identifiers and one completion tool that uses them. Do not expose
 low-level endpoints merely because they exist.
 
-Signet features map to common implementation needs:
+Signett features map to common implementation needs:
 
-| Need                                                       | Signet feature                                               |
+| Need                                                       | Signett feature                                               |
 | ---------------------------------------------------------- | ------------------------------------------------------------ |
-| Register an application capability with native WebMCP      | `createSignet().expose()`                                    |
-| Add Signet controls around an existing native registration | `guard()`                                                    |
+| Register an application capability with native WebMCP      | `createSignett().expose()`                                    |
+| Add Signett controls around an existing native registration | `guard()`                                                    |
 | Reject invented or malformed arguments                     | Closed JSON Schema and runtime validation                    |
 | Resolve current identity, tenant, and application state    | Per-invocation `context`                                     |
 | Deny work before the handler runs                          | `authorize` plus independent server enforcement              |
@@ -198,7 +198,7 @@ Signet features map to common implementation needs:
 | Prevent an identical retry from repeating an effect        | An application-owned idempotency store and intent-scoped key |
 | Correlate interrupted work with authoritative state        | An operation journal and `recover`                           |
 | Refuse to report success without proof                     | `verify` against authoritative application state             |
-| Keep the capability scoped to the correct page or session  | Disposable registrations and `useSignetTool()`               |
+| Keep the capability scoped to the correct page or session  | Disposable registrations and `useSignettTool()`               |
 | Keep results focused for agent use                         | `outputBudgetBytes`                                          |
 
 Simple reads should stay simple. Add reliability controls only when the selected job
@@ -223,7 +223,7 @@ For consequential work, prove at least:
 - cancellation before execution causes no work; and
 - disposal removes capabilities that are no longer available.
 
-These tests diagnose application and Signet integration defects quickly. A model is
+These tests diagnose application and Signett integration defects quickly. A model is
 not needed to find them.
 
 ## 6. Verify the native browser boundary
@@ -244,13 +244,13 @@ Attach the Case suite to application, browser, agent, oracle, and optional fault
 adapters. Preview the matrix before consuming model capacity:
 
 ```sh
-signet eval scenarios/checkout.eval.mjs --trials 1 --dry-run
+signett eval scenarios/checkout.eval.mjs --trials 1 --dry-run
 ```
 
 Use one Trial as a wiring check. Use repeated Trials to evaluate behavior:
 
 ```sh
-signet eval scenarios/checkout.eval.mjs \
+signett eval scenarios/checkout.eval.mjs \
   --trials 5 \
   --output .artifacts/checkout-candidate
 ```
@@ -260,7 +260,7 @@ arguments, authoritative outcomes, forbidden effects, duration, actions, and tok
 use. The oracle—not the model's final sentence—determines whether the Trial succeeded.
 
 Inspect every unsafe or failed Trial. Identify whether the failure came from tool
-discovery, selection, arguments, application execution, a Signet control, browser
+discovery, selection, arguments, application execution, a Signett control, browser
 integration, the oracle, or the agent provider.
 
 ## 8. Retain a baseline and iterate
@@ -280,7 +280,7 @@ improve tool names, descriptions, schemas, or exposure
 Run the evaluation and comparison together:
 
 ```sh
-signet eval scenarios/checkout.eval.mjs \
+signett eval scenarios/checkout.eval.mjs \
   --trials 5 \
   --output .artifacts/checkout-candidate \
   --against evidence/baselines/checkout.report.json
@@ -289,11 +289,11 @@ signet eval scenarios/checkout.eval.mjs \
 Or compare completed Reports without running another agent:
 
 ```sh
-signet check .artifacts/checkout-candidate/report.json \
+signett check .artifacts/checkout-candidate/report.json \
   --against evidence/baselines/checkout.report.json
 ```
 
-`signet check` is the regression gate, not the agent runner. It compares every Case
+`signett check` is the regression gate, not the agent runner. It compares every Case
 and condition independently and rejects new forbidden effects, missing Trial coverage,
 environment regressions, and unacceptable safe-success loss.
 

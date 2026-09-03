@@ -18,23 +18,23 @@ assert.equal(
 
 const agentContract = await readFile(new URL("AGENTS.md", root), "utf8");
 const skill = await readFile(
-  new URL("skills/signet-webmcp/SKILL.md", root),
+  new URL("skills/signett-webmcp/SKILL.md", root),
   "utf8",
 );
 assert.match(agentContract, /complete integration contract/);
-assert.match(skill, /^---\nname: signet-webmcp\n/);
+assert.match(skill, /^---\nname: signett-webmcp\n/);
 assert.doesNotMatch(skill, /TODO/);
 
-const core = await import("@signet/webmcp");
-const testing = await import("@signet/webmcp/testing");
-const telemetry = await import("@signet/webmcp/opentelemetry");
-const inspector = await import("@signet/webmcp/inspector");
-const react = await import("@signet/webmcp/react");
-const stores = await import("@signet/webmcp/stores");
+const core = await import("signett");
+const testing = await import("signett/testing");
+const telemetry = await import("signett/opentelemetry");
+const inspector = await import("signett/inspector");
+const react = await import("signett/react");
+const stores = await import("signett/stores");
 
 assert.equal(typeof core.guard, "function");
-assert.equal(typeof core.createSignet, "function");
-assert.equal(typeof core.createSignetActivity, "function");
+assert.equal(typeof core.createSignett, "function");
+assert.equal(typeof core.createSignettActivity, "function");
 assert.equal(typeof core.ToolError, "function");
 assert.equal(typeof core.ValidationError, "function");
 assert.equal(typeof core.AuthorizationError, "function");
@@ -47,9 +47,9 @@ assert.equal(typeof telemetry.openTelemetryObserver, "function");
 assert.equal(typeof telemetry.otlpObserver, "function");
 assert.equal(typeof telemetry.toOtlpJson, "function");
 assert.equal(typeof telemetry.TraceAssembler, "function");
-assert.equal(typeof inspector.mountSignetInspector, "function");
-assert.equal(typeof react.useSignetTool, "function");
-assert.equal(typeof react.useSignetActivity, "function");
+assert.equal(typeof inspector.mountSignettInspector, "function");
+assert.equal(typeof react.useSignettTool, "function");
+assert.equal(typeof react.useSignettActivity, "function");
 assert.equal(typeof stores.IndexedDbIdempotencyStore, "function");
 
 const execute = core.guard(async ({ value }) => value * 2);

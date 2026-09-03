@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createSignet } from "../src/index.js";
+import { createSignett } from "../src/index.js";
 import {
   MemoryIdempotencyStore,
   checkIdempotencyStore,
@@ -10,8 +10,8 @@ import {
 describe("createWebMcpTestHarness", () => {
   it("discovers, invokes, cancels, and disposes exposed tools", async () => {
     const harness = createWebMcpTestHarness();
-    const signet = createSignet({ modelContext: harness.modelContext });
-    const registration = await signet.expose({
+    const signett = createSignett({ modelContext: harness.modelContext });
+    const registration = await signett.expose({
       name: "greet",
       description: "Greet one person.",
       inputSchema: {
@@ -47,8 +47,8 @@ describe("createWebMcpTestHarness", () => {
 
   it("clears registrations between tests", async () => {
     const harness = createWebMcpTestHarness();
-    const signet = createSignet({ modelContext: harness.modelContext });
-    await signet.expose({
+    const signett = createSignett({ modelContext: harness.modelContext });
+    await signett.expose({
       name: "temporary",
       description: "Temporary.",
       inputSchema: { type: "object" },

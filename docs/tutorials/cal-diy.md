@@ -1,16 +1,16 @@
 # Codelab: book a real Cal.diy event
 
-This codelab runs the Signet benchmark against a local Cal.diy application. A real
+This codelab runs the Signett benchmark against a local Cal.diy application. A real
 browser agent discovers an event, selects an available slot, accepts the application's
 confirmation, creates one booking, recovers from an intentionally lost response, and
 proves the result in Postgres.
 
 This is intentionally the last codelab. It requires the full application and database;
-the earlier tutorials isolate Signet mechanics from Cal.diy setup.
+the earlier tutorials isolate Signett mechanics from Cal.diy setup.
 
 ## What the integration exposes
 
-| Tool                   | Why it exists                                                            | Signet controls                                                                                   |
+| Tool                   | Why it exists                                                            | Signett controls                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | `inspect_event`        | Read the active event, organizer, duration, price, and recurrence        | Closed empty schema, live page context, read-only hint                                            |
 | `list_available_slots` | Return valid future choices instead of asking the model to invent a time | Bounded input and output, read-only hint                                                          |
@@ -30,19 +30,19 @@ state into an explicit authorization failure rather than a surprising booking.
 The benchmark keeps external applications outside Git history:
 
 ```text
-signet/
+signett/
   .external/
-    cal-diy-signet/
+    cal-diy-signett/
   benchmarks/integrations/cal-diy/
 ```
 
-Use the Cal.diy integration branch `feat/signet-webmcp-demo` at commit `f2b1fc9`.
+Use the Cal.diy integration branch `feat/signett-webmcp-demo` at commit `f2b1fc9`.
 That branch is currently local and is not published on the `calcom/cal.diy` remote, so
 there is no stable public branch link yet. The implementation files to inspect are:
 
 ```text
-apps/web/modules/bookings/signet/tools.ts
-apps/web/modules/bookings/signet/SignetBookerTools.tsx
+apps/web/modules/bookings/signett/tools.ts
+apps/web/modules/bookings/signett/SignettBookerTools.tsx
 ```
 
 Start Cal.diy and its Postgres database using the repository's normal local development
@@ -52,7 +52,7 @@ setting the override below.
 
 ## 2. Configure the booking URL
 
-From the Signet repository root, set the local booking page when it differs from the default:
+From the Signett repository root, set the local booking page when it differs from the default:
 
 ```sh
 export CAL_DIY_BOOKING_URL="http://localhost:3000/your-user/your-event"
@@ -108,15 +108,15 @@ sentence—as proof of success.
 
 ## How the application integration works
 
-`SignetBookerTools.tsx` owns the page lifecycle, resolves the current event context,
+`SignettBookerTools.tsx` owns the page lifecycle, resolves the current event context,
 creates the stores, and registers plain TypeScript tool definitions. `book_event` calls
-Cal.diy's existing validation, booking mapper, and `createBooking()` path; Signet does
+Cal.diy's existing validation, booking mapper, and `createBooking()` path; Signett does
 not duplicate scheduling logic.
 
 Before the effect, the operation journal stores a correlation record. After the effect,
 it stores the booking UID. If the response disappears, `recover` queries authoritative
 Cal.diy state using those fields and only accepts one unique match. `verify` then checks
-event, attendee, start time, and duration before Signet reports success.
+event, attendee, start time, and duration before Signett reports success.
 
 Use the [integration patterns](../guide/integration-patterns) page to translate this
 design to another application. It includes the equivalent Saleor checkout sequence and

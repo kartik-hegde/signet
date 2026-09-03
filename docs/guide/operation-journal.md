@@ -4,7 +4,7 @@ An idempotency store remembers completed output. An operation journal remembers 
 correlation data needed to find an effect whose response may be lost. They solve
 different parts of the same retry problem.
 
-Signet requires a journal whenever idempotency is configured. Without one, an
+Signett requires a journal whenever idempotency is configured. Without one, an
 execution error cannot prove whether a claim is safe to release, so the same key can
 become permanently unusable. `guard()` and `expose()` reject that configuration, and
 `checkToolReadiness()` reports it as `idempotency_journal`.
@@ -39,7 +39,7 @@ const tool = {
 };
 ```
 
-With no explicit journal key, Signet reuses the idempotency key. Supply a separate key
+With no explicit journal key, Signett reuses the idempotency key. Supply a separate key
 when correlation scope or retention differs.
 
 ## Storage contract
@@ -58,7 +58,7 @@ job, or request ID. Do not journal agent inputs, credentials, or full outputs by
 default.
 
 Write a client-generated correlation ID immediately before crossing the irreversible
-effect boundary. If execution fails and the configured journal is still empty, Signet
+effect boundary. If execution fails and the configured journal is still empty, Signett
 can prove the failure was pre-effect and call `release`. A present record is retained
 until recovery proves the outcome and `complete` clears it.
 
@@ -76,8 +76,8 @@ Journal adapters must impose their own timeout for remote I/O.
 ## Unknown is a real outcome
 
 Return `{ recovered: false }` when no result can be proved. With phased idempotency,
-Signet returns the original error only when an empty configured journal independently
+Signett returns the original error only when an empty configured journal independently
 proves a pre-effect failure; otherwise the durable claim remains in flight and the
 outcome is unknown. Return `{ recovered: false, outcome: "unknown", reason? }` to supply
-a more precise explanation. Signet raises `OutcomeUnknownError` and emits
+a more precise explanation. Signett raises `OutcomeUnknownError` and emits
 `outcome_unknown`; it never retries the effect automatically.

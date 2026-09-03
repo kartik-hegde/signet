@@ -101,7 +101,7 @@ export async function executeWebMcpTool(name, input, callId, timeoutMs) {
     };
   }
 
-  const registryKey = Symbol.for("@signet/chrome-agent/calls");
+  const registryKey = Symbol.for("@signett/chrome-agent/calls");
   const registry =
     window[registryKey] instanceof Map ? window[registryKey] : new Map();
   window[registryKey] = registry;
@@ -157,7 +157,7 @@ export async function executeWebMcpTool(name, input, callId, timeoutMs) {
 }
 
 export function abortWebMcpTool(callId) {
-  const registry = window[Symbol.for("@signet/chrome-agent/calls")];
+  const registry = window[Symbol.for("@signett/chrome-agent/calls")];
   const controller = registry instanceof Map ? registry.get(callId) : undefined;
   if (!controller) return false;
   controller.abort(new DOMException("Stopped by the user.", "AbortError"));

@@ -1,29 +1,29 @@
 From 65dd4f6562f64493ec786d90c12eaecf919e9e5f Mon Sep 17 00:00:00 2001
 From: kartik-hegde <hegdekartik7@gmail.com>
 Date: Mon, 31 Aug 2026 18:14:31 -0400
-Subject: [PATCH] test: harden Signet checkout integration
+Subject: [PATCH] test: harden Signett checkout integration
 
 ---
- src/checkout/signet/checkout-operations.ts    |  26 +++
- src/checkout/signet/checkout-tools.test.ts    | 220 ++++++++++++++++++
- src/checkout/signet/checkout-tools.ts         | 167 +++++++++----
- .../signet/indexed-db-idempotency-store.ts    | 116 ---------
- src/checkout/signet/signet-checkout-tools.tsx |  11 +-
+ src/checkout/signett/checkout-operations.ts    |  26 +++
+ src/checkout/signett/checkout-tools.test.ts    | 220 ++++++++++++++++++
+ src/checkout/signett/checkout-tools.ts         | 167 +++++++++----
+ .../signett/indexed-db-idempotency-store.ts    | 116 ---------
+ src/checkout/signett/signett-checkout-tools.tsx |  11 +-
  5 files changed, 375 insertions(+), 165 deletions(-)
- create mode 100644 src/checkout/signet/checkout-operations.ts
- create mode 100644 src/checkout/signet/checkout-tools.test.ts
- delete mode 100644 src/checkout/signet/indexed-db-idempotency-store.ts
+ create mode 100644 src/checkout/signett/checkout-operations.ts
+ create mode 100644 src/checkout/signett/checkout-tools.test.ts
+ delete mode 100644 src/checkout/signett/indexed-db-idempotency-store.ts
 
-diff --git a/src/checkout/signet/checkout-operations.ts b/src/checkout/signet/checkout-operations.ts
+diff --git a/src/checkout/signett/checkout-operations.ts b/src/checkout/signett/checkout-operations.ts
 new file mode 100644
 index 00000000..207f93a4
 --- /dev/null
-+++ b/src/checkout/signet/checkout-operations.ts
++++ b/src/checkout/signett/checkout-operations.ts
 @@ -0,0 +1,26 @@
 +import {
 +	calculateDeliveryOptions,
-+	executeSignetLegacyDummyPayment,
-+	getSignetOrderProof,
++	executeSignettLegacyDummyPayment,
++	getSignettOrderProof,
 +	updateCheckoutBillingAddress,
 +	updateCheckoutDeliveryMethod,
 +	updateCheckoutEmail,
@@ -34,9 +34,9 @@ index 00000000..207f93a4
 +/** The real Saleor boundary, injected so the WebMCP tools remain deterministic to test. */
 +export const checkoutOperations = {
 +	calculateDeliveryOptions,
-+	executeLegacyDummyPayment: executeSignetLegacyDummyPayment,
++	executeLegacyDummyPayment: executeSignettLegacyDummyPayment,
 +	executePayment,
-+	getOrderProof: getSignetOrderProof,
++	getOrderProof: getSignettOrderProof,
 +	resolvePaymentProvider,
 +	updateBillingAddress: updateCheckoutBillingAddress,
 +	updateDeliveryMethod: updateCheckoutDeliveryMethod,
@@ -45,19 +45,19 @@ index 00000000..207f93a4
 +};
 +
 +export type CheckoutOperations = typeof checkoutOperations;
-+export type CheckoutOrderProof = NonNullable<Awaited<ReturnType<typeof getSignetOrderProof>>>;
-diff --git a/src/checkout/signet/checkout-tools.test.ts b/src/checkout/signet/checkout-tools.test.ts
++export type CheckoutOrderProof = NonNullable<Awaited<ReturnType<typeof getSignettOrderProof>>>;
+diff --git a/src/checkout/signett/checkout-tools.test.ts b/src/checkout/signett/checkout-tools.test.ts
 new file mode 100644
 index 00000000..e48032b9
 --- /dev/null
-+++ b/src/checkout/signet/checkout-tools.test.ts
++++ b/src/checkout/signett/checkout-tools.test.ts
 @@ -0,0 +1,220 @@
-+import { assertToolReady, createSignet, OutcomeUnknownError } from "@signet/webmcp";
++import { assertToolReady, createSignett, OutcomeUnknownError } from "signett";
 +import {
 +	createWebMcpTestHarness,
 +	MemoryIdempotencyStore,
 +	MemoryOperationJournal,
-+} from "@signet/webmcp/testing";
++} from "signett/testing";
 +import { describe, expect, it, vi } from "vitest";
 +
 +import type { CheckoutGatewayMessagesHook } from "@/checkout/hooks/use-checkout-gateway-messages";
@@ -162,7 +162,7 @@ index 00000000..e48032b9
 +
 +async function harnessFor(placeOrder: ReturnType<typeof setup>["tools"]["placeOrder"]) {
 +	const harness = createWebMcpTestHarness();
-+	const signet = createSignet({
++	const signett = createSignett({
 +		modelContext: harness.modelContext,
 +		context: () => ({
 +			checkoutId: "checkout-1",
@@ -173,11 +173,11 @@ index 00000000..e48032b9
 +			currency: "USD",
 +		}),
 +	});
-+	await signet.expose(placeOrder);
++	await signett.expose(placeOrder);
 +	return harness;
 +}
 +
-+describe("Saleor Signet checkout tools", () => {
++describe("Saleor Signett checkout tools", () => {
 +	it("keeps all five production tools agent-ready", () => {
 +		const { tools } = setup();
 +
@@ -272,22 +272,22 @@ index 00000000..e48032b9
 +		expect(payment).not.toHaveBeenCalled();
 +	});
 +});
-diff --git a/src/checkout/signet/checkout-tools.ts b/src/checkout/signet/checkout-tools.ts
+diff --git a/src/checkout/signett/checkout-tools.ts b/src/checkout/signett/checkout-tools.ts
 index e31fe4b0..5394ec9b 100644
---- a/src/checkout/signet/checkout-tools.ts
-+++ b/src/checkout/signet/checkout-tools.ts
+--- a/src/checkout/signett/checkout-tools.ts
++++ b/src/checkout/signett/checkout-tools.ts
 @@ -1,17 +1,6 @@
- import type { IdempotencyStore, OperationJournal, SignetTool } from "@signet/webmcp";
+ import type { IdempotencyStore, OperationJournal, SignettTool } from "signett";
  
 -import {
 -	calculateDeliveryOptions,
--	executeSignetLegacyDummyPayment,
--	getSignetOrderProof,
+-	executeSignettLegacyDummyPayment,
+-	getSignettOrderProof,
 -	updateCheckoutBillingAddress,
 -	updateCheckoutDeliveryMethod,
 -	updateCheckoutEmail,
 -	updateCheckoutShippingAddress,
--	type SignetOrderProof,
+-	type SignettOrderProof,
 -} from "@/app/(checkout)/actions";
  import type { CheckoutGatewayMessagesHook } from "@/checkout/hooks/use-checkout-gateway-messages";
 -import { executePayment, resolvePaymentProvider } from "@/checkout/lib/payment";
@@ -307,7 +307,7 @@ index e31fe4b0..5394ec9b 100644
  } from "./checkout-model";
 +import type { CheckoutOperations, CheckoutOrderProof } from "./checkout-operations";
  
--type OrderResult = SignetOrderProof & { status: "placed" };
+-type OrderResult = SignettOrderProof & { status: "placed" };
 +type OrderResult = CheckoutOrderProof & { status: "placed" };
  type OrderCorrelation = { phase: "payment_started" } | { phase: "order_created"; orderId: string };
  
@@ -327,7 +327,7 @@ index e31fe4b0..5394ec9b 100644
  
  export type CheckoutToolSet = {
 @@ -55,13 +45,14 @@ export type CheckoutToolSet = {
- 	placeOrder: SignetTool<PlaceOrderInput, OrderResult, CheckoutContext>;
+ 	placeOrder: SignettTool<PlaceOrderInput, OrderResult, CheckoutContext>;
  };
  
 -export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToolSet {
@@ -524,7 +524,7 @@ index e31fe4b0..5394ec9b 100644
  			await operation?.write<OrderCorrelation>({ phase: "payment_started" });
  			const paymentResult =
  				paymentProvider.type === "dummy" && paymentProvider.gateway.id === "mirumee.payments.dummy"
--					? await executeSignetLegacyDummyPayment(fresh.id, amount)
+-					? await executeSignettLegacyDummyPayment(fresh.id, amount)
 -					: await executePayment(paymentProvider, { checkoutId: fresh.id, amount }, gatewayMessages);
 +					? await operations.executeLegacyDummyPayment(fresh.id, amount)
 +					: await operations.executePayment(
@@ -546,7 +546,7 @@ index e31fe4b0..5394ec9b 100644
  				throw new Error("Injected lost response after Saleor committed the order.");
  			}
  
--			const proof = await getSignetOrderProof(paymentResult.orderId);
+-			const proof = await getSignettOrderProof(paymentResult.orderId);
 +			const proof = await operations.getOrderProof(paymentResult.orderId);
  			if (!proof) throw new Error("The order response arrived but authoritative verification failed.");
  			return { ...proof, status: "placed" };
@@ -555,7 +555,7 @@ index e31fe4b0..5394ec9b 100644
  					reason: "Payment started, but no Saleor order ID was recorded.",
  				};
  			}
--			const proof = await getSignetOrderProof(correlation.orderId);
+-			const proof = await getSignettOrderProof(correlation.orderId);
 +			const proof = await operations.getOrderProof(correlation.orderId);
  			return proof
  				? { recovered: true, output: { ...proof, status: "placed" } }
@@ -564,20 +564,20 @@ index e31fe4b0..5394ec9b 100644
  					};
  		},
  		verify: async ({ input, output, context }) => {
--			const proof = await getSignetOrderProof(output.orderId);
+-			const proof = await getSignettOrderProof(output.orderId);
 +			const proof = await operations.getOrderProof(output.orderId);
  			return (
  				proof?.isPaid === true &&
  				proof.email === context.email &&
-diff --git a/src/checkout/signet/indexed-db-idempotency-store.ts b/src/checkout/signet/indexed-db-idempotency-store.ts
+diff --git a/src/checkout/signett/indexed-db-idempotency-store.ts b/src/checkout/signett/indexed-db-idempotency-store.ts
 deleted file mode 100644
 index e93586a9..00000000
---- a/src/checkout/signet/indexed-db-idempotency-store.ts
+--- a/src/checkout/signett/indexed-db-idempotency-store.ts
 +++ /dev/null
 @@ -1,116 +0,0 @@
--import type { ExecuteOptions, IdempotencyResult, IdempotencyStore } from "@signet/webmcp";
+-import type { ExecuteOptions, IdempotencyResult, IdempotencyStore } from "signett";
 -
--const DATABASE_NAME = "saleor-signet";
+-const DATABASE_NAME = "saleor-signett";
 -const STORE_NAME = "completed-operations";
 -const DATABASE_VERSION = 1;
 -
@@ -596,7 +596,7 @@ index e93586a9..00000000
 -			}
 -		};
 -		request.onsuccess = () => resolve(request.result);
--		request.onerror = () => reject(request.error ?? new Error("Unable to open the Signet operation store."));
+-		request.onerror = () => reject(request.error ?? new Error("Unable to open the Signett operation store."));
 -	});
 -}
 -
@@ -608,7 +608,7 @@ index e93586a9..00000000
 -			request.onsuccess = () =>
 -				resolve((request.result as StoredOperation | undefined)?.value as Output | undefined);
 -			request.onerror = () =>
--				reject(request.error ?? new Error("Unable to read the Signet operation store."));
+-				reject(request.error ?? new Error("Unable to read the Signett operation store."));
 -		});
 -	} finally {
 -		database.close();
@@ -627,9 +627,9 @@ index e93586a9..00000000
 -			} satisfies StoredOperation);
 -			transaction.oncomplete = () => resolve();
 -			transaction.onerror = () =>
--				reject(transaction.error ?? new Error("Unable to save the Signet operation."));
+-				reject(transaction.error ?? new Error("Unable to save the Signett operation."));
 -			transaction.onabort = () =>
--				reject(transaction.error ?? new Error("Saving the Signet operation was aborted."));
+-				reject(transaction.error ?? new Error("Saving the Signett operation was aborted."));
 -		});
 -	} finally {
 -		database.close();
@@ -685,21 +685,21 @@ index e93586a9..00000000
 -		};
 -
 -		if (navigator.locks) {
--			return navigator.locks.request(`signet:${key}`, { signal: options.signal }, execute);
+-			return navigator.locks.request(`signett:${key}`, { signal: options.signal }, execute);
 -		}
 -
 -		return execute();
 -	}
 -}
-diff --git a/src/checkout/signet/signet-checkout-tools.tsx b/src/checkout/signet/signet-checkout-tools.tsx
+diff --git a/src/checkout/signett/signett-checkout-tools.tsx b/src/checkout/signett/signett-checkout-tools.tsx
 index f659a563..de00a908 100644
---- a/src/checkout/signet/signet-checkout-tools.tsx
-+++ b/src/checkout/signet/signet-checkout-tools.tsx
+--- a/src/checkout/signett/signett-checkout-tools.tsx
++++ b/src/checkout/signett/signett-checkout-tools.tsx
 @@ -4,13 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
  
- import { createSignet, type GuardEvent, WebStorageOperationJournal } from "@signet/webmcp";
- import { useSignetTool } from "@signet/webmcp/react";
-+import { IndexedDbIdempotencyStore } from "@signet/webmcp/stores";
+ import { createSignett, type GuardEvent, WebStorageOperationJournal } from "signett";
+ import { useSignettTool } from "signett/react";
++import { IndexedDbIdempotencyStore } from "signett/stores";
  
  import { useCheckoutGatewayMessages } from "@/checkout/hooks/use-checkout-gateway-messages";
  import { useCheckoutData } from "@/checkout/providers/checkout-data";
@@ -708,10 +708,10 @@ index f659a563..de00a908 100644
 +import { checkoutOperations } from "./checkout-operations";
  import { createCheckoutTools } from "./checkout-tools";
 -import { IndexedDbIdempotencyStore } from "./indexed-db-idempotency-store";
- import { type ApprovalRequest, SignetDemoPanel } from "./signet-demo-panel";
+ import { type ApprovalRequest, SignettDemoPanel } from "./signett-demo-panel";
  
- export function SignetCheckoutTools() {
-@@ -67,13 +68,19 @@ export function SignetCheckoutTools() {
+ export function SignettCheckoutTools() {
+@@ -67,13 +68,19 @@ export function SignettCheckoutTools() {
  		() =>
  			createCheckoutTools({
  				checkoutState,

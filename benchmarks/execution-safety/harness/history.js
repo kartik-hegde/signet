@@ -1,6 +1,6 @@
 /**
  * A run is only useful for hill climbing if you can see the delta. Every run
- * appends one line keyed by the Signet source hash, so a score always points at a
+ * appends one line keyed by the Signett source hash, so a score always points at a
  * specific state of the library rather than at a moment in time.
  */
 import { appendFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
@@ -31,7 +31,7 @@ export function appendHistory(benchDir, record) {
 }
 
 /**
- * The most recent run that used the same scoring model and a different Signet
+ * The most recent run that used the same scoring model and a different Signett
  * source. Both conditions matter: comparing across scoring models would report your
  * own change to the scorer as progress in the library.
  */

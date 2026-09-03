@@ -1,28 +1,28 @@
-# Signet
+# Signett
 
 **Make your website agent-ready—in minutes.**
 
-Signet turns application functions you already own into production-ready tools that
+Signett turns application functions you already own into production-ready tools that
 browser agents can discover and use through native WebMCP.
 
-You decide what agents should be able to do. Signet handles the boundary around those
+You decide what agents should be able to do. Signett handles the boundary around those
 capabilities: registration, input validation, application context, expected errors,
 safe execution, testing, and observability.
 
 ## Get started
 
 ```sh
-npm install @signet/webmcp
+npm install signett
 ```
 
 Expose one function from browser code:
 
 ```ts
-import { createSignet } from "@signet/webmcp";
+import { createSignett } from "signett";
 
-const signet = createSignet();
+const signett = createSignett();
 
-const registration = await signet.expose({
+const registration = await signett.expose({
   name: "get_greeting",
   description: "Return a greeting from this website.",
   inputSchema: {
@@ -37,7 +37,7 @@ const registration = await signet.expose({
 
 Four fields are required: `name`, `description`, `inputSchema`, and `execute`.
 
-Signet validates the definition, compiles its JSON Schema once, and registers it with
+Signett validates the definition, compiles its JSON Schema once, and registers it with
 `document.modelContext.registerTool()`. Invalid agent input never reaches your
 business logic. In browsers without WebMCP, your human website continues normally and
 the registration reports `unsupported`.
@@ -49,23 +49,23 @@ registration.dispose();
 ```
 
 See the complete [getting-started guide](./docs/guide/getting-started.md), then learn
-how [Signet's core abstractions](./docs/guide/core-concepts.md) map to application code.
+how [Signett's core abstractions](./docs/guide/core-concepts.md) map to application code.
 For a runnable React page, Chrome inspection, and a first model-driven call, use the
 [first agent call codelab](./docs/tutorials/first-agent-call.md).
 
 ## Integrate with a coding agent
 
 Give a coding agent [`AGENTS.md`](./AGENTS.md), the complete public contract. It should
-not need to inspect Signet's compiled implementation.
+not need to inspect Signett's compiled implementation.
 
 For Codex, install the bundled project skill once:
 
 ```sh
 mkdir -p .agents/skills
-cp -R node_modules/@signet/webmcp/skills/signet-webmcp .agents/skills/
+cp -R node_modules/signett/skills/signett-webmcp .agents/skills/
 ```
 
-Then ask it to use `$signet-webmcp` when exposing or reviewing website tools.
+Then ask it to use `$signett-webmcp` when exposing or reviewing website tools.
 
 ## Add production behavior when needed
 
@@ -73,14 +73,14 @@ Simple read tools can stay simple. Consequential tools can opt into application
 context, authorization, idempotency, verification, cancellation, and observation:
 
 ```ts
-import { ToolError, createSignet } from "@signet/webmcp";
+import { ToolError, createSignett } from "signett";
 
-const signet = createSignet({
+const signett = createSignett({
   context: async ({ signal }) => currentSession({ signal }),
-  observe: recordSignetEvent,
+  observe: recordSignettEvent,
 });
 
-await signet.expose({
+await signett.expose({
   name: "cancel_order",
   description: "Cancel one unshipped order belonging to the signed-in user.",
   inputSchema: {
@@ -164,10 +164,10 @@ await signet.expose({
 ```
 
 The application still owns authentication, permissions, business logic, durable
-idempotency, and authoritative state. Signet is state-aware; it is not an application
+idempotency, and authoritative state. Signett is state-aware; it is not an application
 state store or agent orchestrator.
 
-Signet never retries operations automatically.
+Signett never retries operations automatically.
 
 Authorization is re-evaluated before every idempotency lookup, including replay. Keep
 current identity, permission, tenant, and resource access in `authorize`. Put mutable
@@ -178,19 +178,19 @@ eligibility that success changes—for example, whether an order is still open�
 success only after reading authoritative application state. Recovered results still run
 through `verify` and, when idempotency is configured, become the stored result for later
 replays. Return `outcome: "unknown"` when the effect may have happened but authoritative
-reconciliation cannot prove either result; Signet raises `OutcomeUnknownError` and tells
+reconciliation cannot prove either result; Signett raises `OutcomeUnknownError` and tells
 the caller not to retry under a new key.
 
 ## Test without a model or browser
 
 ```ts
-import { createSignet } from "@signet/webmcp";
-import { createWebMcpTestHarness } from "@signet/webmcp/testing";
+import { createSignett } from "signett";
+import { createWebMcpTestHarness } from "signett/testing";
 
 const harness = createWebMcpTestHarness();
-const signet = createSignet({ modelContext: harness.modelContext });
+const signett = createSignett({ modelContext: harness.modelContext });
 
-await signet.expose({
+await signett.expose({
   name: "search_products",
   description: "Find products matching a query.",
   inputSchema: {
@@ -224,7 +224,7 @@ through a supported native browser agent before shipping.
 Run static readiness checks in the same test:
 
 ```ts
-import { assertToolReady } from "@signet/webmcp";
+import { assertToolReady } from "signett";
 
 expect(() => assertToolReady(searchProductsTool)).not.toThrow();
 ```
@@ -232,9 +232,9 @@ expect(() => assertToolReady(searchProductsTool)).not.toThrow();
 For a component-owned capability, use the lifecycle binding for your framework:
 
 ```ts
-import { useSignetTool } from "@signet/webmcp/react";
+import { useSignettTool } from "signett/react";
 
-const state = useSignetTool(signet, searchProductsTool, [shopId]);
+const state = useSignettTool(signett, searchProductsTool, [shopId]);
 ```
 
 The React entry point handles teardown while asynchronous registration is still in
@@ -242,9 +242,9 @@ flight. When agent-triggered work should be visible in the application's existin
 subscribe to its metadata-only activity state:
 
 ```tsx
-import { useSignetActivity } from "@signet/webmcp/react";
+import { useSignettActivity } from "signett/react";
 
-const { latest } = useSignetActivity(signet, { toolName: "place_order" });
+const { latest } = useSignettActivity(signett, { toolName: "place_order" });
 
 if (latest?.phase === "succeeded" && latest.verified) {
   // Refresh authoritative application state; do not fabricate success in the DOM.
@@ -252,18 +252,18 @@ if (latest?.phase === "succeeded" && latest.verified) {
 ```
 
 The hook reports stable presentation phases, not inputs, outputs, authorization, or
-business state. Signet does not render or mutate the DOM. Framework-neutral code can
-use `createSignetActivity(signet)` and subscribe to the same projection. See
+business state. Signett does not render or mutate the DOM. Framework-neutral code can
+use `createSignettActivity(signett)` and subscribe to the same projection. See
 [the application activity guide](../../docs/guide/application-activity.md) for a
 complete React and framework-neutral integration.
 
-During development, `mountSignetInspector(signet)` from
-`@signet/webmcp/inspector` shows exact schemas, annotations, registration state, and
+During development, `mountSignettInspector(signett)` from
+`signett/inspector` shows exact schemas, annotations, registration state, and
 a privacy-safe per-call latency waterfall. To export the same spans to Jaeger or any
 OTLP backend, add `telemetry: { otlp: "/v1/traces", serviceName: "storefront" }`
-to `createSignet`.
+to `createSignett`.
 
-## What Signet provides
+## What Signett provides
 
 - **Code-first exposure:** readable TypeScript that maps directly to native WebMCP.
 - **Runtime validation:** JSON Schema validation before application code runs.
@@ -288,7 +288,7 @@ to `createSignet`.
 
 ## Principles
 
-- WebMCP is the first protocol; Signet does not hide or replace it.
+- WebMCP is the first protocol; Signett does not hide or replace it.
 - Application code, identity, policy, data, and backend enforcement remain yours.
 - Inputs, outputs, context, and stack traces are not observed by default.
 - Observer failures never change registration or execution behavior.
@@ -300,9 +300,9 @@ to `createSignet`.
 
 ## Current scope
 
-Signet is pre-release and WebMCP is experimental. The current package includes:
+Signett is pre-release and WebMCP is experimental. The current package includes:
 
-- `createSignet().expose()`;
+- `createSignett().expose()`;
 - JSON Schema definition and invocation validation;
 - application context and disposable native registration;
 - agent-legible errors, confirmation, authorization, idempotency, recovery,
@@ -313,7 +313,7 @@ Signet is pre-release and WebMCP is experimental. The current package includes:
 - standalone and full-stack reference applications.
 
 There is no hosted runtime, agent planner, automatic retry policy, production browser
-polyfill, Signet JSON format, or compiler.
+polyfill, Signett JSON format, or compiler.
 
 ## Explore
 
@@ -326,7 +326,7 @@ polyfill, Signet JSON format, or compiler.
 - [Interface API](./docs/reference/interface.md)
 - [Production WebMCP](./docs/guide/production-webmcp.md)
 - [Testing](./docs/guide/testing.md)
-- [Reference payment application](../../fixtures/cypress-realworld-app/SIGNET.md)
+- [Reference payment application](../../fixtures/cypress-realworld-app/SIGNETT.md)
 - [Design contract](./docs/design.md)
 
 ## Development

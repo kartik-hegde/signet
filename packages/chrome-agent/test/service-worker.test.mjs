@@ -45,6 +45,6 @@ test("toolbar click grants the active tab gesture, opens the panel, and refreshe
   assert.deepEqual(calls.accessLevels, [{ accessLevel: "TRUSTED_CONTEXTS" }]);
   assert.deepEqual(calls.open, [{ windowId: 9 }]);
   assert.deepEqual(calls.messages, [
-    { type: "signet:refresh-tools", tabId: 7 },
+    { type: "signett:refresh-tools", tabId: 7 },
   ]);
 });

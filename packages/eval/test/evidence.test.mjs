@@ -24,9 +24,9 @@ function evidenceInput() {
   return {
     caseDefinition,
     trial: {
-      id: "find-recipient:hybrid-signet:1",
+      id: "find-recipient:hybrid-signett:1",
       index: 1,
-      condition: "hybrid-signet",
+      condition: "hybrid-signett",
       startedAt: "2026-08-31T20:00:00.000Z",
       durationMs: 1234,
       status: "completed",

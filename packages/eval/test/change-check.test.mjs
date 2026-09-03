@@ -163,7 +163,9 @@ test("optional performance budgets turn cost drift into an explicit gate", () =>
 });
 
 test("change checks write portable JSON and review-ready Markdown", () => {
-  const directory = mkdtempSync(path.join(os.tmpdir(), "signet-change-check-"));
+  const directory = mkdtempSync(
+    path.join(os.tmpdir(), "signett-change-check-"),
+  );
   try {
     const result = writeChangeCheck({
       baseline: report([trial({ success: false })]),
@@ -187,7 +189,7 @@ test("change checks write portable JSON and review-ready Markdown", () => {
 });
 
 test("the CLI checks completed reports without rerunning an agent", async () => {
-  const directory = mkdtempSync(path.join(os.tmpdir(), "signet-check-cli-"));
+  const directory = mkdtempSync(path.join(os.tmpdir(), "signett-check-cli-"));
   try {
     const baselinePath = path.join(directory, "baseline.json");
     const candidatePath = path.join(directory, "candidate.json");
@@ -214,7 +216,7 @@ test("the CLI checks completed reports without rerunning an agent", async () => 
 });
 
 test("the CLI writes diagnostics before failing a regressed check", async () => {
-  const directory = mkdtempSync(path.join(os.tmpdir(), "signet-check-fail-"));
+  const directory = mkdtempSync(path.join(os.tmpdir(), "signett-check-fail-"));
   try {
     const baselinePath = path.join(directory, "baseline.json");
     const candidatePath = path.join(directory, "candidate.json");

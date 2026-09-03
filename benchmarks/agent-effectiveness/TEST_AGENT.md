@@ -1,4 +1,4 @@
-# Signet Test Agent
+# Signett Test Agent
 
 The Test Agent answers one developer question: can a real agent complete this task
 through the tools my live website exposes?
@@ -9,7 +9,7 @@ with an application-owned oracle. A run records:
 
 - the exact tool inventory, including schemas and annotations;
 - selected tools, arguments, returned values, errors, and per-call timing;
-- Signet lifecycle stages emitted by the application;
+- Signett lifecycle stages emitted by the application;
 - the agent's final report, token usage, and end-to-end latency;
 - authoritative outcome evidence read independently from application state.
 
@@ -43,5 +43,5 @@ npm run test:agent -- \
 
 This is intentionally a local runner rather than a Chrome extension. Chrome already
 provides generic WebMCP inspection and manual invocation; the added value here is
-task-level agent behavior joined to Signet lifecycle evidence and an authoritative
+task-level agent behavior joined to Signett lifecycle evidence and an authoritative
 outcome.

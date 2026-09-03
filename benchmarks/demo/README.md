@@ -1,4 +1,4 @@
-# Signet customer demo
+# Signett customer demo
 
 An interactive trace player for the P0 benchmark. It visualizes the real recorded
 payment-app metrics and the model-free safety trials without presenting deterministic
@@ -14,7 +14,7 @@ Presentation flow:
 1. Run the speed comparison.
 2. State: “WebMCP removes the UI work.”
 3. Open the Trust tab and inject the lost-response fault.
-4. State: “Signet provides the reusable boundary for consequential execution.”
+4. State: “Signett provides the reusable boundary for consequential execution.”
 5. Show the concurrent overwrite to demonstrate honest detection rather than claiming
    the library prevents failures it does not prevent.
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ToolError,
   ValidationError,
-  createSignet,
+  createSignett,
   type ModelContextLike,
 } from "../src/index.js";
 
@@ -31,13 +31,13 @@ const schema = {
   additionalProperties: false,
 };
 
-describe("Signet validation and expected errors", () => {
+describe("Signett validation and expected errors", () => {
   it("rejects an invalid schema before native registration", async () => {
     const native = capture();
-    const signet = createSignet({ modelContext: native.modelContext });
+    const signett = createSignett({ modelContext: native.modelContext });
 
     await expect(
-      signet.expose({
+      signett.expose({
         name: "broken",
         description: "A broken tool.",
         inputSchema: { type: "not-a-json-schema-type" },
@@ -49,10 +49,10 @@ describe("Signet validation and expected errors", () => {
 
   it("rejects an invalid verification timeout before registration", async () => {
     const native = capture();
-    const signet = createSignet({ modelContext: native.modelContext });
+    const signett = createSignett({ modelContext: native.modelContext });
 
     await expect(
-      signet.expose({
+      signett.expose({
         name: "broken_timeout",
         description: "A tool with an invalid timeout.",
         inputSchema: schema,
@@ -68,11 +68,11 @@ describe("Signet validation and expected errors", () => {
     const native = capture();
     const context = vi.fn(() => ({ userId: "user-1" }));
     const execute = vi.fn();
-    const signet = createSignet({
+    const signett = createSignett({
       modelContext: native.modelContext,
       context,
     });
-    await signet.expose({
+    await signett.expose({
       name: "cancel_order",
       description: "Cancel an order.",
       inputSchema: schema,
@@ -100,8 +100,8 @@ describe("Signet validation and expected errors", () => {
 
   it("preserves expected business errors", async () => {
     const native = capture();
-    const signet = createSignet({ modelContext: native.modelContext });
-    await signet.expose({
+    const signett = createSignett({ modelContext: native.modelContext });
+    await signett.expose({
       name: "cancel_order",
       description: "Cancel an order.",
       inputSchema: schema,

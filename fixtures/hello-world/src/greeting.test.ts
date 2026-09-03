@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertToolReady,
-  createSignet,
+  createSignett,
 } from "../../../packages/webmcp/src/index.js";
 import { createWebMcpTestHarness } from "../../../packages/webmcp/src/testing.js";
 
@@ -13,8 +13,8 @@ describe("hello-world codelab", () => {
     assertToolReady(greetingTool);
 
     const harness = createWebMcpTestHarness();
-    const signet = createSignet({ modelContext: harness.modelContext });
-    await signet.expose(greetingTool);
+    const signett = createSignett({ modelContext: harness.modelContext });
+    await signett.expose(greetingTool);
 
     expect(harness.tools().map((tool) => tool.name)).toEqual(["get_greeting"]);
     await expect(harness.invoke("get_greeting", {})).resolves.toEqual({

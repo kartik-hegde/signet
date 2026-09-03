@@ -41,9 +41,9 @@ describe("TraceAssembler", () => {
     expect(
       trace?.phases.map(({ name, durationMs }) => [name, durationMs]),
     ).toEqual([
-      ["signet.validate", 2],
-      ["signet.authorize", 3],
-      ["signet.execute", 12],
+      ["signett.validate", 2],
+      ["signett.authorize", 3],
+      ["signett.execute", 12],
     ]);
   });
 
@@ -113,12 +113,12 @@ describe("TraceAssembler", () => {
       completedAfterAbort: true,
     });
     expect(trace?.phases.map(({ name }) => name)).toEqual([
-      "signet.validate",
-      "signet.authorize",
-      "signet.confirm",
-      "signet.replay",
-      "signet.output",
-      "signet.verify",
+      "signett.validate",
+      "signett.authorize",
+      "signett.confirm",
+      "signett.replay",
+      "signett.output",
+      "signett.verify",
     ]);
   });
 
@@ -178,7 +178,7 @@ describe("TraceAssembler", () => {
       confirmation
         .observe(event("failed", 1_004, { error: new Error() }))
         ?.phases.at(-1)?.name,
-    ).toBe("signet.confirm");
+    ).toBe("signett.confirm");
 
     const finalization = new TraceAssembler();
     finalization.observe(event("started", 1_000));
@@ -187,7 +187,7 @@ describe("TraceAssembler", () => {
       finalization
         .observe(event("failed", 1_004, { error: new Error() }))
         ?.phases.at(-1)?.name,
-    ).toBe("signet.finalize");
+    ).toBe("signett.finalize");
   });
 
   it("drops malformed caller metadata and bounds long fields", () => {
@@ -236,7 +236,7 @@ describe("OTLP JSON", () => {
     expect(serialized).toContain("storefront");
     expect(serialized).toContain("gen_ai.tool.call.id");
     expect(serialized).toContain("call-1");
-    expect(serialized).toContain("signet.execute");
+    expect(serialized).toContain("signett.execute");
     expect(serialized).not.toContain("description");
   });
 

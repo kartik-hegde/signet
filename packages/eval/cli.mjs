@@ -76,7 +76,7 @@ export async function evalMain(argv = process.argv.slice(2)) {
   let cleanupError;
 
   process.stdout.write(
-    `\nSIGNET EVAL\n${evaluation.suite.id}: ${cases.length} Cases × ${conditions.length} conditions × ${options.trials} trials\n\n`,
+    `\nSIGNETT EVAL\n${evaluation.suite.id}: ${cases.length} Cases × ${conditions.length} conditions × ${options.trials} trials\n\n`,
   );
   try {
     await evaluation.adapters.application.prepare?.(runContext);
@@ -112,7 +112,7 @@ export async function evalMain(argv = process.argv.slice(2)) {
     suite: evaluation.suite,
     evidence,
     outputDir,
-    baselineCondition: options.baseline ?? "signet-baseline",
+    baselineCondition: options.baseline ?? "signett-baseline",
   });
   process.stdout.write(
     `\nWrote ${evidence.length} Trial Evidence files, report.json, and report.md to ${outputDir}\n`,
@@ -235,9 +235,9 @@ export function parseCheckArgs(argv) {
   }
   if (options.help) return options;
   if (!options.candidate)
-    throw new Error("signet check requires a candidate report.json path.");
+    throw new Error("signett check requires a candidate report.json path.");
   if (!options.against)
-    throw new Error("signet check requires --against <baseline-report.json>.");
+    throw new Error("signett check requires --against <baseline-report.json>.");
   return options;
 }
 
@@ -379,7 +379,7 @@ function publishStepSummary(markdownPath) {
 }
 
 function helpText() {
-  return `Usage: signet eval [evaluation.mjs] [options]
+  return `Usage: signett eval [evaluation.mjs] [options]
 
 Run an agent-interface evaluation and save one Evidence document per Trial.
 
@@ -407,7 +407,7 @@ Options:
 }
 
 function checkHelpText() {
-  return `Usage: signet check candidate-report.json --against baseline-report.json [options]
+  return `Usage: signett check candidate-report.json --against baseline-report.json [options]
 
 Compare two evaluation reports per Case and condition. Writes check.json and check.md,
 and exits unsuccessfully when a configured regression is found.
@@ -430,14 +430,14 @@ Options:
 }
 
 function rootHelpText() {
-  return `Usage: signet <command> [options]
+  return `Usage: signett <command> [options]
 
 Commands:
   agent    Run natural-language tasks against a page's WebMCP tools
   eval     Run repeated, application-owned evaluation Cases
   check    Compare an evaluation report with a reviewed baseline
 
-Run "signet <command> --help" for command-specific options.
+Run "signett <command> --help" for command-specific options.
 `;
 }
 
@@ -453,7 +453,7 @@ export function isEntrypoint(argv1 = process.argv[1]) {
 if (isEntrypoint()) {
   main().catch((error) => {
     process.stderr.write(
-      `signet: ${error instanceof Error ? error.message : String(error)}\n`,
+      `signett: ${error instanceof Error ? error.message : String(error)}\n`,
     );
     process.exitCode = 1;
   });

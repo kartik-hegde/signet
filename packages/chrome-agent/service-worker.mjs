@@ -11,7 +11,7 @@ chrome.action.onClicked.addListener((tab) => {
     .open(panelContext)
     .then(() =>
       chrome.runtime.sendMessage({
-        type: "signet:refresh-tools",
+        type: "signett:refresh-tools",
         tabId: tab.id,
       }),
     )

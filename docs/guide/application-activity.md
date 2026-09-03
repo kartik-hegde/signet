@@ -1,28 +1,28 @@
 # Show agent activity in your application UI
 
 WebMCP tool calls begin outside the application's normal button and form handlers.
-`useSignetActivity` lets a React surface show that work without giving Signet control
-of the UI. Framework-neutral applications can subscribe with `createSignetActivity`.
+`useSignettActivity` lets a React surface show that work without giving Signett control
+of the UI. Framework-neutral applications can subscribe with `createSignettActivity`.
 
-Activity is a metadata-only projection of Signet's invocation lifecycle. It contains no
+Activity is a metadata-only projection of Signett's invocation lifecycle. It contains no
 tool input, output, context, or error details, and it never renders or mutates the DOM.
 
 ## 1. Start with a verified tool
 
-Create one stable Signet interface and expose the application operation normally. For a
+Create one stable Signett interface and expose the application operation normally. For a
 consequential action, add an authoritative `verify` hook if the UI must distinguish a
 handler returning from the requested outcome actually existing:
 
 ```ts
-import { createSignet } from "@signet/webmcp";
+import { createSignett } from "@signett/webmcp";
 
 type Session = { userId: string };
 
-export const signet = createSignet<Session>({
+export const signett = createSignett<Session>({
   context: ({ signal }) => getCurrentSession({ signal }),
 });
 
-await signet.expose({
+await signett.expose({
   name: "place_order",
   description: "Place the active user's reviewed order.",
   inputSchema: {
@@ -44,27 +44,27 @@ await signet.expose({
 });
 ```
 
-The human UI and the tool should call the same application service. Signet activity
+The human UI and the tool should call the same application service. Signett activity
 describes the tool invocation; the application's normal data layer remains the source
 of truth.
 
 ## 2. Render the latest invocation in React
 
-Pass the same stable `signet` instance to `useSignetActivity`. Filter by `toolName` when
+Pass the same stable `signett` instance to `useSignettActivity`. Filter by `toolName` when
 the component represents one application action:
 
 ```tsx
-import type { SignetInterface } from "@signet/webmcp";
-import { useSignetActivity } from "@signet/webmcp/react";
+import type { SignettInterface } from "@signett/webmcp";
+import { useSignettActivity } from "@signett/webmcp/react";
 
 type Session = { userId: string };
 
 type OrderActivityProps = {
-  signet: SignetInterface<Session>;
+  signett: SignettInterface<Session>;
 };
 
-export function OrderActivity({ signet }: OrderActivityProps) {
-  const { latest } = useSignetActivity(signet, {
+export function OrderActivity({ signett }: OrderActivityProps) {
+  const { latest } = useSignettActivity(signett, {
     toolName: "place_order",
     maxInvocations: 5,
   });
@@ -94,9 +94,9 @@ export function OrderActivity({ signet }: OrderActivityProps) {
 }
 ```
 
-Keep the `signet`, `toolName`, and `maxInvocations` values stable for the component's
+Keep the `signett`, `toolName`, and `maxInvocations` values stable for the component's
 lifetime. The hook retains its activity store across React StrictMode remount checks and
-automatically unsubscribes from the Signet interface when the component unmounts.
+automatically unsubscribes from the Signett interface when the component unmounts.
 
 For a tool without `verify`, `phase: "succeeded"` means its handler returned, while
 `verified` remains `false`. Add `verify` when authoritative completion is a requirement
@@ -126,7 +126,7 @@ authoritative state after verified completion:
 ```tsx
 import { useEffect } from "react";
 
-const { latest } = useSignetActivity(signet, { toolName: "place_order" });
+const { latest } = useSignettActivity(signett, { toolName: "place_order" });
 const verifiedInvocation =
   latest?.phase === "succeeded" && latest.verified
     ? latest.invocationId
@@ -146,7 +146,7 @@ not returned.
 
 ## 4. Understand the state
 
-`useSignetActivity` returns a stable snapshot with `latest` and `invocations`.
+`useSignettActivity` returns a stable snapshot with `latest` and `invocations`.
 Invocations are ordered by when the feed first observes them, newest first, and are
 keyed by `invocationId`. `latest` is the most recently first-observed retained
 invocation—normally the most recently started call—not the invocation with the most
@@ -155,14 +155,14 @@ activity shown by a focused component.
 
 | Field                                  | Meaning                                                                                |
 | -------------------------------------- | -------------------------------------------------------------------------------------- |
-| `invocationId`                         | One Signet tool call. Use it as a React key or refresh boundary, not as authorization. |
+| `invocationId`                         | One Signett tool call. Use it as a React key or refresh boundary, not as authorization. |
 | `name`                                 | The exposed WebMCP tool name.                                                          |
 | `phase`                                | A small presentation phase derived from the detailed guard lifecycle.                  |
 | `verified`                             | `true` only after the tool's application-owned `verify` hook passes.                   |
 | `resolution`                           | `executed`, `replayed`, `recovered`, or `undefined` before an outcome is available.    |
 | `startedAt`, `updatedAt`, `durationMs` | Presentation timing for the observed invocation.                                       |
 
-The phases intentionally avoid exposing Signet's lower-level implementation stages:
+The phases intentionally avoid exposing Signett's lower-level implementation stages:
 
 | Phase                   | What the UI can safely say                                                                                    |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -196,7 +196,7 @@ if (latest.phase === "succeeded" && latest.verified) {
 run concurrently, render `invocations` and key each row by `invocationId`:
 
 ```tsx
-const { invocations } = useSignetActivity(signet, { maxInvocations: 20 });
+const { invocations } = useSignettActivity(signett, { maxInvocations: 20 });
 
 return (
   <ul>
@@ -219,9 +219,9 @@ Subscribe directly outside React. Read the initial snapshot, unsubscribe listene
 and dispose the feed with the application surface:
 
 ```ts
-import { createSignetActivity } from "@signet/webmcp";
+import { createSignettActivity } from "@signett/webmcp";
 
-const activity = createSignetActivity(signet, {
+const activity = createSignettActivity(signett, {
   toolName: "place_order",
   maxInvocations: 5,
 });
@@ -243,14 +243,14 @@ alter its result.
 ### Preserve activity before a component mounts
 
 The hook observes calls only while it is mounted. If a modal or status component may
-mount after the operation starts, create one long-lived feed beside the stable Signet
+mount after the operation starts, create one long-lived feed beside the stable Signett
 interface and render it with React's external-store hook:
 
 ```tsx
 import { useSyncExternalStore } from "react";
-import { createSignetActivity } from "@signet/webmcp";
+import { createSignettActivity } from "@signett/webmcp";
 
-export const orderActivity = createSignetActivity(signet, {
+export const orderActivity = createSignettActivity(signett, {
   toolName: "place_order",
   maxInvocations: 5,
 });
@@ -274,14 +274,14 @@ component subscribes; it is still browser-memory state and does not survive a re
 The normal WebMCP test harness drives the same lifecycle:
 
 ```ts
-import { createSignet, createSignetActivity } from "@signet/webmcp";
-import { createWebMcpTestHarness } from "@signet/webmcp/testing";
+import { createSignett, createSignettActivity } from "@signett/webmcp";
+import { createWebMcpTestHarness } from "@signett/webmcp/testing";
 
 const harness = createWebMcpTestHarness();
-const signet = createSignet({ modelContext: harness.modelContext });
-const activity = createSignetActivity(signet, { toolName: "place_order" });
+const signett = createSignett({ modelContext: harness.modelContext });
+const activity = createSignettActivity(signett, { toolName: "place_order" });
 
-await signet.expose(placeOrderTool);
+await signett.expose(placeOrderTool);
 await harness.invoke("place_order", { orderId: "order-123" });
 
 expect(activity.getSnapshot().latest).toMatchObject({
@@ -308,5 +308,5 @@ Use activity to coordinate presentation. Do not use it to:
 - expose tool arguments or results to UI code;
 - directly patch the DOM into a state the application has not returned.
 
-Signet tells the application what it observed about an invocation. The application
+Signett tells the application what it observed about an invocation. The application
 decides what to render and proves its own business state.

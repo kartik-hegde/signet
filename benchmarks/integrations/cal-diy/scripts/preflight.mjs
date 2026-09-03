@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
-import { application, databaseCompose, signet } from "./paths.mjs";
+import { application, databaseCompose, signett } from "./paths.mjs";
 
 const manifest = JSON.parse(
   await readFile(new URL("../manifest.json", import.meta.url), "utf8"),
@@ -15,7 +15,7 @@ function git(directory, args) {
 
 await Promise.all([
   access(application),
-  access(signet),
+  access(signett),
   access(databaseCompose),
 ]);
 const response = await fetch(manifest.health);
@@ -45,10 +45,10 @@ const report = {
         },
       ).status === 0,
   },
-  signet: {
-    head: git(signet, ["rev-parse", "HEAD"]),
-    expected: manifest.signet.revision,
-    workingTreeDirty: Boolean(git(signet, ["status", "--porcelain"])),
+  signett: {
+    head: git(signett, ["rev-parse", "HEAD"]),
+    expected: manifest.signett.revision,
+    workingTreeDirty: Boolean(git(signett, ["status", "--porcelain"])),
   },
   health: { url: manifest.health, status: response.status },
   runningServices: database.stdout.trim().split("\n").filter(Boolean),
@@ -59,8 +59,8 @@ if (
   !report.ok ||
   !report.application.baseIsAncestor ||
   report.application.head !== report.application.expectedIntegration ||
-  (report.signet.expected !== "workspace" &&
-    report.signet.head !== report.signet.expected)
+  (report.signett.expected !== "workspace" &&
+    report.signett.head !== report.signett.expected)
 ) {
   process.exitCode = 1;
 }

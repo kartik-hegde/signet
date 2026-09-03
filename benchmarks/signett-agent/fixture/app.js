@@ -1,4 +1,4 @@
-import { WebStorageOperationJournal, createSignet } from "/signet/index.js";
+import { WebStorageOperationJournal, createSignett } from "/signett/index.js";
 
 class MemoryIdempotencyStore {
   #completed = new Map();
@@ -29,13 +29,13 @@ class MemoryIdempotencyStore {
 
 installModelContextShim();
 
-window.__signetEvents = [];
+window.__signettEvents = [];
 const journal = new WebStorageOperationJournal(localStorage, "benchmark:");
 const idempotency = new MemoryIdempotencyStore();
-const signet = createSignet({
+const signett = createSignett({
   context: async ({ signal }) => await api("session", {}, signal),
   observe(event) {
-    window.__signetEvents.push({
+    window.__signettEvents.push({
       name: event.name,
       stage: event.stage,
       durationMs: event.durationMs,
@@ -246,10 +246,10 @@ const registrations = [
 
 await Promise.all(registrations);
 document.querySelector("#status").textContent =
-  `${signet.tools().length} tools registered through Signet.`;
+  `${signett.tools().length} tools registered through Signett.`;
 
 function expose(tool) {
-  return signet.expose(tool);
+  return signett.expose(tool);
 }
 
 async function api(action, input, signal) {

@@ -13,8 +13,8 @@ on:
         type: choice
         options: ["1", "5", "10", "30"]
         default: "5"
-      signet_ref:
-        description: Signet branch, tag, or commit
+      signett_ref:
+        description: Signett branch, tag, or commit
         type: string
         default: main
       publish:
@@ -27,12 +27,12 @@ permissions:
 
 jobs:
   benchmark:
-    runs-on: [self-hosted, signet-benchmark]
+    runs-on: [self-hosted, signett-benchmark]
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ inputs.signet_ref }}
+          ref: ${{ inputs.signett_ref }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24

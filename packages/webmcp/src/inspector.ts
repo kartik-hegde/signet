@@ -1,4 +1,4 @@
-import type { SignetInterface, SignetToolSnapshot } from "./interface.js";
+import type { SignettInterface, SignettToolSnapshot } from "./interface.js";
 import {
   TraceAssembler,
   type InvocationTrace,
@@ -14,21 +14,21 @@ export interface InspectorOptions {
   readonly userTiming?: boolean;
 }
 
-export interface SignetInspector {
+export interface SignettInspector {
   readonly element: HTMLElement;
   dispose(): void;
 }
 
 /** Mounts a local, metadata-only waterfall of tools, calls, phases, and errors. */
-export function mountSignetInspector<Context>(
-  signet: SignetInterface<Context>,
+export function mountSignettInspector<Context>(
+  signett: SignettInterface<Context>,
   options: InspectorOptions = {},
-): SignetInspector {
+): SignettInspector {
   if (typeof document === "undefined") {
-    throw new Error("The Signet Inspector requires a browser document.");
+    throw new Error("The Signett Inspector requires a browser document.");
   }
   const host = document.createElement("aside");
-  host.dataset.signetInspector = "";
+  host.dataset.signettInspector = "";
   const shadow = host.attachShadow({ mode: "open" });
   const assembler = new TraceAssembler({
     maxInvocations: options.maxInvocations ?? options.maxEvents ?? 50,
@@ -43,8 +43,8 @@ export function mountSignetInspector<Context>(
       ),
     );
     const scrollTop = host.scrollTop;
-    shadow.innerHTML = `<style>${styles}</style><main><header><span class="pulse"></span>Signet Inspector</header>${renderTools(
-      signet.tools(),
+    shadow.innerHTML = `<style>${styles}</style><main><header><span class="pulse"></span>Signett Inspector</header>${renderTools(
+      signett.tools(),
     )}<h2>Calls</h2>${renderCalls(assembler.snapshot())}</main>`;
     for (const details of Array.from(
       shadow.querySelectorAll<HTMLDetailsElement>("details[data-key]"),
@@ -54,7 +54,7 @@ export function mountSignetInspector<Context>(
     host.scrollTop = scrollTop;
   };
 
-  const stop = signet.observe((event) => {
+  const stop = signett.observe((event) => {
     assembler.observe(event);
     render();
   });
@@ -69,7 +69,7 @@ export function mountSignetInspector<Context>(
   };
 }
 
-function renderTools(tools: readonly SignetToolSnapshot[]): string {
+function renderTools(tools: readonly SignettToolSnapshot[]): string {
   if (tools.length === 0) return "<p class=empty>No exposed tools.</p>";
   return `<section class=tools>${tools
     .map(
@@ -122,7 +122,7 @@ function renderPhase(phase: TracePhase): string {
 }
 
 function shortPhase(name: string): string {
-  return name.startsWith("signet.") ? name.slice(7) : name;
+  return name.startsWith("signett.") ? name.slice(7) : name;
 }
 
 function formatDuration(durationMs: number): string {
@@ -135,7 +135,7 @@ function exposeUserTiming(trace: InvocationTrace): void {
   try {
     if (typeof performance === "undefined" || !performance.measure) return;
     const origin = performance.timeOrigin ?? Date.now() - performance.now();
-    performance.measure(`Signet: ${trace.name ?? "tool"} #${trace.sequence}`, {
+    performance.measure(`Signett: ${trace.name ?? "tool"} #${trace.sequence}`, {
       start: Math.max(0, trace.startedAt - origin),
       duration: trace.durationMs,
       detail: {

@@ -1,34 +1,34 @@
 From ac059eb615a5d850df746522cb23ffaf32d883aa Mon Sep 17 00:00:00 2001
 From: kartik-hegde <hegdekartik7@gmail.com>
 Date: Mon, 31 Aug 2026 16:51:33 -0400
-Subject: [PATCH] feat: add Signet-guarded Saleor checkout tools
+Subject: [PATCH] feat: add Signett-guarded Saleor checkout tools
 
 ---
- .env.signet.example                           |  10 +
+ .env.signett.example                           |  10 +
  AGENTS.md                                     |   4 +-
  next.config.js                                |  10 +
  package.json                                  |   1 +
  pnpm-lock.yaml                                |   3 +
  src/app/(checkout)/actions.ts                 |  92 +++++
  src/checkout/checkout-app.tsx                 |   2 +
- src/checkout/signet/checkout-model.ts         | 103 ++++++
- src/checkout/signet/checkout-tools.ts         | 342 ++++++++++++++++++
- .../signet/indexed-db-idempotency-store.ts    | 116 ++++++
- src/checkout/signet/signet-checkout-tools.tsx | 122 +++++++
- src/checkout/signet/signet-demo-panel.tsx     | 176 +++++++++
+ src/checkout/signett/checkout-model.ts         | 103 ++++++
+ src/checkout/signett/checkout-tools.ts         | 342 ++++++++++++++++++
+ .../signett/indexed-db-idempotency-store.ts    | 116 ++++++
+ src/checkout/signett/signett-checkout-tools.tsx | 122 +++++++
+ src/checkout/signett/signett-demo-panel.tsx     | 176 +++++++++
  12 files changed, 979 insertions(+), 2 deletions(-)
- create mode 100644 .env.signet.example
- create mode 100644 src/checkout/signet/checkout-model.ts
- create mode 100644 src/checkout/signet/checkout-tools.ts
- create mode 100644 src/checkout/signet/indexed-db-idempotency-store.ts
- create mode 100644 src/checkout/signet/signet-checkout-tools.tsx
- create mode 100644 src/checkout/signet/signet-demo-panel.tsx
+ create mode 100644 .env.signett.example
+ create mode 100644 src/checkout/signett/checkout-model.ts
+ create mode 100644 src/checkout/signett/checkout-tools.ts
+ create mode 100644 src/checkout/signett/indexed-db-idempotency-store.ts
+ create mode 100644 src/checkout/signett/signett-checkout-tools.tsx
+ create mode 100644 src/checkout/signett/signett-demo-panel.tsx
 
-diff --git a/.env.signet.example b/.env.signet.example
+diff --git a/.env.signett.example b/.env.signett.example
 new file mode 100644
 index 0000000..3ce7c81
 --- /dev/null
-+++ b/.env.signet.example
++++ b/.env.signett.example
 @@ -0,0 +1,10 @@
 +NEXT_PUBLIC_SALEOR_API_URL=http://localhost:8000/graphql/
 +NEXT_PUBLIC_STOREFRONT_URL=http://localhost:3000
@@ -39,7 +39,7 @@ index 0000000..3ce7c81
 +CONTENT_PROVIDER=code
 +ALLOW_DUMMY_PAYMENT=true
 +NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT=true
-+NEXT_PUBLIC_SIGNET_DEMO=true
++NEXT_PUBLIC_SIGNETT_DEMO=true
 diff --git a/AGENTS.md b/AGENTS.md
 index a567c4c..00955b1 100644
 --- a/AGENTS.md
@@ -79,12 +79,12 @@ index 3bdcf07..98f0004 100644
  	// See: https://nextjs.org/docs/app/getting-started/cache-components
  	cacheComponents: true,
  
-+	// The Signet demo consumes the locally built package from the adjacent repository.
++	// The Signett demo consumes the locally built package from the adjacent repository.
 +	// Turbopack otherwise treats the storefront directory as a hard filesystem boundary.
 +	turbopack: {
 +		root: path.resolve(projectDirectory, ".."),
 +	},
-+	transpilePackages: ["@signet/webmcp"],
++	transpilePackages: ["signett"],
 +
  	// Next.js 16.3 — prefetch one reusable loading shell per route (not per link).
  	// See: https://nextjs.org/blog/next-16-3-instant-navigations
@@ -97,7 +97,7 @@ index 05e91a1..5ad1f71 100644
  		"@radix-ui/react-popover": "1.1.15",
  		"@radix-ui/react-select": "2.2.6",
  		"@saleor/auth-sdk": "1.0.3",
-+		"@signet/webmcp": "link:../signet",
++		"signett": "link:../signett",
  		"@stripe/react-stripe-js": "6.6.0",
  		"@stripe/stripe-js": "9.8.0",
  		"@vercel/speed-insights": "1.3.1",
@@ -109,9 +109,9 @@ index 66093a4..491e52a 100644
        '@saleor/auth-sdk':
          specifier: 1.0.3
          version: 1.0.3(next@16.3.3(@babel/core@7.28.6)(@playwright/test@1.55.0)(@types/node@24.12.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(urql@4.0.6(graphql@16.8.1)(react@19.2.7))
-+      '@signet/webmcp':
-+        specifier: link:../signet
-+        version: link:../signet
++      'signett':
++        specifier: link:../signett
++        version: link:../signett
        '@stripe/react-stripe-js':
          specifier: 6.6.0
          version: 6.6.0(@stripe/stripe-js@9.8.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -138,7 +138,7 @@ index 3607f76..51728c7 100644
 + * adapter. The gateway is intentionally fixed and the server re-reads the
 + * total before accepting the test payment.
 + */
-+export async function executeSignetLegacyDummyPayment(
++export async function executeSignettLegacyDummyPayment(
 +	checkoutId: string,
 +	expectedAmount: number,
 +): Promise<CheckoutCompleteActionResult> {
@@ -164,7 +164,7 @@ index 3607f76..51728c7 100644
 +	};
 +
 +	const payment = await executeRawGraphQL<LegacyPaymentCreate>({
-+		query: `mutation SignetLegacyPayment($id: ID!, $amount: PositiveDecimal!) {
++		query: `mutation SignettLegacyPayment($id: ID!, $amount: PositiveDecimal!) {
 +			checkoutPaymentCreate(
 +				id: $id
 +				input: { amount: $amount, gateway: "mirumee.payments.dummy", token: "dummy" }
@@ -191,7 +191,7 @@ index 3607f76..51728c7 100644
 +	return runCheckoutComplete(checkoutId);
 +}
 +
-+export type SignetOrderProof = {
++export type SignettOrderProof = {
 +	orderId: string;
 +	number: string;
 +	email: string;
@@ -202,10 +202,10 @@ index 3607f76..51728c7 100644
 +};
 +
 +/**
-+ * Authoritative order read used by the Signet verification and recovery hooks.
++ * Authoritative order read used by the Signett verification and recovery hooks.
 + * The browser never treats a mutation response as proof that checkout completed.
 + */
-+export async function getSignetOrderProof(orderId: string): Promise<SignetOrderProof | null> {
++export async function getSignettOrderProof(orderId: string): Promise<SignettOrderProof | null> {
 +	const order = await fetchOrderOnServer(orderId);
 +	if (!order) {
 +		return null;
@@ -233,7 +233,7 @@ index 3cb6643..9d5d2df 100644
  import { StripeCheckoutCompletionHost } from "@/checkout/components/payment/stripe/stripe-checkout-completion-host";
  import { CheckoutLoadingFallback } from "@/checkout/views/saleor-checkout";
  import { CheckoutCrashFallback } from "@/checkout/views/page-not-found";
-+import { SignetCheckoutTools } from "@/checkout/signet/signet-checkout-tools";
++import { SignettCheckoutTools } from "@/checkout/signett/signett-checkout-tools";
  import "./index.css";
  
  // Composition root: payment modules and CheckoutDataProvider reach Saleor only
@@ -241,21 +241,21 @@ index 3cb6643..9d5d2df 100644
  							shippingCountries={shippingCountries}
  						>
  							<CheckoutContentProvider content={checkoutContent}>
-+								<SignetCheckoutTools />
++								<SignettCheckoutTools />
  								<CheckoutPaymentReturnErrorProvider>
  									<Suspense fallback={null}>
  										<StripeCheckoutCompletionHost />
-diff --git a/src/checkout/signet/checkout-model.ts b/src/checkout/signet/checkout-model.ts
+diff --git a/src/checkout/signett/checkout-model.ts b/src/checkout/signett/checkout-model.ts
 new file mode 100644
 index 0000000..37b6708
 --- /dev/null
-+++ b/src/checkout/signet/checkout-model.ts
++++ b/src/checkout/signett/checkout-model.ts
 @@ -0,0 +1,103 @@
 +import type { AddressInput, CountryCode } from "@/checkout/graphql/generated/operations";
 +import type { ServerCheckout } from "@/checkout/lib/checkout-types";
 +import { getCheckoutPayAmount, getCheckoutPayCurrency } from "@/checkout/lib/payment/checkout-pay-amount";
 +
-+export const LOST_RESPONSE_FAULT = "saleor-signet:fault:lost-response";
++export const LOST_RESPONSE_FAULT = "saleor-signett:fault:lost-response";
 +
 +export type CheckoutContext = {
 +	checkoutId: string | null;
@@ -354,23 +354,23 @@ index 0000000..37b6708
 +export function nearlyEqual(left: number, right: number): boolean {
 +	return Math.abs(left - right) < 0.005;
 +}
-diff --git a/src/checkout/signet/checkout-tools.ts b/src/checkout/signet/checkout-tools.ts
+diff --git a/src/checkout/signett/checkout-tools.ts b/src/checkout/signett/checkout-tools.ts
 new file mode 100644
 index 0000000..e31fe4b
 --- /dev/null
-+++ b/src/checkout/signet/checkout-tools.ts
++++ b/src/checkout/signett/checkout-tools.ts
 @@ -0,0 +1,342 @@
-+import type { IdempotencyStore, OperationJournal, SignetTool } from "@signet/webmcp";
++import type { IdempotencyStore, OperationJournal, SignettTool } from "signett";
 +
 +import {
 +	calculateDeliveryOptions,
-+	executeSignetLegacyDummyPayment,
-+	getSignetOrderProof,
++	executeSignettLegacyDummyPayment,
++	getSignettOrderProof,
 +	updateCheckoutBillingAddress,
 +	updateCheckoutDeliveryMethod,
 +	updateCheckoutEmail,
 +	updateCheckoutShippingAddress,
-+	type SignetOrderProof,
++	type SignettOrderProof,
 +} from "@/app/(checkout)/actions";
 +import type { CheckoutGatewayMessagesHook } from "@/checkout/hooks/use-checkout-gateway-messages";
 +import { executePayment, resolvePaymentProvider } from "@/checkout/lib/payment";
@@ -391,7 +391,7 @@ index 0000000..e31fe4b
 +	toAddressInput,
 +} from "./checkout-model";
 +
-+type OrderResult = SignetOrderProof & { status: "placed" };
++type OrderResult = SignettOrderProof & { status: "placed" };
 +type OrderCorrelation = { phase: "payment_started" } | { phase: "order_created"; orderId: string };
 +
 +type ToolDependencies = {
@@ -406,15 +406,15 @@ index 0000000..e31fe4b
 +};
 +
 +export type CheckoutToolSet = {
-+	inspect: SignetTool<Record<string, never>, CheckoutContext, CheckoutContext>;
-+	contact: SignetTool<ContactInput, CheckoutContext, CheckoutContext>;
-+	deliveryOptions: SignetTool<
++	inspect: SignettTool<Record<string, never>, CheckoutContext, CheckoutContext>;
++	contact: SignettTool<ContactInput, CheckoutContext, CheckoutContext>;
++	deliveryOptions: SignettTool<
 +		Record<string, never>,
 +		{ deliveries: Array<Record<string, unknown>> },
 +		CheckoutContext
 +	>;
-+	delivery: SignetTool<DeliveryInput, CheckoutContext, CheckoutContext>;
-+	placeOrder: SignetTool<PlaceOrderInput, OrderResult, CheckoutContext>;
++	delivery: SignettTool<DeliveryInput, CheckoutContext, CheckoutContext>;
++	placeOrder: SignettTool<PlaceOrderInput, OrderResult, CheckoutContext>;
 +};
 +
 +export function createCheckoutTools(dependencies: ToolDependencies): CheckoutToolSet {
@@ -626,7 +626,7 @@ index 0000000..e31fe4b
 +			await operation?.write<OrderCorrelation>({ phase: "payment_started" });
 +			const paymentResult =
 +				paymentProvider.type === "dummy" && paymentProvider.gateway.id === "mirumee.payments.dummy"
-+					? await executeSignetLegacyDummyPayment(fresh.id, amount)
++					? await executeSignettLegacyDummyPayment(fresh.id, amount)
 +					: await executePayment(paymentProvider, { checkoutId: fresh.id, amount }, gatewayMessages);
 +			if (!paymentResult.ok) {
 +				await operation?.remove();
@@ -643,7 +643,7 @@ index 0000000..e31fe4b
 +				throw new Error("Injected lost response after Saleor committed the order.");
 +			}
 +
-+			const proof = await getSignetOrderProof(paymentResult.orderId);
++			const proof = await getSignettOrderProof(paymentResult.orderId);
 +			if (!proof) throw new Error("The order response arrived but authoritative verification failed.");
 +			return { ...proof, status: "placed" };
 +		},
@@ -657,7 +657,7 @@ index 0000000..e31fe4b
 +					reason: "Payment started, but no Saleor order ID was recorded.",
 +				};
 +			}
-+			const proof = await getSignetOrderProof(correlation.orderId);
++			const proof = await getSignettOrderProof(correlation.orderId);
 +			return proof
 +				? { recovered: true, output: { ...proof, status: "placed" } }
 +				: {
@@ -667,7 +667,7 @@ index 0000000..e31fe4b
 +					};
 +		},
 +		verify: async ({ input, output, context }) => {
-+			const proof = await getSignetOrderProof(output.orderId);
++			const proof = await getSignettOrderProof(output.orderId);
 +			return (
 +				proof?.isPaid === true &&
 +				proof.email === context.email &&
@@ -702,15 +702,15 @@ index 0000000..e31fe4b
 +	setCheckout(fresh);
 +	return checkoutContext(fresh);
 +}
-diff --git a/src/checkout/signet/indexed-db-idempotency-store.ts b/src/checkout/signet/indexed-db-idempotency-store.ts
+diff --git a/src/checkout/signett/indexed-db-idempotency-store.ts b/src/checkout/signett/indexed-db-idempotency-store.ts
 new file mode 100644
 index 0000000..e93586a
 --- /dev/null
-+++ b/src/checkout/signet/indexed-db-idempotency-store.ts
++++ b/src/checkout/signett/indexed-db-idempotency-store.ts
 @@ -0,0 +1,116 @@
-+import type { ExecuteOptions, IdempotencyResult, IdempotencyStore } from "@signet/webmcp";
++import type { ExecuteOptions, IdempotencyResult, IdempotencyStore } from "signett";
 +
-+const DATABASE_NAME = "saleor-signet";
++const DATABASE_NAME = "saleor-signett";
 +const STORE_NAME = "completed-operations";
 +const DATABASE_VERSION = 1;
 +
@@ -729,7 +729,7 @@ index 0000000..e93586a
 +			}
 +		};
 +		request.onsuccess = () => resolve(request.result);
-+		request.onerror = () => reject(request.error ?? new Error("Unable to open the Signet operation store."));
++		request.onerror = () => reject(request.error ?? new Error("Unable to open the Signett operation store."));
 +	});
 +}
 +
@@ -741,7 +741,7 @@ index 0000000..e93586a
 +			request.onsuccess = () =>
 +				resolve((request.result as StoredOperation | undefined)?.value as Output | undefined);
 +			request.onerror = () =>
-+				reject(request.error ?? new Error("Unable to read the Signet operation store."));
++				reject(request.error ?? new Error("Unable to read the Signett operation store."));
 +		});
 +	} finally {
 +		database.close();
@@ -760,9 +760,9 @@ index 0000000..e93586a
 +			} satisfies StoredOperation);
 +			transaction.oncomplete = () => resolve();
 +			transaction.onerror = () =>
-+				reject(transaction.error ?? new Error("Unable to save the Signet operation."));
++				reject(transaction.error ?? new Error("Unable to save the Signett operation."));
 +			transaction.onabort = () =>
-+				reject(transaction.error ?? new Error("Saving the Signet operation was aborted."));
++				reject(transaction.error ?? new Error("Saving the Signett operation was aborted."));
 +		});
 +	} finally {
 +		database.close();
@@ -818,24 +818,24 @@ index 0000000..e93586a
 +		};
 +
 +		if (navigator.locks) {
-+			return navigator.locks.request(`signet:${key}`, { signal: options.signal }, execute);
++			return navigator.locks.request(`signett:${key}`, { signal: options.signal }, execute);
 +		}
 +
 +		return execute();
 +	}
 +}
-diff --git a/src/checkout/signet/signet-checkout-tools.tsx b/src/checkout/signet/signet-checkout-tools.tsx
+diff --git a/src/checkout/signett/signett-checkout-tools.tsx b/src/checkout/signett/signett-checkout-tools.tsx
 new file mode 100644
 index 0000000..f659a56
 --- /dev/null
-+++ b/src/checkout/signet/signet-checkout-tools.tsx
++++ b/src/checkout/signett/signett-checkout-tools.tsx
 @@ -0,0 +1,122 @@
 +"use client";
 +
 +import { useCallback, useEffect, useMemo, useState } from "react";
 +
-+import { createSignet, type GuardEvent, WebStorageOperationJournal } from "@signet/webmcp";
-+import { useSignetTool } from "@signet/webmcp/react";
++import { createSignett, type GuardEvent, WebStorageOperationJournal } from "signett";
++import { useSignettTool } from "signett/react";
 +
 +import { useCheckoutGatewayMessages } from "@/checkout/hooks/use-checkout-gateway-messages";
 +import { useCheckoutData } from "@/checkout/providers/checkout-data";
@@ -843,9 +843,9 @@ index 0000000..f659a56
 +import { CheckoutSnapshot, checkoutContext, LOST_RESPONSE_FAULT } from "./checkout-model";
 +import { createCheckoutTools } from "./checkout-tools";
 +import { IndexedDbIdempotencyStore } from "./indexed-db-idempotency-store";
-+import { type ApprovalRequest, SignetDemoPanel } from "./signet-demo-panel";
++import { type ApprovalRequest, SignettDemoPanel } from "./signett-demo-panel";
 +
-+export function SignetCheckoutTools() {
++export function SignettCheckoutTools() {
 +	const { checkout, refreshCheckout, setCheckout } = useCheckoutData();
 +	const gatewayMessages = useCheckoutGatewayMessages();
 +	const checkoutState = useMemo(() => new CheckoutSnapshot(), []);
@@ -865,7 +865,7 @@ index 0000000..f659a56
 +					setItem: (key, value) => sessionStorage.setItem(key, value),
 +					removeItem: (key) => sessionStorage.removeItem(key),
 +				},
-+				"saleor-signet:operation:",
++				"saleor-signett:operation:",
 +			),
 +		[],
 +	);
@@ -880,9 +880,9 @@ index 0000000..f659a56
 +		}
 +	}, []);
 +
-+	const signet = useMemo(
++	const signett = useMemo(
 +		() =>
-+			createSignet({
++			createSignett({
 +				context: readContext,
 +				observe,
 +				unsupported: "warn",
@@ -891,7 +891,7 @@ index 0000000..f659a56
 +	);
 +
 +	const requestApproval = useCallback((title: string, detail: string): Promise<boolean> => {
-+		if (process.env.NEXT_PUBLIC_SIGNET_AUTO_CONFIRM === "true") return Promise.resolve(true);
++		if (process.env.NEXT_PUBLIC_SIGNETT_AUTO_CONFIRM === "true") return Promise.resolve(true);
 +		return new Promise<boolean>((resolve) => setApproval({ title, detail, resolve }));
 +	}, []);
 +
@@ -919,11 +919,11 @@ index 0000000..f659a56
 +	);
 +
 +	const registrations = [
-+		useSignetTool(signet, tools.inspect, [tools.inspect]),
-+		useSignetTool(signet, tools.contact, [tools.contact]),
-+		useSignetTool(signet, tools.deliveryOptions, [tools.deliveryOptions]),
-+		useSignetTool(signet, tools.delivery, [tools.delivery]),
-+		useSignetTool(signet, tools.placeOrder, [tools.placeOrder]),
++		useSignettTool(signett, tools.inspect, [tools.inspect]),
++		useSignettTool(signett, tools.contact, [tools.contact]),
++		useSignettTool(signett, tools.deliveryOptions, [tools.deliveryOptions]),
++		useSignettTool(signett, tools.delivery, [tools.delivery]),
++		useSignettTool(signett, tools.placeOrder, [tools.placeOrder]),
 +	];
 +
 +	const decideApproval = useCallback((confirmed: boolean) => {
@@ -938,10 +938,10 @@ index 0000000..f659a56
 +		setFaultArmed(true);
 +	}, []);
 +
-+	if (process.env.NEXT_PUBLIC_SIGNET_DEMO !== "true") return null;
++	if (process.env.NEXT_PUBLIC_SIGNETT_DEMO !== "true") return null;
 +
 +	return (
-+		<SignetDemoPanel
++		<SignettDemoPanel
 +			approval={approval}
 +			events={events}
 +			faultArmed={faultArmed}
@@ -952,13 +952,13 @@ index 0000000..f659a56
 +		/>
 +	);
 +}
-diff --git a/src/checkout/signet/signet-demo-panel.tsx b/src/checkout/signet/signet-demo-panel.tsx
+diff --git a/src/checkout/signett/signett-demo-panel.tsx b/src/checkout/signett/signett-demo-panel.tsx
 new file mode 100644
 index 0000000..e6540a6
 --- /dev/null
-+++ b/src/checkout/signet/signet-demo-panel.tsx
++++ b/src/checkout/signett/signett-demo-panel.tsx
 @@ -0,0 +1,176 @@
-+import type { GuardEvent } from "@signet/webmcp";
++import type { GuardEvent } from "signett";
 +import { Bot, Check, CircleAlert, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
 +
 +import { cn } from "@/lib/utils";
@@ -969,7 +969,7 @@ index 0000000..e6540a6
 +	resolve(confirmed: boolean): void;
 +};
 +
-+type SignetDemoPanelProps = {
++type SignettDemoPanelProps = {
 +	approval: ApprovalRequest | null;
 +	events: GuardEvent[];
 +	faultArmed: boolean;
@@ -986,7 +986,7 @@ index 0000000..e6540a6
 +	return "text-muted-foreground";
 +}
 +
-+export function SignetDemoPanel({
++export function SignettDemoPanel({
 +	approval,
 +	events,
 +	faultArmed,
@@ -994,12 +994,12 @@ index 0000000..e6540a6
 +	registeredCount,
 +	onArmFault,
 +	onApproval,
-+}: SignetDemoPanelProps) {
++}: SignettDemoPanelProps) {
 +	return (
 +		<>
 +			<aside
 +				className="fixed bottom-4 right-4 z-50 w-[min(25rem,calc(100vw-2rem))] overflow-hidden rounded-card border border-border bg-card shadow-overlay"
-+				data-testid="signet-demo-panel"
++				data-testid="signett-demo-panel"
 +			>
 +				<div className="border-b border-border bg-foreground px-5 py-4 text-inverse">
 +					<div className="flex items-center justify-between gap-3">
@@ -1009,7 +1009,7 @@ index 0000000..e6540a6
 +							</span>
 +							<div>
 +								<p className="text-eyebrow text-inverse-muted">Live agent checkout</p>
-+								<h2 className="text-base font-semibold">Protected by Signet</h2>
++								<h2 className="text-base font-semibold">Protected by Signett</h2>
 +							</div>
 +						</div>
 +						<span className="rounded-full border border-inverse px-2.5 py-1 text-xs text-inverse-subtle">
@@ -1095,7 +1095,7 @@ index 0000000..e6540a6
 +			{approval ? (
 +				<div
 +					className="fixed inset-0 z-[60] grid place-items-center bg-foreground/55 p-4"
-+					data-testid="signet-approval"
++					data-testid="signett-approval"
 +				>
 +					<div className="w-full max-w-md rounded-card border border-border bg-card p-6 shadow-overlay">
 +						<div className="mb-5 flex items-start gap-3">
@@ -1129,7 +1129,7 @@ index 0000000..e6540a6
 +			) : null}
 +
 +			<div className="sr-only" aria-live="polite">
-+				<Sparkles className="size-4" aria-hidden /> {registeredCount} Signet tools registered
++				<Sparkles className="size-4" aria-hidden /> {registeredCount} Signett tools registered
 +			</div>
 +		</>
 +	);

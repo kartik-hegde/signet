@@ -1,17 +1,17 @@
-# Signet
+# Signett
 
-Signet makes website capabilities reliable and agent-ready through WebMCP. This repository keeps the product, its evaluation framework, representative applications, benchmarks, and published evidence together so every claim can be traced to executable code.
+Signett makes website capabilities reliable and agent-ready through WebMCP. This repository keeps the product, its evaluation framework, representative applications, benchmarks, and published evidence together so every claim can be traced to executable code.
 
 ## Repository map
 
-- `packages/webmcp` — the open-source `@signet/webmcp` SDK
-- `packages/eval` — reusable Cases, adapters, evidence schema, runner, change checks, and the `signet` CLI
+- `packages/webmcp` — the open-source `signett` SDK
+- `packages/eval` — reusable Cases, adapters, evidence schema, runner, change checks, and the `signett` CLI
 - `packages/chrome-agent` — a Chrome side-panel agent for inspecting and invoking the current page's WebMCP tools
 - `fixtures` — applications used for end-to-end validation; the Cypress Real World App intentionally keeps its own Yarn lockfile and is not an npm workspace
-- `benchmarks` — deterministic safety, headless Signet Agent, agent-effectiveness, build-vs-buy, and integration suites
+- `benchmarks` — deterministic safety, headless Signett Agent, agent-effectiveness, build-vs-buy, and integration suites
 - `evidence` — checked-in benchmark reports and their provenance
 - `tooling` — repository automation, report builders, and CI change classification
-- `docs` — Signet documentation
+- `docs` — Signett documentation
 
 ## Development
 
@@ -23,15 +23,15 @@ npm run validate:chrome-agent
 npm run bench:agent:smoke
 ```
 
-The `@signet/eval` package installs one terminal entry point:
+The `@signett/eval` package installs one terminal entry point:
 
 ```bash
-npx signet agent --help
-npx signet eval --help
-npx signet check --help
+npx signett agent --help
+npx signett eval --help
+npx signett check --help
 ```
 
-Evaluation reports are designed for iteration as well as publication. `signet check`
+Evaluation reports are designed for iteration as well as publication. `signett check`
 compares a candidate report with a reviewed baseline per Case and condition, writes a
 PR-ready Markdown diagnosis, and exits unsuccessfully on configured regressions.
 

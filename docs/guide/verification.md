@@ -4,7 +4,7 @@ A resolved mutation request is not always proof that the intended state exists. 
 may reject work later, an upstream response may be stale, or a partial failure may leave
 the caller uncertain.
 
-Signet can require an explicit postcondition before returning success.
+Signett can require an explicit postcondition before returning success.
 
 ## Verify the state you care about
 
@@ -35,15 +35,15 @@ the response shape.
 
 ## Verification also runs on replay
 
-A durable stored result can become stale. Signet therefore calls `verify()` after both
+A durable stored result can become stale. Signett therefore calls `verify()` after both
 new execution and replay and supplies `replayed` to the verifier.
 
-If verification returns `false` or `{ verified: false }`, Signet throws
+If verification returns `false` or `{ verified: false }`, Signett throws
 `VerificationError` with code `verification_failed`.
 
 ## Failure is evidence, not rollback
 
-Verification failure does not undo a completed side effect. It means Signet will not
+Verification failure does not undo a completed side effect. It means Signett will not
 report the result as verified success. The application should surface the uncertain
 state and choose an appropriate reconciliation path.
 
@@ -68,7 +68,7 @@ recover: async ({ input, context, signal }) => {
 },
 ```
 
-This is reconciliation, not retry. Signet calls the handler at most once. A recovered
+This is reconciliation, not retry. Signett calls the handler at most once. A recovered
 output still passes through `verify`, and an idempotency store retains it for later
 replays. Return `recovered: false` when authoritative state proves no success.
 
@@ -84,7 +84,7 @@ return {
 };
 ```
 
-Signet throws `OutcomeUnknownError` with code `outcome_unknown`. It is non-retryable:
+Signett throws `OutcomeUnknownError` with code `outcome_unknown`. It is non-retryable:
 the caller should reconcile using the same operation key rather than risk a second
 effect. A thrown recovery hook is treated the same way because recovery itself failed.
 

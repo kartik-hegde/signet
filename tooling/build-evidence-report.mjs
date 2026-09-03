@@ -33,16 +33,16 @@ const report = {
       authoritativeSuccesses: {
         ui: payment.ui_dom.authoritativeSuccesses,
         rawWebMcp: payment.hybrid_raw.authoritativeSuccesses,
-        signetWebMcp: payment.hybrid_signet.authoritativeSuccesses,
+        signettWebMcp: payment.hybrid_signett.authoritativeSuccesses,
       },
       webMcpCompletion: {
         raw: payment.hybrid_raw.webMcpCompletions,
-        signet: payment.hybrid_signet.webMcpCompletions,
+        signett: payment.hybrid_signett.webMcpCompletions,
       },
       median: {
         ui: metrics(payment.ui_dom),
         rawHybrid: metrics(payment.hybrid_raw),
-        signetHybrid: metrics(payment.hybrid_signet),
+        signettHybrid: metrics(payment.hybrid_signett),
       },
       selectedWebMcpPath: {
         runs: selectedPaymentRuns.length,
@@ -62,22 +62,22 @@ const report = {
       authoritativeSuccesses: {
         ui: lookup.ui_dom.authoritativeSuccesses,
         rawWebMcp: lookup.hybrid_raw.authoritativeSuccesses,
-        signetWebMcp: lookup.hybrid_signet.authoritativeSuccesses,
+        signettWebMcp: lookup.hybrid_signett.authoritativeSuccesses,
       },
       webMcpSelections: {
         raw: lookup.hybrid_raw.webMcpCompletions,
-        signet: lookup.hybrid_signet.webMcpCompletions,
+        signett: lookup.hybrid_signett.webMcpCompletions,
       },
       validWebMcpCallRate: {
         raw: lookup.hybrid_raw.validWebMcpCallRate,
-        signet: lookup.hybrid_signet.validWebMcpCallRate,
+        signett: lookup.hybrid_signett.validWebMcpCallRate,
       },
     },
     executionSafety: {
       raw: compactScore(build.conformance.raw),
-      signetShippedStore: compactScore(build.conformance.signetShippedStore),
-      signetDurableStore: compactScore(
-        build.conformance.signetWithDurableStore,
+      signettShippedStore: compactScore(build.conformance.signettShippedStore),
+      signettDurableStore: compactScore(
+        build.conformance.signettWithDurableStore,
       ),
       handrolledDurableStore: compactScore(build.conformance.handrolled),
     },
@@ -109,7 +109,7 @@ function source(result) {
   return {
     generatedAt: result.generatedAt,
     benchmarkCommit: result.provenance.benchmarkCommit,
-    signetCommit: result.provenance.signetCommit,
+    signettCommit: result.provenance.signettCommit,
     status: result.status,
   };
 }
@@ -149,7 +149,7 @@ function render(value) {
   } = value.findings;
   const test = value.findings.testAgent;
   const implementation = value.findings.implementation;
-  return `# Signet reference evidence report
+  return `# Signett reference evidence report
 
 Generated: ${value.generatedAt}
 
@@ -165,19 +165,19 @@ Generated: ${value.generatedAt}
 2. **Tool selection is now the largest observed agent-side failure.** On recipient
    lookup, UI-only succeeded ${readTask.authoritativeSuccesses.ui}/${readTask.trialsPerCondition};
    raw WebMCP succeeded ${readTask.authoritativeSuccesses.rawWebMcp}/${readTask.trialsPerCondition};
-   and Signet WebMCP succeeded ${readTask.authoritativeSuccesses.signetWebMcp}/${readTask.trialsPerCondition}.
+   and Signett WebMCP succeeded ${readTask.authoritativeSuccesses.signettWebMcp}/${readTask.trialsPerCondition}.
    Every invoked WebMCP call was valid. Successful runs exactly tracked selection of
    \`search_payment_users\`; failed agents generally stopped at a plausible internal ID
    visible on the landing page.
-3. **Signet adds reusable execution semantics, not a different agent protocol.** Raw
-   execution scored ${safety.raw.overall}/100 under injected faults. Signet with its
-   shipped process-local store scored ${safety.signetShippedStore.overall}/100, while
-   Signet with the benchmark's durable store scored ${safety.signetDurableStore.overall}/100.
+3. **Signett adds reusable execution semantics, not a different agent protocol.** Raw
+   execution scored ${safety.raw.overall}/100 under injected faults. Signett with its
+   shipped process-local store scored ${safety.signettShippedStore.overall}/100, while
+   Signett with the benchmark's durable store scored ${safety.signettDurableStore.overall}/100.
 4. **Equivalent controls can be hand-built, but the application owns more code.** The
-   first hand-rolled adapter matched the durable Signet arm at
+   first hand-rolled adapter matched the durable Signett arm at
    ${safety.handrolledDurableStore.overall}/100 and required
    ${implementation.handrolledBespokeSloc} bespoke SLOC versus
-   ${implementation.signetAdapterSloc} for the Signet adapter.
+   ${implementation.signettAdapterSloc} for the Signett adapter.
 5. **The Test Agent closes the local verification loop.** It ran \`${test.task}\`
    through WebMCP only, selected \`${test.toolSequence.join(" → ")}\`, passed the
    independent oracle, and captured \`${test.lifecycle.join(" → ")}\` in
@@ -189,10 +189,10 @@ Generated: ${value.generatedAt}
 |---|---|---:|---:|---:|---:|---:|
 ${taskRows(p1)}
 
-The raw and Signet conditions expose the same WebMCP schemas to the agent. Differences
-between their selection rates in this small sample are not evidence that Signet changes
+The raw and Signett conditions expose the same WebMCP schemas to the agent. Differences
+between their selection rates in this small sample are not evidence that Signett changes
 selection quality; their Wilson intervals overlap and the condition is invisible to the
-model. Signet should be credited only for execution controls, diagnostics, and measured
+model. Signett should be credited only for execution controls, diagnostics, and measured
 adapter burden relative to raw WebMCP.
 
 ## Execution and implementation baseline
@@ -201,10 +201,10 @@ adapter burden relative to raw WebMCP.
 |---|---:|---:|---:|---:|---:|
 | Raw WebMCP | ${safety.raw.overall} | ${safety.raw.correctness} | ${safety.raw.honesty} | — | ${safety.raw.medianInvocationMs} |
 | Hand-rolled + durable store | ${safety.handrolledDurableStore.overall} | ${safety.handrolledDurableStore.correctness} | ${safety.handrolledDurableStore.honesty} | ${implementation.handrolledBespokeSloc} | ${safety.handrolledDurableStore.medianInvocationMs} |
-| Signet + shipped memory store | ${safety.signetShippedStore.overall} | ${safety.signetShippedStore.correctness} | ${safety.signetShippedStore.honesty} | ${implementation.signetAdapterSloc} | ${safety.signetShippedStore.medianInvocationMs} |
-| Signet + durable store | ${safety.signetDurableStore.overall} | ${safety.signetDurableStore.correctness} | ${safety.signetDurableStore.honesty} | ${implementation.signetAdapterSloc} | ${safety.signetDurableStore.medianInvocationMs} |
+| Signett + shipped memory store | ${safety.signettShippedStore.overall} | ${safety.signettShippedStore.correctness} | ${safety.signettShippedStore.honesty} | ${implementation.signettAdapterSloc} | ${safety.signettShippedStore.medianInvocationMs} |
+| Signett + durable store | ${safety.signettDurableStore.overall} | ${safety.signettDurableStore.correctness} | ${safety.signettDurableStore.honesty} | ${implementation.signettAdapterSloc} | ${safety.signettDurableStore.medianInvocationMs} |
 
-The durable store is supplied by the benchmark, not Signet. The SLOC comparison is a
+The durable store is supplied by the benchmark, not Signett. The SLOC comparison is a
 directional single-implementation result; it does not replace an independent timed
 developer study.
 
@@ -215,7 +215,7 @@ developer study.
 - The hybrid conditions permit UI fallback. Conditional WebMCP-path metrics diagnose
   the mechanism but are not randomized subgroups.
 - Token counts come from subscription-authenticated Codex, so dollar cost is omitted.
-- The runner records local task inputs and outputs explicitly. Production Signet
+- The runner records local task inputs and outputs explicitly. Production Signett
   observation remains metadata-only and cannot measure prompts where no tool was
   selected without an agent-side signal.
 
@@ -232,7 +232,7 @@ function taskRows(result) {
   const labels = {
     ui_dom: "UI only",
     hybrid_raw: "UI + raw WebMCP",
-    hybrid_signet: "UI + Signet WebMCP",
+    hybrid_signett: "UI + Signett WebMCP",
   };
   return Object.entries(result.taskResults)
     .flatMap(([task, taskResult]) =>

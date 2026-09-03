@@ -51,8 +51,8 @@ test("Chrome agent changes select the deterministic agent lane", () => {
   assert.equal(result.reference, false);
 });
 
-test("Signet Agent benchmark changes select the deterministic agent lane", () => {
-  const result = classifyFiles(["benchmarks/signet-agent/tasks.mjs"]);
+test("Signett Agent benchmark changes select the deterministic agent lane", () => {
+  const result = classifyFiles(["benchmarks/signett-agent/tasks.mjs"]);
   assert.equal(result.eval, true);
   assert.equal(result.sdk, false);
   assert.equal(result.reference, false);

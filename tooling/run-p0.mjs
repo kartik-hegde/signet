@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const appDir = resolve(root, "fixtures/cypress-realworld-app");
 const safetyDir = resolve(root, "benchmarks/execution-safety");
-const signetDir = resolve(root, process.env.SIGNET_DIR ?? "packages/webmcp");
+const signettDir = resolve(root, process.env.SIGNETT_DIR ?? "packages/webmcp");
 const appResultPath = resolve(
   appDir,
   "cypress/results/reference-comparison.json",
@@ -67,12 +67,12 @@ const safetyResult = safetyPath
         resolve(safetyDir, "run.js"),
         "--json",
         "--no-history",
-        `--signet=${signetDir}`,
+        `--signett=${signettDir}`,
       ]).stdout,
     );
 
 const modes = Object.fromEntries(appResult.runs.map((run) => [run.mode, run]));
-for (const required of ["ui", "webmcp_raw", "webmcp_signet"]) {
+for (const required of ["ui", "webmcp_raw", "webmcp_signett"]) {
   if (!modes[required])
     throw new Error(`P0 app result is missing mode ${required}`);
 }
@@ -95,25 +95,25 @@ const scorecard = {
   note: "Deterministic application drivers establish parity and directional overhead. They are not an LLM-agent speed claim.",
   provenance: {
     benchmarkCommit: gitRevision(root),
-    signetCommit: gitRevision(signetDir),
+    signettCommit: gitRevision(signettDir),
     application: "Cypress Real World App payment fixture",
   },
   effectiveness: {
     task: "send-payment",
-    authoritativeSuccess: { ui: true, webmcpRaw: true, webmcpSignet: true },
+    authoritativeSuccess: { ui: true, webmcpRaw: true, webmcpSignett: true },
     runs: modes,
     comparisons: {
       rawWebMcpVsUi: compare(modes.ui, modes.webmcp_raw),
-      signetWebMcpVsUi: compare(modes.ui, modes.webmcp_signet),
-      signetVsRawWebMcp: {
+      signettWebMcpVsUi: compare(modes.ui, modes.webmcp_signett),
+      signettVsRawWebMcp: {
         durationRatio: round(
-          modes.webmcp_signet.durationMs / modes.webmcp_raw.durationMs,
+          modes.webmcp_signett.durationMs / modes.webmcp_raw.durationMs,
         ),
         addedDurationMs: round(
-          modes.webmcp_signet.durationMs - modes.webmcp_raw.durationMs,
+          modes.webmcp_signett.durationMs - modes.webmcp_raw.durationMs,
         ),
         additionalHttpRequests:
-          modes.webmcp_signet.httpRequests - modes.webmcp_raw.httpRequests,
+          modes.webmcp_signett.httpRequests - modes.webmcp_raw.httpRequests,
       },
     },
   },
@@ -186,15 +186,15 @@ function renderConsole(result) {
     `  UI                 ${runs.ui.durationMs} ms   ${runs.ui.interactionCount} interactions\n` +
     `  Raw WebMCP         ${runs.webmcp_raw.durationMs} ms   ${runs.webmcp_raw.interactionCount} calls   ` +
     `${comparisons.rawWebMcpVsUi.durationSpeedup}x vs UI\n` +
-    `  Signet WebMCP      ${runs.webmcp_signet.durationMs} ms   ${runs.webmcp_signet.interactionCount} calls   ` +
-    `${comparisons.signetWebMcpVsUi.durationSpeedup}x vs UI\n` +
-    `  Signet overhead    ${comparisons.signetVsRawWebMcp.addedDurationMs} ms   ` +
-    `${comparisons.signetVsRawWebMcp.additionalHttpRequests} additional HTTP requests\n\n` +
+    `  Signett WebMCP      ${runs.webmcp_signett.durationMs} ms   ${runs.webmcp_signett.interactionCount} calls   ` +
+    `${comparisons.signettWebMcpVsUi.durationSpeedup}x vs UI\n` +
+    `  Signett overhead    ${comparisons.signettVsRawWebMcp.addedDurationMs} ms   ` +
+    `${comparisons.signettVsRawWebMcp.additionalHttpRequests} additional HTTP requests\n\n` +
     `Execution safety: ${scenarioCount} deterministic scenarios\n` +
     `  Raw WebMCP         ${safety.A1_raw.overall}/100   ${safety.A1_raw.scenariosPassed}/${scenarioCount} passed\n` +
-    `  Signet shipped     ${safety.A3a_signet_memory.overall}/100   ${safety.A3a_signet_memory.scenariosPassed}/${scenarioCount} passed\n` +
-    `  Signet + durable*  ${safety.A3b_signet_durable.overall}/100   ${safety.A3b_signet_durable.scenariosPassed}/${scenarioCount} passed\n\n` +
-    `* Durable store is supplied by the benchmark harness, not shipped by Signet.\n` +
+    `  Signett shipped     ${safety.A3a_signett_memory.overall}/100   ${safety.A3a_signett_memory.scenariosPassed}/${scenarioCount} passed\n` +
+    `  Signett + durable*  ${safety.A3b_signett_durable.overall}/100   ${safety.A3b_signett_durable.scenariosPassed}/${scenarioCount} passed\n\n` +
+    `* Durable store is supplied by the benchmark harness, not shipped by Signett.\n` +
     `Directional driver result only; real-agent repeated trials are the next phase.\n` +
     `Wrote ${resultLabel}/latest.json and ${resultLabel}/latest.md\n`
   );
@@ -218,13 +218,13 @@ function renderMarkdown(result) {
     `|---|---:|---:|---:|---:|\n` +
     `| UI | ${runs.ui.durationMs} | ${runs.ui.interactionCount} | ${runs.ui.httpRequests} | ${runs.ui.mutationRequests} |\n` +
     `| Raw WebMCP | ${runs.webmcp_raw.durationMs} | ${runs.webmcp_raw.interactionCount} | ${runs.webmcp_raw.httpRequests} | ${runs.webmcp_raw.mutationRequests} |\n` +
-    `| Signet WebMCP | ${runs.webmcp_signet.durationMs} | ${runs.webmcp_signet.interactionCount} | ${runs.webmcp_signet.httpRequests} | ${runs.webmcp_signet.mutationRequests} |\n\n` +
+    `| Signett WebMCP | ${runs.webmcp_signett.durationMs} | ${runs.webmcp_signett.interactionCount} | ${runs.webmcp_signett.httpRequests} | ${runs.webmcp_signett.mutationRequests} |\n\n` +
     `- Raw WebMCP was **${comparisons.rawWebMcpVsUi.durationSpeedup}x** the UI driver's speed with **${comparisons.rawWebMcpVsUi.interactionReductionPercent}%** fewer interactions.\n` +
-    `- Signet WebMCP was **${comparisons.signetWebMcpVsUi.durationSpeedup}x** the UI driver's speed with **${comparisons.signetWebMcpVsUi.interactionReductionPercent}%** fewer interactions.\n` +
-    `- Signet added **${comparisons.signetVsRawWebMcp.addedDurationMs} ms** and **${comparisons.signetVsRawWebMcp.additionalHttpRequests} HTTP requests** versus raw WebMCP.\n\n` +
+    `- Signett WebMCP was **${comparisons.signettWebMcpVsUi.durationSpeedup}x** the UI driver's speed with **${comparisons.signettWebMcpVsUi.interactionReductionPercent}%** fewer interactions.\n` +
+    `- Signett added **${comparisons.signettVsRawWebMcp.addedDurationMs} ms** and **${comparisons.signettVsRawWebMcp.additionalHttpRequests} HTTP requests** versus raw WebMCP.\n\n` +
     `## Execution safety\n\n` +
     `| Arm | Overall | Correctness | Honesty | Scenarios passed |\n` +
     `|---|---:|---:|---:|---:|\n${safetyRows}\n\n` +
-    `The durable arm uses a conservative store supplied by the benchmark harness, not a store shipped by Signet.\n`
+    `The durable arm uses a conservative store supplied by the benchmark harness, not a store shipped by Signett.\n`
   );
 }

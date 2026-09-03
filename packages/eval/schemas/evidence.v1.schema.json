@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://signet.dev/schemas/evidence/v1.json",
-  "title": "Signet Trial Evidence",
+  "$id": "https://signett.dev/schemas/evidence/v1.json",
+  "title": "Signett Trial Evidence",
   "description": "Portable evidence from one independently graded agent-interface trial.",
   "type": "object",
   "required": [
@@ -92,7 +92,7 @@
       "required": ["application", "browser", "agent", "oracle"],
       "properties": {
         "benchmarkRevision": { "type": "string" },
-        "signetRevision": { "type": "string" },
+        "signettRevision": { "type": "string" },
         "application": { "$ref": "#/$defs/component" },
         "browser": { "$ref": "#/$defs/component" },
         "agent": { "$ref": "#/$defs/component" },

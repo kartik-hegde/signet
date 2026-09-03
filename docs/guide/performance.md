@@ -1,6 +1,6 @@
 # Performance
 
-Signet's performance strategy is structural: do less work, avoid global coordination,
+Signett's performance strategy is structural: do less work, avoid global coordination,
 and keep optional behavior out of the hot path.
 
 ## What the core guarantees
@@ -56,7 +56,7 @@ transaction or lock that defeats per-key concurrency.
 
 ## Measure in the application
 
-Signet does not publish context-free microbenchmark claims. Network and persistence
+Signett does not publish context-free microbenchmark claims. Network and persistence
 usually dominate these handlers, while policy and verifier cost are application-defined.
 
 Measure stage durations through the observer, compare guarded and direct handlers under

@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { defineEvaluation } from "../../../packages/eval/index.mjs";
-import { createSignetAgentAdapter } from "./agent.mjs";
+import { createSignettAgentAdapter } from "./agent.mjs";
 import { createPaymentApplicationAdapter } from "./application.mjs";
 import { createPaymentBrowserAdapter } from "./browser.mjs";
 import { paymentSuite } from "./cases.mjs";
@@ -18,33 +18,33 @@ export default defineEvaluation({
     {
       id: "ui-dom",
       description: "DOM-only browser controls.",
-      parameters: { surface: "ui", runtime: "signet", metadata: "baseline" },
+      parameters: { surface: "ui", runtime: "signett", metadata: "baseline" },
     },
     {
       id: "raw-webmcp",
-      description: "WebMCP handlers without Signet guards.",
+      description: "WebMCP handlers without Signett guards.",
       parameters: { surface: "hybrid", runtime: "raw", metadata: "baseline" },
     },
     {
-      id: "signet-baseline",
-      description: "Signet guards with concise tool metadata.",
-      parameters: { surface: "hybrid", runtime: "signet", metadata: "baseline" },
+      id: "signett-baseline",
+      description: "Signett guards with concise tool metadata.",
+      parameters: { surface: "hybrid", runtime: "signett", metadata: "baseline" },
     },
     {
-      id: "signet-explicit",
-      description: "Signet plus explicit use-when metadata.",
-      parameters: { surface: "hybrid", runtime: "signet", metadata: "explicit" },
+      id: "signett-explicit",
+      description: "Signett plus explicit use-when metadata.",
+      parameters: { surface: "hybrid", runtime: "signett", metadata: "explicit" },
     },
     {
-      id: "signet-guided",
-      description: "Signet plus workflow and argument guidance.",
-      parameters: { surface: "hybrid", runtime: "signet", metadata: "guided" },
+      id: "signett-guided",
+      description: "Signett plus workflow and argument guidance.",
+      parameters: { surface: "hybrid", runtime: "signett", metadata: "guided" },
     },
   ],
   adapters: {
     application,
     browser: createPaymentBrowserAdapter(),
-    agent: createSignetAgentAdapter({ root }),
+    agent: createSignettAgentAdapter({ root }),
     oracle: createPaymentOracleAdapter(application),
     faults: [lostPaymentResponse],
   },

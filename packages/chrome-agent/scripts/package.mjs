@@ -7,7 +7,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(
   await readFile(join(root, "manifest.json"), "utf8"),
 );
-const archive = join(root, `signet-agent-chrome-v${manifest.version}.zip`);
+const archive = join(root, `signett-agent-chrome-v${manifest.version}.zip`);
 
 await rm(archive, { force: true });
 try {
@@ -24,4 +24,4 @@ try {
   throw error;
 }
 
-console.log(`Packaged Signet Agent at ${archive}`);
+console.log(`Packaged Signett Agent at ${archive}`);

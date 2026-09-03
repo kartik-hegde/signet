@@ -4,7 +4,7 @@ Use this before shipping an authenticated or state-changing WebMCP tool.
 
 ## Native integration
 
-- [ ] Expose through `createSignet().expose()`, which registers with native
+- [ ] Expose through `createSignett().expose()`, which registers with native
       `document.modelContext.registerTool()`.
 - [ ] Use the official `webmcp-types` declarations when application code accesses the
       native API directly.

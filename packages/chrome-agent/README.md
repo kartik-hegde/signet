@@ -1,6 +1,6 @@
-# Signet Agent for Chrome
+# Signett Agent for Chrome
 
-Signet Agent is a focused Chrome side-panel agent for WebMCP development. It shows the
+Signett Agent is a focused Chrome side-panel agent for WebMCP development. It shows the
 tools exposed by the current page, accepts a natural-language prompt, lets a configured
 model choose and call those tools, and renders the complete call/result sequence.
 
@@ -19,9 +19,9 @@ Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and
 packages/chrome-agent/dist
 ```
 
-Pin Signet Agent and click its toolbar button to open the side panel. The first time,
+Pin Signett Agent and click its toolbar button to open the side panel. The first time,
 choose **Allow website access** beside **Tools available** and approve Chrome's prompt.
-This single optional grant lets Signet discover tools as you navigate between normal
+This single optional grant lets Signett discover tools as you navigate between normal
 HTTP and HTTPS pages; it does not cover Chrome's internal pages.
 
 Tool discovery refreshes automatically as a page finishes loading. Use the refresh
@@ -32,10 +32,10 @@ button beside **Tools available** for tools registered later.
 Start the included page and deterministic Chat Completions-compatible demo provider:
 
 ```sh
-npm run demo --workspace=@signet/chrome-agent
+npm run demo --workspace=@signett/chrome-agent
 ```
 
-Open `http://127.0.0.1:4174`, click the Signet Agent toolbar button, open
+Open `http://127.0.0.1:4174`, click the Signett Agent toolbar button, open
 **Settings**, choose **Local demo**, and save. No API key is required.
 
 Ask: `Add two notebooks to my cart and tell me the total.`
@@ -71,7 +71,7 @@ Build the Chrome Web Store-ready archive:
 npm run package:chrome-agent
 ```
 
-This writes `packages/chrome-agent/signet-agent-chrome-v0.1.0.zip`, with
+This writes `packages/chrome-agent/signett-agent-chrome-v0.1.0.zip`, with
 `manifest.json` at the archive root.
 
 For a challenge demo, distribute the ZIP with a GitHub release and tell testers to unzip

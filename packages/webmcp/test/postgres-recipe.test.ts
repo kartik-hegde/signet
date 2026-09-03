@@ -20,7 +20,7 @@ function poolWithMemoryRow() {
       if (sql.startsWith("insert into")) {
         row = { state: "in_flight", value: null };
       }
-      if (sql.startsWith("update signet_operations")) {
+      if (sql.startsWith("update signett_operations")) {
         row = {
           state: "completed",
           value: JSON.parse(values?.[1] as string) as unknown,

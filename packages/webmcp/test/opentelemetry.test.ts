@@ -47,12 +47,12 @@ describe("openTelemetryObserver", () => {
         "gen_ai.tool.name": "cancel-order",
         "gen_ai.tool.type": "function",
         "service.name": "storefront",
-        "signet.invocation.id": "invocation-1",
-        "signet.operation.name": "cancel-order",
+        "signett.invocation.id": "invocation-1",
+        "signett.operation.name": "cancel-order",
       },
     });
-    expect(span.addEvent).toHaveBeenNthCalledWith(1, "signet.authorized", {
-      "signet.duration_ms": 12,
+    expect(span.addEvent).toHaveBeenNthCalledWith(1, "signett.authorized", {
+      "signett.duration_ms": 12,
     });
     expect(span.setStatus).toHaveBeenCalledWith({
       code: SpanStatusCode.UNSET,
@@ -111,7 +111,7 @@ describe("openTelemetryObserver", () => {
       "agent action invocation-1",
       expect.objectContaining({
         attributes: expect.objectContaining({
-          "signet.invocation.id": "invocation-1",
+          "signett.invocation.id": "invocation-1",
         }),
       }),
     );

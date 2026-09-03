@@ -54,14 +54,14 @@ type GuardEventSummary = {
 };
 
 type InstrumentedWindow = Window & {
-  __signetGuardEvents?: GuardEventSummary[];
-  __webMcpBenchmarkMode?: "raw" | "signet";
+  __signettGuardEvents?: GuardEventSummary[];
+  __webMcpBenchmarkMode?: "raw" | "signett";
 };
 
 type MetadataVariant = "baseline" | "explicit" | "guided";
 
 const metadataVariant = (): MetadataVariant => {
-  const value = window.localStorage.getItem("signet:eval:metadata");
+  const value = window.localStorage.getItem("signett:eval:metadata");
   return value === "explicit" || value === "guided" ? value : "baseline";
 };
 
@@ -161,10 +161,10 @@ const recordGuardEvent = (event: GuardEvent) => {
     stage: event.stage,
     invocationId: event.invocationId,
   };
-  window.dispatchEvent(new CustomEvent("signet:event", { detail: summary }));
+  window.dispatchEvent(new CustomEvent("signett:event", { detail: summary }));
   const target = window as InstrumentedWindow;
-  target.__signetGuardEvents ??= [];
-  target.__signetGuardEvents.push(summary);
+  target.__signettGuardEvents ??= [];
+  target.__signettGuardEvents.push(summary);
 };
 
 export function registerPaymentTools(onPaymentCreated: (transactionId: string) => void) {

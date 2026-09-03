@@ -1,19 +1,19 @@
-# Integrating Signet with a coding agent
+# Integrating Signett with a coding agent
 
-This file is the complete integration contract for `@signet/webmcp`. Read it instead
+This file is the complete integration contract for `signett`. Read it instead
 of inspecting `dist/` or library internals.
 
 ## Expose a tool
 
 ```ts
-import { createSignet } from "@signet/webmcp";
+import { createSignett } from "signett";
 
-const signet = createSignet({
+const signett = createSignett({
   context: ({ signal }) => getSession({ signal }),
   observe: recordLifecycleEvent,
 });
 
-const registration = await signet.expose({
+const registration = await signett.expose({
   name: "cancel_order",
   description: "Cancel one unshipped order for the signed-in account.",
   inputSchema: {
@@ -81,7 +81,7 @@ hooks only when the workflow needs them.
 
 ## Public contract
 
-- `createSignet({ modelContext?, context?, observe?, unsupported? })` creates an
+- `createSignett({ modelContext?, context?, observe?, unsupported? })` creates an
   interface. `context` receives `{ signal }` once per invocation.
 - `expose(tool)` validates and compiles the definition, then calls native
   `modelContext.registerTool`. It returns a synchronous, idempotent registration with
@@ -94,7 +94,7 @@ hooks only when the workflow needs them.
   always-confirmation, idempotency lookup, optional effect-only confirmation and
   execute, optional authoritative recovery, output limit, verification, result.
 - Cancellation is honored through execution. Once the handler returns successfully,
-  Signet finishes verification and returns the real outcome; late cancellation emits
+  Signett finishes verification and returns the real outcome; late cancellation emits
   `completed_after_abort` instead of converting success into `AbortError`.
 - `authorize({ input, context, signal })` returns a boolean or
   `{ allowed, reason? }`. Denial occurs before the handler and before every
@@ -104,36 +104,36 @@ hooks only when the workflow needs them.
   denied before its stored result is returned.
 - `idempotency.store` uses phased `begin`, `complete`, `release`, and `abandon`
   methods. `begin` atomically claims fresh work, waits for a live equal-key owner, or
-  reports durable abandoned work. Signet executes only `fresh`, recovers `in_flight`,
+  reports durable abandoned work. Signett executes only `fresh`, recovers `in_flight`,
   and replays `completed`. `release` is reserved for a journal-proven pre-effect
   failure; `abandon` keeps an ambiguous claim recoverable. Include principal,
   operation ID, and every intent-changing argument in the key. Use the conservative
-  browser adapter from `@signet/webmcp/stores` or the PostgreSQL recipe, and verify
+  browser adapter from `signett/stores` or the PostgreSQL recipe, and verify
   adapters with `checkIdempotencyStore()`.
 - A function-valued `confirm` obtains consent on every invocation before idempotency,
   preserving the original behavior. Use
   `confirm: { mode: "effect-only", request }` to prompt only inside a new store
-  operation; replay then returns without a second prompt. Signet does not render UI.
+  operation; replay then returns without a second prompt. Signett does not render UI.
 - `journal: { store, key? }` gives execute, recover, and verify an `operation` handle
   with `key`, `read()`, `write()`, and `remove()`. Without `key`, it reuses the
   idempotency key. Journal methods use a finalization signal because correlation writes
   commonly follow an irreversible effect. The application still owns durable storage.
 - `execute(input, { context, operation?, signal })` runs at most once per store
-  operation. Signet never retries it automatically.
+  operation. Signett never retries it automatically.
 - `ToolError({ code, message, retry?, retryable?, repair? })` represents an expected business
   failure. A repair may be one action or
   `{ steps: [...], preserve?: [inputField, ...], update?: [inputField, ...] }`.
-  Signet derives `error.retry` as `never`, `as_is`, or `after_repair` and appends a
+  Signett derives `error.retry` as `never`, `as_is`, or `after_repair` and appends a
   bounded fallback to the cross-boundary message. `retryable` is the legacy boolean.
   Ordered plans explicitly forbid parallel execution. It is information for the
-  caller; Signet never performs the repair or retry. Author instructions from trusted
+  caller; Signett never performs the repair or retry. Author instructions from trusted
   application constants only.
 - `recover({ input, context, error, operation?, signal })` runs after the handler throws or
   when an abandoned in-flight claim is encountered. It
   may return `{ recovered: true, output }` only after authoritative proof; otherwise
   return `{ recovered: false }` for an ordinary failure. Return
   `{ recovered: false, outcome: "unknown", reason? }` when an effect may exist but
-  neither success nor non-execution can be proven; Signet throws `OutcomeUnknownError`
+  neither success nor non-execution can be proven; Signett throws `OutcomeUnknownError`
   and emits `outcome_unknown`. A thrown recovery read is also outcome-unknown. Recovery
   never conceals idempotency-store failures.
 - `verify({ input, output, context, replayed, recovered, operation?, signal })` runs after execute,
@@ -148,13 +148,13 @@ hooks only when the workflow needs them.
   `recovered`, `outcome_unknown`, `output_validated`, `output_oversized`, `output_unmeasurable`,
   `completed_after_abort`, `verified`, `succeeded`, and `failed`. Observer failure never
   changes application behavior.
-- `createSignetActivity(signet, { toolName?, maxInvocations? })` projects invocation
+- `createSignettActivity(signett, { toolName?, maxInvocations? })` projects invocation
   events into metadata-only `running`, `awaiting_confirmation`, `verifying`,
   `succeeded`, `declined`, `failed`, or `unknown` UI state. `verified` is true only after an
   application-owned verification hook passes. This feed is best-effort presentation
   state: never authorize from it or treat it as application state. Refresh the
   authoritative application state after completion. The React entry point exports
-  `useSignetActivity`; neither API renders or mutates the DOM.
+  `useSignettActivity`; neither API renders or mutates the DOM.
 - `tools()` returns current metadata-only inventory; `observe(listener)` adds a
   removable development observer. The React binding lives at `/react`; the optional
   overlay lives at `/inspector`.
@@ -164,20 +164,20 @@ hooks only when the workflow needs them.
 The application still owns identity, permissions, business logic, backend
 enforcement, durable idempotency, and authoritative state.
 
-Return the registration from `await signet.expose(...)` directly. Do not wrap its
+Return the registration from `await signett.expose(...)` directly. Do not wrap its
 `dispose()`, create another registration signal, manually emit lifecycle events,
 contain observer failures, validate input again, or verify inside `execute`. Do not
 inspect package internals unless a compiler or test result contradicts this contract.
 
 ## Verify without a model
 
-Use `createWebMcpTestHarness()` from `@signet/webmcp/testing`, inject its
+Use `createWebMcpTestHarness()` from `signett/testing`, inject its
 `modelContext`, and invoke the registered tool with `harness.invoke(name, input)`. At
 minimum prove invalid input and unauthorized calls cause no effect, sequential and
 concurrent equal intent return the same result with one effect, different intent does
 not collapse, verification runs after replay, an aborted signal causes no work, and
 disposal removes the tool. Run the
-project's normal test command; do not inspect Signet internals to re-prove these library
+project's normal test command; do not inspect Signett internals to re-prove these library
 guarantees.
 
 The example above is the complete integration pattern. A compile-checked expanded

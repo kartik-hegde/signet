@@ -8,16 +8,16 @@ Each application integration must provide:
 - independent authoritative state oracles;
 - UI and WebMCP paths that invoke the same application services;
 - first-party WebMCP tool definitions derived from reusable application capabilities;
-- raw and Signet builds that differ only at the execution wrapper boundary;
+- raw and Signett builds that differ only at the execution wrapper boundary;
 - deterministic fault-injection seams for consequential actions;
 - redaction rules for traces and model-provider data.
 
 ## Initial application strategy
 
-1. Start with the MIT-licensed Cypress Real World App already used by Signet. It has an
+1. Start with the MIT-licensed Cypress Real World App already used by Signett. It has an
    authenticated payment workflow, UI/WebMCP parity checks, database assertions, and a
    native Chrome smoke path. Move or pin it here rather than importing it implicitly
-   from a mutable Signet checkout.
+   from a mutable Signett checkout.
 2. The first real commerce application is now the sibling-fork Saleor integration in
    [`saleor/`](./saleor/). It uses the production storefront, full local Saleor stack,
    a post-commit fault seam, and a Postgres order oracle.

@@ -13,7 +13,7 @@ import {
   parseCheckArgs,
 } from "../cli.mjs";
 
-test("parseArgs supports the signet eval command shape", () => {
+test("parseArgs supports the signett eval command shape", () => {
   assert.deepEqual(
     parseArgs([
       "eval",
@@ -73,8 +73,8 @@ test("parseCheckArgs captures a baseline and explicit regression budgets", () =>
 });
 
 test("the CLI recognizes npm's symlinked bin entrypoint", () => {
-  const directory = mkdtempSync(path.join(os.tmpdir(), "signet-eval-bin-"));
-  const link = path.join(directory, "signet");
+  const directory = mkdtempSync(path.join(os.tmpdir(), "signett-eval-bin-"));
+  const link = path.join(directory, "signett");
   try {
     symlinkSync(fileURLToPath(new URL("../cli.mjs", import.meta.url)), link);
     assert.equal(isEntrypoint(link), true);
@@ -89,7 +89,7 @@ test("the unified CLI exposes the headless agent command", () => {
     encoding: "utf8",
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Usage: signet agent/);
+  assert.match(result.stdout, /Usage: signett agent/);
   assert.match(result.stdout, /--prompt text/);
 });
 

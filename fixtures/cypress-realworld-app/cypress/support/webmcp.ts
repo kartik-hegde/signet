@@ -2,7 +2,7 @@
 
 export function installWebMcpCapture(
   win: Cypress.AUTWindow,
-  mode: "raw" | "signet" = "signet"
+  mode: "raw" | "signett" = "signett"
 ) {
   const tools = new Map<string, WebMCP.ModelContextTool>();
   const target = new win.EventTarget();

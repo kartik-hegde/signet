@@ -13,7 +13,7 @@ export interface WebStorageLike {
 export class WebStorageOperationJournal implements OperationJournal {
   constructor(
     private readonly storage: WebStorageLike,
-    private readonly prefix = "signet:operation:",
+    private readonly prefix = "signett:operation:",
   ) {}
 
   read<Entry>(

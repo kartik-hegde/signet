@@ -51,8 +51,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run validate
-      - run: npm pack --dry-run --workspace=@signet/webmcp
-      - run: npm pack --dry-run --workspace=@signet/eval
+      - run: npm pack --dry-run --workspace=signett
+      - run: npm pack --dry-run --workspace=@signett/eval
 
   compatibility:
     needs: changes

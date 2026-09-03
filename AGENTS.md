@@ -1,4 +1,4 @@
-# Signet monorepo guide
+# Signett monorepo guide
 
 ## Boundaries
 

@@ -7,7 +7,7 @@ Updated: 2026-09-02
 The benchmark has a sound evidence boundary, but its center of gravity is behind the
 product.
 
-Signet is now a code-first workflow for taking an existing website capability from
+Signett is now a code-first workflow for taking an existing website capability from
 TypeScript function to a native, inspectable, tested, and progressively hardened
 WebMCP interface. The product promise is not just safer execution. It is:
 
@@ -35,12 +35,12 @@ The benchmark should stay aligned to these shipped product layers:
 5. **Harden:** add authorization, confirmation, idempotency, operation journaling,
    recovery, verification, cancellation, and observation only where needed.
 6. **Improve:** use task failures and lifecycle evidence to refine tool boundaries,
-   names, descriptions, schemas, and results without introducing a Signet runtime or
+   names, descriptions, schemas, and results without introducing a Signett runtime or
    agent orchestrator.
 
 The application continues to own identity, policy, business logic, durable state,
 backend enforcement, and authoritative outcome evaluation. WebMCP deserves credit for
-structured browser access; Signet deserves credit only for the development workflow
+structured browser access; Signett deserves credit only for the development workflow
 and execution behavior it adds around that access.
 
 ## Coverage audit
@@ -48,14 +48,14 @@ and execution behavior it adds around that access.
 | Product proposition | Evidence today | Assessment | Missing proof |
 | --- | --- | --- | --- |
 | Existing functions become agent-ready quickly | Directional adapter SLOC in `build-vs-buy/` | Weak | End-to-end integration time, total changed code, defects, and time to first real-agent success |
-| Native WebMCP reduces agent work | Repeated UI/raw/Signet payment runs in P1 | Useful ecosystem baseline | More tasks and domains; this is primarily a WebMCP claim, not a Signet runtime claim |
+| Native WebMCP reduces agent work | Repeated UI/raw/Signett payment runs in P1 | Useful ecosystem baseline | More tasks and domains; this is primarily a WebMCP claim, not a Signett runtime claim |
 | Tools are selected with valid arguments and complete the task | Two payment-domain tasks plus one Test Agent run; every Trial scores discovery, selection, and argument validity | Instrument in place, task coverage still thin | Held-out task suites, seeded variants, continuation/fallback classification, and repeated runs across apps |
-| Developers can inspect, test, and hill-climb the interface | Inventory, call, lifecycle, token, and oracle traces exist, and `signet check` gates discovery, selection, and argument regressions per Case and condition | Instrumentation and gates exist; value is unmeasured | Before/after interface revisions and developer time-to-diagnosis or improvement |
+| Developers can inspect, test, and hill-climb the interface | Inventory, call, lifecycle, token, and oracle traces exist, and `signett check` gates discovery, selection, and argument regressions per Case and condition | Instrumentation and gates exist; value is unmeasured | Before/after interface revisions and developer time-to-diagnosis or improvement |
 | Consequential actions are reliable and honest under faults | Seven deterministic scenarios, durable-store arm, Saleor and Cal.diy recovery proofs | Strongest current lane | Full shipped-interface path, authorization/cancellation/lifecycle coverage, and real-browser reload/navigation faults |
 | Application state remains authoritative | Independent SQLite, HTTP, and Postgres oracles | Strong | Standardize the oracle contract and failure taxonomy across applications |
 | The workflow transfers across real websites | Cypress RWA, Saleor, and Cal.diy integrations | Promising case-study evidence | One runner, one result schema, comparable tasks, and repeated trials across all apps |
 | Native lifecycle and framework behavior are dependable | Library tests and isolated native smoke scripts | Not benchmarked | Page-state registration, teardown, re-registration, React lifecycle, unsupported-browser, and browser-version matrix |
-| Signet reduces the cost of correct implementation | One benchmark-authored hand-rolled adapter comparison | Directional only | Independent implementers or coding-agent integrations, fixed requirements, hidden conformance tests, and maintenance changes |
+| Signett reduces the cost of correct implementation | One benchmark-authored hand-rolled adapter comparison | Directional only | Independent implementers or coding-agent integrations, fixed requirements, hidden conformance tests, and maintenance changes |
 | Observation is useful and private by default | Lifecycle traces in examples | Not benchmarked | Trace completeness, redaction/privacy conformance, observer-failure isolation, and diagnosis utility |
 
 ## What to keep, change, and stop claiming
@@ -64,7 +64,7 @@ and execution behavior it adds around that access.
 
 - Independent state oracles and the rule that agent narration and tool output are not
   proof of success.
-- Separate attribution for WebMCP effectiveness, Signet execution controls, and
+- Separate attribution for WebMCP effectiveness, Signett execution controls, and
   implementation cost.
 - A deterministic, model-free safety lane for execution invariants.
 - Raw failures, timeouts, UI fallback, tokens, and provider/runtime provenance.
@@ -77,15 +77,15 @@ and execution behavior it adds around that access.
 - Treat the Test Agent as benchmark infrastructure, not as evidence by itself. Its
   value is that it can evaluate the whole live path repeatedly.
 - Compare interface quality across deliberate authoring or hill-climbing interventions,
-  not between raw and Signet conditions that expose identical schemas to the model.
-- Exercise `createSignet().expose()` and live registration lifecycle in addition to the
+  not between raw and Signett conditions that expose identical schemas to the model.
+- Exercise `createSignett().expose()` and live registration lifecycle in addition to the
   lower-level `guard()` path.
 - Standardize every app on one task, runner, trace, oracle, provenance, and result
   contract.
 
 ### Do not claim yet
 
-- That Signet itself improves tool selection when raw and Signet publish the same tool
+- That Signett itself improves tool selection when raw and Signett publish the same tool
   metadata.
 - Broad agent-effectiveness gains from two tasks in one repeated application study.
 - A publishable build-versus-buy result from one benchmark-authored implementation.
@@ -106,8 +106,8 @@ conforming agent interface?
 
 Compare fixed integration briefs under equal time and coding-agent budgets:
 
-- native WebMCP without Signet;
-- Signet using its public documentation or coding-agent skill.
+- native WebMCP without Signett;
+- Signett using its public documentation or coding-agent skill.
 
 Measure:
 
@@ -121,11 +121,11 @@ Measure:
 
 The hidden evaluator should cover exposure, runtime validation, trusted context,
 registration lifecycle, representative agent tasks, and the controls required by the
-brief. It must not require Signet-specific events from the native arm.
+brief. It must not require Signett-specific events from the native arm.
 
 ### Lane 2: interface quality and hill climbing
 
-Question: can a developer improve real-agent task performance using Signet's checks and
+Question: can a developer improve real-agent task performance using Signett's checks and
 evidence?
 
 Score interface revisions on held-out saved tasks. Separate:
@@ -150,7 +150,7 @@ Question: what durable state and caller belief remain after retries, faults,
 concurrency, cancellation, and lifecycle changes?
 
 Keep deterministic callers for invariant coverage. Add a second tier that invokes the
-same definitions through `createSignet().expose()` and the WebMCP boundary. Continue to
+same definitions through `createSignett().expose()` and the WebMCP boundary. Continue to
 report violations and disclosure credits separately; no public composite is needed.
 
 Expand coverage to:
@@ -182,7 +182,7 @@ native proof for the other three; it should not blend their metrics into one sco
 
 The existing payment runner already supplies the essential vertical slice: fresh
 headless Chrome, exact live WebMCP registrations, a provider adapter, tool-call trace,
-Signet lifecycle evidence, and an independent oracle. The Cal.diy runner proves that
+Signett lifecycle evidence, and an independent oracle. The Cal.diy runner proves that
 the approach transfers, but currently duplicates orchestration and app-specific logic.
 
 Extract a manifest-driven runner with these boundaries:
@@ -211,7 +211,7 @@ scripts. Cypress RWA should migrate first, Cal.diy second, and Saleor third.
 
 The shared run envelope needs:
 
-- benchmark, app, task, tool-surface, Signet, browser, provider, and evaluator revisions;
+- benchmark, app, task, tool-surface, Signett, browser, provider, and evaluator revisions;
 - source diff fingerprints and dirty-state flags;
 - initial-state verification and reset result;
 - exact inventory with schemas and annotations;
@@ -261,17 +261,17 @@ schema, trace contract, and failure taxonomy.
 3. Establish the time-to-first-success integration study with fixed briefs and hidden
    conformance tests.
 4. Run a hill-climbing study: baseline interface, diagnosed revision, and held-out
-   re-evaluation. Record which Signet evidence led to each change.
+   re-evaluation. Record which Signett evidence led to each change.
 5. Add per-commit internal regression gates for authoritative completion, safe success,
    selection, arguments, and timeout rate. Keep time/tokens diagnostic until the run
    counts are large enough for stable thresholds.
 
-Exit: the benchmark can answer whether Signet helps a developer ship and improve an
+Exit: the benchmark can answer whether Signett helps a developer ship and improve an
 agent interface, not only whether WebMCP is faster than UI driving.
 
 ### P3 — close shipped-surface safety gaps
 
-1. Add full-interface arms through `createSignet().expose()`.
+1. Add full-interface arms through `createSignett().expose()`.
 2. Complete the safety matrix for authorization, context, confirmation, cancellation,
    verification, unknown outcomes, lifecycle, output diagnostics, and observation.
 3. Run reload, navigation, concurrent-tab, and post-commit fault cases in native
@@ -293,7 +293,7 @@ one native end-to-end proof where browser lifecycle matters.
    claim.
 
 Exit: a third party can reproduce each claim, see failures and uncertainty, and tell
-which improvement belongs to WebMCP, Signet, the application, or the agent.
+which improvement belongs to WebMCP, Signett, the application, or the agent.
 
 ## Hill-climbing scorecard
 
@@ -323,6 +323,6 @@ desired implementation look better.
 2. Generalize the Test Agent runner and migrate Cypress RWA plus Cal.diy to prove the
    app adapter boundary.
 3. Add the first held-out, multi-task hill-climbing suite and use it to guide the next
-   tool-definition or readiness improvement in Signet. The per-revision metrics and
-   regression gates this needs now exist in `@signet/eval`; what is missing is the
+   tool-definition or readiness improvement in Signett. The per-revision metrics and
+   regression gates this needs now exist in `@signett/eval`; what is missing is the
    balanced task suite, its seeded variants, and a recorded intervention per revision.

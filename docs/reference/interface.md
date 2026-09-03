@@ -1,6 +1,6 @@
 # Interface API
 
-## `createSignet(options?)`
+## `createSignett(options?)`
 
 Creates one WebMCP-facing application interface.
 
@@ -35,7 +35,7 @@ Optional native fields:
 - `annotations`;
 - `exposedTo`.
 
-Optional Signet controls:
+Optional Signett controls:
 
 - `authorize`;
 - `confirm`;
@@ -53,7 +53,7 @@ optional scoped `operation` journal handle, and the native WebMCP `AbortSignal`.
 error and may return `{ recovered: true, output }` after proving the outcome from
 authoritative state. `{ recovered: false }` preserves the original error. An explicit
 `{ recovered: false, outcome: "unknown" }` throws `OutcomeUnknownError`; a recovery
-read that throws does the same. Signet does not retry the operation or conceal
+read that throws does the same. Signett does not retry the operation or conceal
 idempotency-store failures.
 
 A function-valued `confirm` runs after authorization and before idempotency. The
@@ -76,7 +76,7 @@ as a testable design constraint and return a smaller projection.
 returns an unsubscribe function. Inputs, outputs, context, and stack traces are not
 captured implicitly.
 
-`createSignetActivity(signet, options?)` attaches a metadata-only presentation feed to
+`createSignettActivity(signett, options?)` attaches a metadata-only presentation feed to
 those events. Use `toolName` to retain one exact tool and `maxInvocations` to bound the
 newest-first history; the default is 20. `getSnapshot()` returns `latest` plus
 `invocations`, `subscribe(listener)` reports snapshot changes, and `dispose()` stops
@@ -94,12 +94,12 @@ A registration exposes `name`, `status`, `dispose()`, and
 its registration signal.
 
 Tool names are unique per WebMCP model context, including across separate
-`createSignet()` calls.
+`createSignett()` calls.
 
 ## Errors
 
 Invalid definitions reject before registration. Invalid invocation input throws
-`ValidationError`. Expected application failures may use `ToolError`. Signet does
+`ValidationError`. Expected application failures may use `ToolError`. Signett does
 not retry operations automatically.
 
 See [Getting started](../guide/getting-started) for the smallest example and

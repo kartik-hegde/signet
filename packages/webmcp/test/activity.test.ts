@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  createSignet,
-  createSignetActivity,
+  createSignett,
+  createSignettActivity,
   type GuardEvent,
   type GuardObserver,
-  type SignetInterface,
+  type SignettInterface,
 } from "../src/index.js";
-import { createSignetActivityStore } from "../src/activity.js";
+import { createSignettActivityStore } from "../src/activity.js";
 import { createWebMcpTestHarness } from "../src/testing.js";
 
 function event(
@@ -25,9 +25,9 @@ function event(
   };
 }
 
-describe("Signet activity", () => {
+describe("Signett activity", () => {
   it("projects guard stages into UI-safe operation state", () => {
-    const store = createSignetActivityStore();
+    const store = createSignettActivityStore();
     const notify = vi.fn();
     store.subscribe(notify);
 
@@ -69,7 +69,7 @@ describe("Signet activity", () => {
   });
 
   it("retains a bounded, optionally tool-specific feed", () => {
-    const store = createSignetActivityStore({
+    const store = createSignettActivityStore({
       toolName: "place_order",
       maxInvocations: 2,
     });
@@ -92,7 +92,7 @@ describe("Signet activity", () => {
   });
 
   it("keeps a user decline distinct from an execution failure", () => {
-    const store = createSignetActivityStore();
+    const store = createSignettActivityStore();
 
     void store.observe(event("declined", "place_order", "declined", 2));
     void store.observe(event("declined", "place_order", "failed", 3));
@@ -104,11 +104,11 @@ describe("Signet activity", () => {
 
   it("retains declined after the guard emits its terminal failure", async () => {
     const harness = createWebMcpTestHarness();
-    const signet = createSignet({ modelContext: harness.modelContext });
-    const activity = createSignetActivity(signet, {
+    const signett = createSignett({ modelContext: harness.modelContext });
+    const activity = createSignettActivity(signett, {
       toolName: "place_order",
     });
-    await signet.expose({
+    await signett.expose({
       name: "place_order",
       description: "Place one reviewed order.",
       inputSchema: {
@@ -128,7 +128,7 @@ describe("Signet activity", () => {
   });
 
   it("keeps latest ordered by start and represents later recovery separately", () => {
-    const store = createSignetActivityStore();
+    const store = createSignettActivityStore();
 
     void store.observe(event("order-1", "place_order", "started", 0));
     void store.observe(event("search-1", "search_products", "started", 1));
@@ -155,7 +155,7 @@ describe("Signet activity", () => {
 
   it("attaches and disposes without changing execution behavior", () => {
     const observers = new Set<GuardObserver>();
-    const signet: SignetInterface<undefined> = {
+    const signett: SignettInterface<undefined> = {
       expose: () => Promise.reject(new Error("not used in this test")),
       tools: () => [],
       observe(observer: GuardObserver) {
@@ -165,7 +165,7 @@ describe("Signet activity", () => {
         };
       },
     };
-    const activity = createSignetActivity(signet);
+    const activity = createSignettActivity(signett);
     const notify = vi.fn();
     activity.subscribe(notify);
 
@@ -181,10 +181,10 @@ describe("Signet activity", () => {
   });
 
   it("rejects invalid retention options", () => {
-    expect(() => createSignetActivityStore({ maxInvocations: 0 })).toThrow(
+    expect(() => createSignettActivityStore({ maxInvocations: 0 })).toThrow(
       "maxInvocations must be a positive integer",
     );
-    expect(() => createSignetActivityStore({ toolName: "" })).toThrow(
+    expect(() => createSignettActivityStore({ toolName: "" })).toThrow(
       "toolName must not be empty",
     );
   });

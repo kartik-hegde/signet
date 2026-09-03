@@ -1,6 +1,6 @@
-# Signet Agent multidomain benchmark
+# Signett Agent multidomain benchmark
 
-This benchmark exercises the actual headless tester, Chrome page bridge, Signet
+This benchmark exercises the actual headless tester, Chrome page bridge, Signett
 tool registration/guards, stateful applications, and authoritative server-side
 oracles. Its 14 tasks and 13 tools cover commerce, issue tracking, knowledge management, and
 workspace administration across reads, multi-step mutations, consequential
@@ -17,18 +17,18 @@ oracles, evidence redaction, and aggregation work end to end. To benchmark an
 agent model, use repeated trials:
 
 ```bash
-node benchmarks/signet-agent/run.mjs \
+node benchmarks/signett-agent/run.mjs \
   --endpoint http://127.0.0.1:8000/v1/chat/completions \
   --model your-model \
   --api-key-env MODEL_API_KEY \
   --trials 5 \
-  --output .artifacts/signet-agent/model-run
+  --output .artifacts/signett-agent/model-run
 ```
 
 Each trial gets a fresh browser profile and a reset authoritative application
 state. Results include safe success, authoritative success, forbidden-effect
 rate, calls, latency, category slices, tool inventory, redacted agent events,
-and Signet lifecycle stages. Tool arguments/results are metadata-only unless an
+and Signett lifecycle stages. Tool arguments/results are metadata-only unless an
 application adapter explicitly opts into payload recording.
 
 See [METHODOLOGY.md](METHODOLOGY.md) for metrics, source-benchmark mapping, and
@@ -41,7 +41,7 @@ The task shapes and evaluator discipline are informed by
 [WebArena-Verified](https://github.com/ServiceNow/webarena-verified), while the
 repeated-trial and reproducibility posture follows ideas from
 [AgentLab](https://github.com/ServiceNow/AgentLab). This suite is intentionally
-described as **WebArena-derived**, not as an official WebArena score: Signet
+described as **WebArena-derived**, not as an official WebArena score: Signett
 exposes a structured WebMCP action space, so its results are not comparable to
 DOM-action leaderboards.
 

@@ -1,7 +1,7 @@
-import type { SignetInterface } from "./interface.js";
+import type { SignettInterface } from "./interface.js";
 import type { GuardEvent, GuardObserver, GuardStage } from "./types.js";
 
-export type SignetActivityPhase =
+export type SignettActivityPhase =
   | "running"
   | "awaiting_confirmation"
   | "verifying"
@@ -10,44 +10,44 @@ export type SignetActivityPhase =
   | "failed"
   | "unknown";
 
-export type SignetActivityResolution = "executed" | "replayed" | "recovered";
+export type SignettActivityResolution = "executed" | "replayed" | "recovered";
 
 /** Metadata-only UI state for one tool invocation. */
-export interface SignetActivity {
+export interface SignettActivity {
   readonly invocationId: string;
   readonly name: string;
-  readonly phase: SignetActivityPhase;
+  readonly phase: SignettActivityPhase;
   readonly startedAt: number;
   readonly updatedAt: number;
   readonly durationMs: number;
   /** True only when the tool's application-owned `verify` hook passed. */
   readonly verified: boolean;
-  readonly resolution: SignetActivityResolution | undefined;
+  readonly resolution: SignettActivityResolution | undefined;
 }
 
-export interface SignetActivitySnapshot {
+export interface SignettActivitySnapshot {
   /** Invocations ordered by when the feed first observes them, newest first. */
-  readonly invocations: readonly SignetActivity[];
+  readonly invocations: readonly SignettActivity[];
   /** The most recently first-observed invocation, not the most recently updated one. */
-  readonly latest: SignetActivity | undefined;
+  readonly latest: SignettActivity | undefined;
 }
 
-export interface SignetActivityOptions {
+export interface SignettActivityOptions {
   /** Retain only this tool's invocations. */
   readonly toolName?: string;
   /** Maximum retained invocations. Defaults to 20. */
   readonly maxInvocations?: number;
 }
 
-export interface SignetActivityFeed {
-  getSnapshot(this: void): SignetActivitySnapshot;
+export interface SignettActivityFeed {
+  getSnapshot(this: void): SignettActivitySnapshot;
   subscribe(this: void, listener: () => void): () => void;
   dispose(this: void): void;
 }
 
-interface SignetActivityStore {
+interface SignettActivityStore {
   readonly observe: GuardObserver;
-  getSnapshot(this: void): SignetActivitySnapshot;
+  getSnapshot(this: void): SignettActivitySnapshot;
   subscribe(this: void, listener: () => void): () => void;
 }
 
@@ -61,8 +61,8 @@ const registrationStages = new Set<GuardStage>([
 
 function phaseFor(
   stage: GuardStage,
-  previous: SignetActivityPhase | undefined,
-): SignetActivityPhase {
+  previous: SignettActivityPhase | undefined,
+): SignettActivityPhase {
   if (stage === "confirmation_requested") return "awaiting_confirmation";
   if (stage === "declined") return "declined";
   if (stage === "failed" && previous === "declined") return "declined";
@@ -86,15 +86,15 @@ function phaseFor(
 
 function resolutionFor(
   stage: GuardStage,
-  previous: SignetActivityResolution | undefined,
-): SignetActivityResolution | undefined {
+  previous: SignettActivityResolution | undefined,
+): SignettActivityResolution | undefined {
   if (stage === "executed") return "executed";
   if (stage === "replayed") return "replayed";
   if (stage === "recovered") return "recovered";
   return previous;
 }
 
-function validateOptions(options: SignetActivityOptions): number {
+function validateOptions(options: SignettActivityOptions): number {
   const maxInvocations = options.maxInvocations ?? 20;
   if (!Number.isSafeInteger(maxInvocations) || maxInvocations <= 0) {
     throw new TypeError("maxInvocations must be a positive integer.");
@@ -105,14 +105,14 @@ function validateOptions(options: SignetActivityOptions): number {
   return maxInvocations;
 }
 
-export function createSignetActivityStore(
-  options: SignetActivityOptions = {},
-): SignetActivityStore {
+export function createSignettActivityStore(
+  options: SignettActivityOptions = {},
+): SignettActivityStore {
   const maxInvocations = validateOptions(options);
-  const activities = new Map<string, SignetActivity>();
+  const activities = new Map<string, SignettActivity>();
   const order: string[] = [];
   const listeners = new Set<() => void>();
-  let snapshot: SignetActivitySnapshot = {
+  let snapshot: SignettActivitySnapshot = {
     invocations: [],
     latest: undefined,
   };
@@ -156,7 +156,7 @@ export function createSignetActivityStore(
         }
       }
 
-      const activity: SignetActivity = {
+      const activity: SignettActivity = {
         invocationId: event.invocationId,
         name: event.name,
         phase: phaseFor(event.stage, previous?.phase),
@@ -175,15 +175,15 @@ export function createSignetActivityStore(
 }
 
 /**
- * Projects privacy-safe Signet lifecycle events into state suitable for application UI.
+ * Projects privacy-safe Signett lifecycle events into state suitable for application UI.
  * The feed is best-effort presentation state, not authorization or business state.
  */
-export function createSignetActivity<Context>(
-  signet: SignetInterface<Context>,
-  options: SignetActivityOptions = {},
-): SignetActivityFeed {
-  const store = createSignetActivityStore(options);
-  const stop = signet.observe(store.observe);
+export function createSignettActivity<Context>(
+  signett: SignettInterface<Context>,
+  options: SignettActivityOptions = {},
+): SignettActivityFeed {
+  const store = createSignettActivityStore(options);
+  const stop = signett.observe(store.observe);
   let disposed = false;
 
   return {

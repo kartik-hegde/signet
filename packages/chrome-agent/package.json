@@ -1,5 +1,5 @@
 {
-  "name": "@signet/chrome-agent",
+  "name": "@signett/chrome-agent",
   "version": "0.1.0",
   "private": true,
   "description": "A focused Chrome side-panel agent for inspecting and invoking WebMCP tools.",

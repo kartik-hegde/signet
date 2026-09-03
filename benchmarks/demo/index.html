@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#07110f" />
     <meta
       name="description"
-      content="A live benchmark story: WebMCP makes agents fast. Signet makes consequential actions trustworthy."
+      content="A live benchmark story: WebMCP makes agents fast. Signett makes consequential actions trustworthy."
     />
-    <title>Signet — The fast path you can trust</title>
+    <title>Signett — The fast path you can trust</title>
     <link rel="stylesheet" href="./styles.css" />
     <script type="module" src="./app.js"></script>
   </head>
@@ -17,9 +17,9 @@
     <div class="ambient ambient-two"></div>
 
     <header class="site-header">
-      <a class="brand" href="/demo/" aria-label="Signet demo home">
+      <a class="brand" href="/demo/" aria-label="Signett demo home">
         <span class="brand-mark" aria-hidden="true"><i></i></span>
-        <span>Signet</span>
+        <span>Signett</span>
       </a>
       <nav class="view-switcher" aria-label="Demo views">
         <button class="view-button is-active" data-view-target="race">Speed</button>
@@ -116,19 +116,19 @@
             </footer>
           </article>
 
-          <article class="execution-card signet-card" data-lane="webmcp_signet">
+          <article class="execution-card signett-card" data-lane="webmcp_signett">
             <header class="card-header">
               <div>
                 <span class="lane-number">03</span>
-                <h3>WebMCP + Signet</h3>
+                <h3>WebMCP + Signett</h3>
               </div>
-              <span class="method-pill signet-pill">Guarded</span>
+              <span class="method-pill signett-pill">Guarded</span>
             </header>
             <div class="app-window tool-window">
               <div class="browser-bar"><i></i><i></i><i></i><span>guard(send_payment)</span></div>
               <div class="tool-shell">
                 <div class="guard-rail"><span>Context</span><span>Authorize</span><span>Execute</span><span>Verify</span></div>
-                <ol class="execution-log" aria-label="Signet execution steps"></ol>
+                <ol class="execution-log" aria-label="Signett execution steps"></ol>
                 <div class="database-pulse verified"><span></span><b>Verified state</b><small>sender −$12 · Lia +$12</small></div>
               </div>
             </div>
@@ -144,7 +144,7 @@
         <div class="race-verdict" id="race-verdict" aria-live="polite">
           <div><span class="verdict-kicker">Recorded result</span><strong>Press run to replay the benchmark.</strong></div>
           <div class="verdict-numbers">
-            <span><b id="signet-speedup">—</b> faster than UI</span>
+            <span><b id="signett-speedup">—</b> faster than UI</span>
             <span><b id="interaction-cut">—</b> fewer agent actions</span>
             <span><b>3 / 3</b> database checks passed</span>
           </div>
@@ -195,7 +195,7 @@
               <footer><span>Caller reports</span><strong id="raw-report">—</strong></footer>
             </article>
             <article class="outcome-card guarded-outcome">
-              <header><span>Signet + durable store</span><b id="guarded-outcome-status">Waiting</b></header>
+              <header><span>Signett + durable store</span><b id="guarded-outcome-status">Waiting</b></header>
               <div class="state-stack" id="guarded-state"></div>
               <footer><span>Caller reports</span><strong id="guarded-report">—</strong></footer>
             </article>
@@ -206,9 +206,9 @@
           <div class="trust-mark"><span class="brand-mark"><i></i></span></div>
           <div>
             <span class="verdict-kicker">The division of labor</span>
-            <h3>WebMCP is the speed. <em>Signet is the trust.</em></h3>
+            <h3>WebMCP is the speed. <em>Signett is the trust.</em></h3>
             <p>
-              Native tools expose application capabilities. Signet adds reusable authorization,
+              Native tools expose application capabilities. Signett adds reusable authorization,
               idempotency, verification, cancellation, and observability around consequential calls.
             </p>
           </div>
@@ -219,18 +219,18 @@
         </div>
         <p class="method-note">
           Safety values come from deterministic fault injection and an independent database oracle.
-          The durable-store arm demonstrates Signet with an application-owned store; that adapter is
-          not currently shipped by Signet.
+          The durable-store arm demonstrates Signett with an application-owned store; that adapter is
+          not currently shipped by Signett.
         </p>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span>Signet benchmark · Cypress Real World App · <b id="result-date">loading evidence…</b></span>
+      <span>Signett benchmark · Cypress Real World App · <b id="result-date">loading evidence…</b></span>
       <div>
         <a href="/evidence/p0/latest.md">View scorecard</a>
         <a href="/methodology/benchmark-design.md">Read methodology</a>
-        <a href="https://github.com/kartik-hegde/signet">Reproduce on GitHub ↗</a>
+        <a href="https://github.com/signettai/signett">Reproduce on GitHub ↗</a>
       </div>
     </footer>
 

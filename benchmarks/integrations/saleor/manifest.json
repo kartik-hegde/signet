@@ -4,25 +4,25 @@
   "name": "Saleor Storefront + Saleor Core",
   "sourceLayout": "external-checkouts",
   "storefront": {
-    "directory": ".external/saleor-storefront-signet",
+    "directory": ".external/saleor-storefront-signett",
     "upstream": "https://github.com/saleor/storefront.git",
     "revision": "56f021d42196eaa78b997df010430d8ea7842e99",
     "integrationRevision": "d82ff357c6f2e561898dc6533dd539e05287926c",
     "patches": [
-      "patches/0001-feat-add-Signet-guarded-Saleor-checkout-tools.patch",
-      "patches/0002-test-harden-Signet-checkout-integration.patch",
+      "patches/0001-feat-add-Signett-guarded-Saleor-checkout-tools.patch",
+      "patches/0002-test-harden-Signett-checkout-integration.patch",
       "patches/0003-fix-keep-repeatable-checkout-setters-retryable.patch"
     ],
     "license": "FSL-1.1-ALv2"
   },
   "platform": {
-    "directory": ".external/saleor-platform-signet",
+    "directory": ".external/saleor-platform-signett",
     "upstream": "https://github.com/saleor/saleor-platform.git",
     "revision": "ab6315bd59c58b4815175df4c679107ff9695be4",
     "license": "BSD-3-Clause",
     "saleorImage": "3.23"
   },
-  "signet": {
+  "signett": {
     "directory": ".",
     "revision": "workspace"
   },

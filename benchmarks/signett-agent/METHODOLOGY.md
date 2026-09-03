@@ -22,7 +22,7 @@ Read-only tasks require state equality. Consequential tasks check unrelated and
 protected entities as well as the requested effect.
 
 Every trial records task/category provenance, browser version, initial/final
-tool inventories, bounded agent events, Signet guard stages, authoritative and
+tool inventories, bounded agent events, Signett guard stages, authoritative and
 safe success, forbidden effects, calls, and latency. Repeated trials report
 per-task/category rates and Wilson 95% confidence intervals. Payloads are
 metadata-only by default.
@@ -43,22 +43,22 @@ measure model intelligence. Model claims require at least five trials per task,
 the model/provider revision, decoding settings when available, raw per-trial
 evidence, confidence intervals, and an explicit disclosure of failures.
 
-## Design sources and what Signet adopts
+## Design sources and what Signett adopts
 
 - [WebArena](https://github.com/web-arena-x/webarena) supplies realistic,
-  self-hosted, multi-site task shapes. Signet adopts cross-domain, multi-step,
+  self-hosted, multi-site task shapes. Signett adopts cross-domain, multi-step,
   stateful work but changes the action space from DOM operations to WebMCP.
 - [WebArena-Verified](https://github.com/ServiceNow/webarena-verified) provides
   812 audited tasks, deterministic type-aware evaluators, network-trace replay,
-  and a 258-task hard subset. Signet adopts authoritative deterministic grading,
+  and a 258-task hard subset. Signett adopts authoritative deterministic grading,
   offline-rescorable evidence, and a cost-controlled hard lane.
 - [BrowserGym](https://github.com/ServiceNow/BrowserGym) gives one environment
   abstraction across MiniWoB, WebArena, VisualWebArena, WorkArena,
-  AssistantBench, WebLINX, OpenApps, and TimeWarp. A Signet adapter should map a
+  AssistantBench, WebLINX, OpenApps, and TimeWarp. A Signett adapter should map a
   BrowserGym task reset/validate lifecycle to `application.reset`, `snapshot`,
   and `grade`, while keeping WebMCP as the agent action space.
 - [AgentLab](https://github.com/ServiceNow/AgentLab) emphasizes scalable,
-  reproducible repeated experiments and trace analysis. Signet adopts saved
+  reproducible repeated experiments and trace analysis. Signett adopts saved
   tasks, provider-neutral trials, per-task artifacts, aggregation, and explicit
   provenance.
 - [WorkArena](https://github.com/ServiceNow/WorkArena) and WorkArena++ add
@@ -79,7 +79,7 @@ evidence, confidence intervals, and an explicit disclosure of failures.
 1. **PR conformance:** the 14 local tasks, deterministic provider, one trial.
 2. **Model regression:** the same tasks, at least five trials, pinned provider
    revision, confidence intervals, and failure artifacts.
-3. **WebArena-Verified Hard adapter:** instrument the replicas with Signet,
+3. **WebArena-Verified Hard adapter:** instrument the replicas with Signett,
    translate the 258 hard tasks without changing goals, and reuse the official
    evaluators/network traces. Report this as “WebMCP action-space,” never on the
    official DOM-action leaderboard.

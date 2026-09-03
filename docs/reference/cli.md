@@ -1,22 +1,22 @@
-# `signet` CLI
+# `signett` CLI
 
-`@signet/eval` installs the `signet` executable for headless agent testing, portable
+`@signett/eval` installs the `signett` executable for headless agent testing, portable
 evaluation suites, and baseline regression checks.
 
 ```sh
-npm install --save-dev @signet/eval
-npx signet --help
+npm install --save-dev @signett/eval
+npx signett --help
 ```
 
-The package name is scoped, but the executable is `signet`. Installing
-`@signet/webmcp` alone does not provide this command.
+The package name is scoped, but the executable is `signett`. Installing
+`signett` alone does not provide this command.
 
-## `signet agent`
+## `signett agent`
 
 Run a natural-language task against the exact WebMCP tools exposed by a page.
 
 ```text
-signet agent [suite.mjs] [options]
+signett agent [suite.mjs] [options]
 ```
 
 | Option               | Meaning                                                                   |
@@ -29,18 +29,18 @@ signet agent [suite.mjs] [options]
 | `--endpoint URL`     | Chat Completions-compatible model endpoint.                               |
 | `--model name`       | Model identifier sent to the endpoint.                                    |
 | `--api-key-env name` | Environment variable containing the provider key; default is              |
-|                      | `SIGNET_AGENT_API_KEY`.                                                   |
+|                      | `SIGNETT_AGENT_API_KEY`.                                                   |
 | `--output path`      | Evidence JSON file for one Trial or directory for multiple Trials.        |
 | `--list`             | Print selected task IDs without opening a browser.                        |
 | `-h`, `--help`       | Show command help.                                                        |
 
 CLI provider values override values saved in the suite. The API key is read from the
-selected environment variable. Signet sends it as a bearer token when it is present
+selected environment variable. Signett sends it as a bearer token when it is present
 and does not write it to Evidence.
 
 ### Agent suite shape
 
-Use `defineAgentTestSuite()` from `@signet/eval/agent` to validate a JavaScript suite.
+Use `defineAgentTestSuite()` from `@signett/eval/agent` to validate a JavaScript suite.
 JSON suites can describe tasks and provider settings but cannot implement lifecycle
 or oracle functions.
 
@@ -73,12 +73,12 @@ Each Trial uses a fresh browser profile. By default, Evidence includes tool name
 event metadata but redacts tool arguments and results. Prefer an application-owned
 oracle for consequential jobs; the fallback interface grade is not authoritative.
 
-## `signet eval`
+## `signett eval`
 
 Run a portable evaluation definition with Cases, conditions, adapters, and an oracle.
 
 ```text
-signet eval [evaluation.mjs] [options]
+signett eval [evaluation.mjs] [options]
 ```
 
 | Option                    | Meaning                                             |
@@ -96,12 +96,12 @@ signet eval [evaluation.mjs] [options]
 | `--dry-run`               | Print the schedule without running Trials.          |
 | `-h`, `--help`            | Show command help.                                  |
 
-## `signet check`
+## `signett check`
 
 Compare an existing candidate report with a reviewed baseline without rerunning Trials.
 
 ```text
-signet check candidate/report.json --against baseline/report.json [options]
+signett check candidate/report.json --against baseline/report.json [options]
 ```
 
 `--against` is required. The command also accepts `--output`,

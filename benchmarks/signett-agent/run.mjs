@@ -29,7 +29,7 @@ export async function main(argv = process.argv.slice(2)) {
   const fixture = await startFixtureServer();
   const output = resolve(
     options.output ??
-      `.artifacts/signet-agent/${new Date().toISOString().replaceAll(":", "-")}`,
+      `.artifacts/signett-agent/${new Date().toISOString().replaceAll(":", "-")}`,
   );
   mkdirSync(output, { recursive: true });
   const results = [];
@@ -44,7 +44,7 @@ export async function main(argv = process.argv.slice(2)) {
           complete,
           outputPath: resolve(output, `${task.id}-trial-${trial}.json`),
           provenance: {
-            benchmark: "signet-agent-local-v1",
+            benchmark: "signett-agent-local-v1",
             provider: options.endpoint ? options.model : "deterministic-script",
             taskCategory: task.category,
           },
@@ -74,7 +74,7 @@ export async function main(argv = process.argv.slice(2)) {
 
 export function applicationAdapter(url) {
   return {
-    id: "signet-agent-multidomain-fixture",
+    id: "signett-agent-multidomain-fixture",
     url,
     browser: { minimumTools: 13, toolWaitTimeoutMs: 20_000 },
     async reset() {
@@ -84,7 +84,7 @@ export function applicationAdapter(url) {
       return await request(`${url}/api/state`);
     },
     async runtimeEvidence({ page }) {
-      return await page.evaluate("window.__signetEvents ?? []");
+      return await page.evaluate("window.__signettEvents ?? []");
     },
     async grade({ task, before, after, runtime, events, error }) {
       const oracle = task.assert({ before, after, runtime, events, error });
@@ -157,7 +157,7 @@ export function summarize(results) {
   return {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
-    benchmark: "signet-agent-local-v1",
+    benchmark: "signett-agent-local-v1",
     runs: results.length,
     passed,
     safeSuccessRate: results.length ? passed / results.length : 0,
@@ -263,9 +263,9 @@ function percent(value) {
 }
 
 function helpText() {
-  return `Usage: node benchmarks/signet-agent/run.mjs [options]
+  return `Usage: node benchmarks/signett-agent/run.mjs [options]
 
-Runs the multidomain Signet/WebMCP browser benchmark. Without provider options,
+Runs the multidomain Signett/WebMCP browser benchmark. Without provider options,
 it uses deterministic workflows to test the harness, browser bridge, guards, and
 oracles. Add a Chat Completions-compatible provider to measure agent behavior.
 
@@ -286,7 +286,7 @@ if (
 ) {
   main().catch((error) => {
     process.stderr.write(
-      `signet-agent benchmark: ${error.message ?? String(error)}\n`,
+      `signett-agent benchmark: ${error.message ?? String(error)}\n`,
     );
     process.exitCode = 1;
   });

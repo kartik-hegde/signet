@@ -2,7 +2,7 @@
 
 ## Framework lifecycle
 
-Import `useSignetTool` from `@signet/webmcp/react`. It exposes a tool for its component
+Import `useSignettTool` from `signett/react`. It exposes a tool for its component
 lifetime and serializes same-name teardown and remount, including React StrictMode when
 registration is still in flight. Its dependency list is required so a first-render
 handler closure cannot be frozen accidentally; include every reactive value used by
@@ -11,13 +11,13 @@ the tool callbacks.
 ## Application activity state
 
 An agent call begins outside the application's normal button or form event handler.
-Use `useSignetActivity` when the human interface should still show that call's progress:
+Use `useSignettActivity` when the human interface should still show that call's progress:
 
 ```tsx
-import { useSignetActivity } from "@signet/webmcp/react";
+import { useSignettActivity } from "@signett/webmcp/react";
 
-function AgentOrderStatus({ signet }: { signet: SignetInterface<Session> }) {
-  const { latest } = useSignetActivity(signet, {
+function AgentOrderStatus({ signett }: { signett: SignettInterface<Session> }) {
+  const { latest } = useSignettActivity(signett, {
     toolName: "place_order",
   });
 
@@ -42,9 +42,9 @@ not contain inputs, outputs, context, or error details. The seven stable phases 
 For framework-neutral code, subscribe to the same projection directly:
 
 ```ts
-import { createSignetActivity } from "@signet/webmcp";
+import { createSignettActivity } from "@signett/webmcp";
 
-const activity = createSignetActivity(signet, { toolName: "place_order" });
+const activity = createSignettActivity(signett, { toolName: "place_order" });
 const stopRendering = activity.subscribe(() => {
   renderOrderActivity(activity.getSnapshot());
 });
@@ -57,7 +57,7 @@ activity.dispose();
 Activity is best-effort presentation state. Never use it for authorization or as proof
 that application state changed. A successful call without a `verify` hook has
 `verified: false`; after verified success, refresh authoritative application state and
-let the application's normal components render the result. Signet never mutates the
+let the application's normal components render the result. Signett never mutates the
 DOM or renders an activity interface. See
 [Show agent activity in your application UI](./application-activity) for the complete
 React and framework-neutral integration, phase semantics, concurrency, and testing.
@@ -73,9 +73,9 @@ real-agent task evaluations measure selection quality.
 ## Inspector
 
 ```ts
-import { mountSignetInspector } from "@signet/webmcp/inspector";
+import { mountSignettInspector } from "signett/inspector";
 
-const inspector = mountSignetInspector(signet);
+const inspector = mountSignettInspector(signett);
 // inspector.dispose();
 ```
 
@@ -89,31 +89,31 @@ in development code so bundlers can exclude the entry point from production.
 
 ## Evaluation change checks
 
-Install `@signet/eval` as a development dependency to get all three terminal workflows:
+Install `@signett/eval` as a development dependency to get all three terminal workflows:
 
 ```sh
-npm install --save-dev @signet/eval
-npx signet agent --help
-npx signet eval --help
-npx signet check --help
+npm install --save-dev @signett/eval
+npx signett agent --help
+npx signett eval --help
+npx signett check --help
 ```
 
-`signet agent` runs a prompt or saved task against a page's live WebMCP inventory in a
+`signett agent` runs a prompt or saved task against a page's live WebMCP inventory in a
 fresh headless Chrome profile. Use it for terminal and CI testing; the Chrome extension
 is a separate interactive tool. Follow the
 [headless-agent codelab](../tutorials/headless-agent-testing) and use the
 [CLI reference](../reference/cli) for suite hooks and every option.
 
-`@signet/eval` turns application-owned Cases and oracle-graded Trial Evidence into a
+`@signett/eval` turns application-owned Cases and oracle-graded Trial Evidence into a
 repeatable change check:
 
 ```sh
-signet eval scenarios/checkout.eval.mjs \
+signett eval scenarios/checkout.eval.mjs \
   --trials 5 \
-  --against .signet/baselines/checkout.report.json
+  --against .signett/baselines/checkout.report.json
 ```
 
-Signet writes both the normal evaluation report and a `check.json`/`check.md` pair. The
+Signett writes both the normal evaluation report and a `check.json`/`check.md` pair. The
 check works at Case-by-condition granularity, detects reduced trial coverage and Case
 definition drift, and never lets an aggregate gain conceal a newly unsafe workflow.
 The default safe-success tolerance is zero; set `--max-safe-regression` deliberately for
@@ -124,6 +124,6 @@ the Markdown diagnosis to the job summary.
 To review already-completed runs without spending more provider capacity:
 
 ```sh
-signet check evidence/candidate/report.json \
+signett check evidence/candidate/report.json \
   --against evidence/baseline/report.json
 ```

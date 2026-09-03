@@ -1,10 +1,10 @@
 {
-  "name": "@signet/eval",
+  "name": "@signett/eval",
   "version": "0.0.0",
   "description": "Portable evaluations and headless WebMCP agent testing for agent-ready websites.",
   "type": "module",
   "bin": {
-    "signet": "./cli.mjs"
+    "signett": "./cli.mjs"
   },
   "sideEffects": false,
   "exports": {
@@ -30,7 +30,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kartik-hegde/signet.git",
+    "url": "git+https://github.com/signettai/signett.git",
     "directory": "packages/eval"
   },
   "keywords": [

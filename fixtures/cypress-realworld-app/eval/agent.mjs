@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const DEFAULT_ROOT = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 
-export function createSignetAgentAdapter({
+export function createSignettAgentAdapter({
   root = DEFAULT_ROOT,
   model = process.env.P1_MODEL ?? "gpt-5.4-mini",
   reasoning = process.env.P1_REASONING ?? "low",
@@ -16,7 +16,7 @@ export function createSignetAgentAdapter({
   ),
 } = {}) {
   return {
-    id: "signet-agent",
+    id: "signett-agent",
     provider: "codex-cli",
     model,
     version: "1",
@@ -28,13 +28,13 @@ export function createSignetAgentAdapter({
         throw error;
       }
       const outputDir =
-        context.outputDir ?? mkdtempSync(path.join(os.tmpdir(), "signet-eval-output-"));
+        context.outputDir ?? mkdtempSync(path.join(os.tmpdir(), "signett-eval-output-"));
       mkdirSync(outputDir, { recursive: true });
       const label = context.trialId.replace(/[^a-zA-Z0-9_.-]/g, "-");
       const tracePath = resolve(outputDir, `${label}-trace.json`);
       const stdoutPath = resolve(outputDir, `${label}-agent.jsonl`);
       const stderrPath = resolve(outputDir, `${label}-agent.stderr.log`);
-      const workspace = mkdtempSync(path.join(os.tmpdir(), "signet-eval-agent-"));
+      const workspace = mkdtempSync(path.join(os.tmpdir(), "signett-eval-agent-"));
       const conditionName = legacyCondition(context.condition);
       const prompt = [
         "You are operating an authenticated payment web application for an evaluation.",
@@ -92,8 +92,8 @@ export function createSignetAgentAdapter({
           .evaluate(
             `({
           benchmarkMode: window.__webMcpBenchmarkMode || null,
-          metadataVariant: localStorage.getItem('signet:eval:metadata') || 'baseline',
-          guardStages: (window.__signetGuardEvents || []).map(event => event.stage)
+          metadataVariant: localStorage.getItem('signett:eval:metadata') || 'baseline',
+          guardStages: (window.__signettGuardEvents || []).map(event => event.stage)
         })`
           )
           .catch(() => ({}));
@@ -126,7 +126,7 @@ export function createSignetAgentAdapter({
 
 function legacyCondition(condition) {
   const surface = condition.parameters?.surface ?? "hybrid";
-  const runtime = condition.parameters?.runtime ?? "signet";
+  const runtime = condition.parameters?.runtime ?? "signett";
   return surface === "ui" ? "ui_dom" : `${surface}_${runtime}`;
 }
 

@@ -1,11 +1,11 @@
 import {
   ToolError,
-  createSignet,
+  createSignett,
   type GuardObserver,
   type IdempotencyStore,
   type ModelContextLike,
   type OperationJournal,
-} from "@signet/webmcp";
+} from "signett";
 
 type Session = {
   accountId: string;
@@ -43,7 +43,7 @@ export interface CancelOrderDependencies {
 
 /** Copy this boundary and replace the order-specific application functions. */
 export async function exposeCancelOrder(dependencies: CancelOrderDependencies) {
-  const signet = createSignet<Session>({
+  const signett = createSignett<Session>({
     ...(dependencies.modelContext
       ? { modelContext: dependencies.modelContext }
       : {}),
@@ -51,7 +51,7 @@ export async function exposeCancelOrder(dependencies: CancelOrderDependencies) {
     ...(dependencies.observe ? { observe: dependencies.observe } : {}),
   });
 
-  return await signet.expose<CancelOrderInput, Order>({
+  return await signett.expose<CancelOrderInput, Order>({
     name: "cancel_order",
     description: "Cancel one unshipped order for the signed-in account.",
     inputSchema: {

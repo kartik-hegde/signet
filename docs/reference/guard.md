@@ -35,7 +35,7 @@ Optional stable operation name used only in lifecycle events.
 context?: (input, options) => Context | Promise<Context>;
 ```
 
-Resolves application session, principal, tenant, resource, or service context. Signet
+Resolves application session, principal, tenant, resource, or service context. Signett
 does not resolve identity implicitly.
 
 ### `authorize`
@@ -85,7 +85,7 @@ idempotency?: {
 ```
 
 The key must not be empty. The store atomically returns `fresh`, `in_flight`, or a
-`completed` result. Signet executes only a fresh claim. It recovers abandoned in-flight
+`completed` result. Signett executes only a fresh claim. It recovers abandoned in-flight
 work without executing again, completes recovered results, and returns
 `OutcomeUnknownError` when recovery cannot prove the outcome. It calls `release` only
 when an empty configured journal proves the handler failed before the effect boundary;
@@ -120,7 +120,7 @@ verify?: ({ input, output, context, replayed, recovered, signal }) =>
 A false decision throws `VerificationError` after execution, replay, or recovery.
 Once execution completes, verification receives an independent finalization signal so
 late caller cancellation cannot misreport a real effect as cancelled. Set the optional
-positive integer `verifyTimeoutMs` to bound this stage; Signet rejects at that deadline
+positive integer `verifyTimeoutMs` to bound this stage; Signett rejects at that deadline
 with `VerificationError` and aborts the signal supplied to the verifier. Without it,
 the verifier must settle on its own. The original invocation signal never cancels
 finalization.
@@ -140,7 +140,7 @@ live owner. Use it to read authoritative state when the effect may have committe
 its response was lost. A recovered output is cached by the configured idempotency store
 and proceeds through `verify`. With idempotency configured, `recovered: false` preserves
 the original error only when a configured journal is empty and therefore proves a
-pre-effect failure. Otherwise the outcome is unknown. Signet never retries the effect
+pre-effect failure. Otherwise the outcome is unknown. Signett never retries the effect
 automatically. Explicitly returning `outcome: "unknown"`, or throwing while
 authoritative recovery is running, produces `OutcomeUnknownError` and the terminal
 `outcome_unknown` lifecycle stage.

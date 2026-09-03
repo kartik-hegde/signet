@@ -167,7 +167,7 @@ async function executeNativeTool(name, input) {
           ok: false,
           stringError: String(stringError),
           objectError: String(objectError),
-          guardStages: (window.__signetGuardEvents || []).map(event => event.stage)
+          guardStages: (window.__signettGuardEvents || []).map(event => event.stage)
         };
       }
     }
@@ -176,7 +176,7 @@ async function executeNativeTool(name, input) {
   return execution;
 }
 
-const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), "signet-native-webmcp-"));
+const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), "signett-native-webmcp-"));
 const debugPort = await unusedPort();
 let chrome;
 let cdp;

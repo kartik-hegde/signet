@@ -125,7 +125,7 @@ function createDefaultProvider(options, suite) {
     );
   }
   const apiKeyEnv =
-    options.apiKeyEnv ?? suite.provider?.apiKeyEnv ?? "SIGNET_AGENT_API_KEY";
+    options.apiKeyEnv ?? suite.provider?.apiKeyEnv ?? "SIGNETT_AGENT_API_KEY";
   return createChatCompletionsProvider({
     endpoint,
     model,
@@ -153,7 +153,7 @@ function positiveInteger(value, label) {
 }
 
 function helpText() {
-  return `Usage: signet agent [suite.mjs] [options]
+  return `Usage: signett agent [suite.mjs] [options]
 
 Run saved prompts against the exact WebMCP tools exposed by a headless Chrome page.
 

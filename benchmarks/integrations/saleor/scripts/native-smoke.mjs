@@ -117,7 +117,7 @@ function normalize(value) {
 }
 
 const profileDirectory = fs.mkdtempSync(
-  path.join(os.tmpdir(), "signet-saleor-native-"),
+  path.join(os.tmpdir(), "signett-saleor-native-"),
 );
 const debugPort = await unusedPort();
 let chrome;
@@ -175,7 +175,7 @@ try {
   const contact = await callTool("set_checkout_contact", {
     operationId: `contact-${suffix}`,
     email,
-    firstName: "Signet",
+    firstName: "Signett",
     lastName: "Proof",
     streetAddress1: "41 Madison Avenue",
     city: "New York",
@@ -201,19 +201,19 @@ try {
     expectedCurrency: "USD",
   };
   await cdp.evaluate(
-    `sessionStorage.setItem("saleor-signet:fault:lost-response", "armed")`,
+    `sessionStorage.setItem("saleor-signett:fault:lost-response", "armed")`,
   );
 
   const firstCall = callTool("place_order", orderInput);
   await waitFor(
     () =>
       cdp.evaluate(
-        `Boolean(document.querySelector('[data-testid="signet-approval"]'))`,
+        `Boolean(document.querySelector('[data-testid="signett-approval"]'))`,
       ),
     "the shopper approval dialog",
   );
   await cdp.evaluate(`(() => {
-    const buttons = [...document.querySelectorAll('[data-testid="signet-approval"] button')];
+    const buttons = [...document.querySelectorAll('[data-testid="signett-approval"] button')];
     const approve = buttons.find(button => button.textContent.includes("Approve"));
     if (!approve) throw new Error("The approval button is missing.");
     approve.click();
@@ -222,7 +222,7 @@ try {
 
   const second = await callTool("place_order", orderInput);
   const promptedAgain = await cdp.evaluate(
-    `Boolean(document.querySelector('[data-testid="signet-approval"]'))`,
+    `Boolean(document.querySelector('[data-testid="signett-approval"]'))`,
   );
   if (promptedAgain)
     throw new Error("Exact replay requested a second approval.");

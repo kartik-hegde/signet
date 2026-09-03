@@ -6,16 +6,16 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const signetDir = resolve(root, process.env.SIGNET_DIR ?? "packages/webmcp");
+const signettDir = resolve(root, process.env.SIGNETT_DIR ?? "packages/webmcp");
 const resultDir = resolve(root, option("output") ?? "evidence/build-vs-buy");
 const adapters = {
   handrolled: resolve(
     root,
     "benchmarks/execution-safety/harness/adapters/handrolled.js",
   ),
-  signet: resolve(
+  signett: resolve(
     root,
-    "benchmarks/execution-safety/harness/adapters/signet.js",
+    "benchmarks/execution-safety/harness/adapters/signett.js",
   ),
 };
 
@@ -26,7 +26,7 @@ const safety = safetyPath
       resolve(root, "benchmarks/execution-safety/run.js"),
       "--json",
       "--no-history",
-      `--signet=${signetDir}`,
+      `--signett=${signettDir}`,
     ]);
 const score = (arm) => safety.scores.find((entry) => entry.arm === arm);
 const result = {
@@ -36,18 +36,18 @@ const result = {
   note: "This is one benchmark-authored implementation, not an independent implementer study.",
   provenance: {
     benchmarkCommit: revision(root),
-    signetCommit: revision(signetDir),
+    signettCommit: revision(signettDir),
     safetyScoringVersion: safety.scoringVersion,
   },
   implementation: {
     handrolledBespokeSloc: sourceLines(adapters.handrolled),
-    signetAdapterSloc: sourceLines(adapters.signet),
+    signettAdapterSloc: sourceLines(adapters.signett),
   },
   conformance: {
     raw: score("A1_raw"),
     handrolled: score("A2_handrolled"),
-    signetShippedStore: score("A3a_signet_memory"),
-    signetWithDurableStore: score("A3b_signet_durable"),
+    signettShippedStore: score("A3a_signett_memory"),
+    signettWithDurableStore: score("A3b_signett_durable"),
   },
 };
 
@@ -112,10 +112,10 @@ Generated: ${value.generatedAt}
 |---|---:|---:|---:|---:|
 | Raw WebMCP | — | ${conformance.raw.overall} | ${conformance.raw.scenariosPassed}/${conformance.raw.scenariosRun} | ${conformance.raw.medianInvocationMs} |
 | Hand-rolled controls | ${implementation.handrolledBespokeSloc} | ${conformance.handrolled.overall} | ${conformance.handrolled.scenariosPassed}/${conformance.handrolled.scenariosRun} | ${conformance.handrolled.medianInvocationMs} |
-| Signet + shipped memory store | ${implementation.signetAdapterSloc} | ${conformance.signetShippedStore.overall} | ${conformance.signetShippedStore.scenariosPassed}/${conformance.signetShippedStore.scenariosRun} | ${conformance.signetShippedStore.medianInvocationMs} |
-| Signet + same durable store | ${implementation.signetAdapterSloc} | ${conformance.signetWithDurableStore.overall} | ${conformance.signetWithDurableStore.scenariosPassed}/${conformance.signetWithDurableStore.scenariosRun} | ${conformance.signetWithDurableStore.medianInvocationMs} |
+| Signett + shipped memory store | ${implementation.signettAdapterSloc} | ${conformance.signettShippedStore.overall} | ${conformance.signettShippedStore.scenariosPassed}/${conformance.signettShippedStore.scenariosRun} | ${conformance.signettShippedStore.medianInvocationMs} |
+| Signett + same durable store | ${implementation.signettAdapterSloc} | ${conformance.signettWithDurableStore.overall} | ${conformance.signettWithDurableStore.scenariosPassed}/${conformance.signettWithDurableStore.scenariosRun} | ${conformance.signettWithDurableStore.medianInvocationMs} |
 
-The hand-rolled and Signet arms use the same application operations, fault schedule,
+The hand-rolled and Signett arms use the same application operations, fault schedule,
 authoritative verifiers, and durable idempotency store. Only the execution adapter
 changes. SLOC excludes blank and comment-only lines and intentionally counts the
 hand-rolled control code the application must own.

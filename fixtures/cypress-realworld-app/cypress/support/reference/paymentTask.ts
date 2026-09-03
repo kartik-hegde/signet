@@ -28,7 +28,7 @@ export type PaymentBaseline = {
 
 export type ReferenceMetric = {
   task: typeof referencePaymentTask.id;
-  mode: "ui" | "webmcp_raw" | "webmcp_signet";
+  mode: "ui" | "webmcp_raw" | "webmcp_signett";
   durationMs: number;
   interactionCount: number;
   toolCalls: number;

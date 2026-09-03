@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { databaseCompose } from "./paths.mjs";
 
 const emailIndex = process.argv.indexOf("--email");
-const email = emailIndex >= 0 ? process.argv[emailIndex + 1] : "signet-case-study@example.test";
+const email = emailIndex >= 0 ? process.argv[emailIndex + 1] : "signett-case-study@example.test";
 if (!email || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+$/i.test(email)) {
   throw new Error("Pass a valid benchmark address with --email.");
 }

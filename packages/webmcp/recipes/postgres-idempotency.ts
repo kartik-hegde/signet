@@ -2,7 +2,7 @@ import type {
   ExecuteOptions,
   IdempotencyBeginResult,
   IdempotencyStore,
-} from "@signet/webmcp";
+} from "signett";
 
 interface PostgresClient {
   query<Row extends Record<string, unknown> = Record<string, unknown>>(
@@ -30,7 +30,7 @@ type OperationRow<Output> = {
  *
  * Create the table first:
  *
- *   create table signet_operations (
+ *   create table signett_operations (
  *     key text primary key,
  *     state text not null check (state in ('in_flight', 'completed')),
  *     value jsonb,
@@ -61,7 +61,7 @@ export class PostgresIdempotencyStore implements IdempotencyStore {
       options.signal.throwIfAborted();
 
       const stored = await client.query<OperationRow<Output>>(
-        "select state, value from signet_operations where key = $1",
+        "select state, value from signett_operations where key = $1",
         [key],
       );
       const existing = stored.rows[0];
@@ -75,7 +75,7 @@ export class PostgresIdempotencyStore implements IdempotencyStore {
 
       if (!existing) {
         await client.query(
-          "insert into signet_operations (key, state, value) values ($1, 'in_flight', null)",
+          "insert into signett_operations (key, state, value) values ($1, 'in_flight', null)",
           [key],
         );
       }
@@ -96,7 +96,7 @@ export class PostgresIdempotencyStore implements IdempotencyStore {
     options.signal.throwIfAborted();
     const client = this.#claim(key);
     await client.query(
-      "update signet_operations set state = 'completed', value = $2::jsonb, updated_at = now() where key = $1",
+      "update signett_operations set state = 'completed', value = $2::jsonb, updated_at = now() where key = $1",
       [key, JSON.stringify(storedResult(value))],
     );
     await this.#settle(key, client);
@@ -105,7 +105,7 @@ export class PostgresIdempotencyStore implements IdempotencyStore {
   async release(key: string, options: ExecuteOptions): Promise<void> {
     options.signal.throwIfAborted();
     const client = this.#claim(key);
-    await client.query("delete from signet_operations where key = $1", [key]);
+    await client.query("delete from signett_operations where key = $1", [key]);
     await this.#settle(key, client);
   }
 

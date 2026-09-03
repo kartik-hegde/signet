@@ -1,11 +1,11 @@
 ---
-name: signet-webmcp
-description: Make an existing TypeScript or JavaScript website agent-ready with @signet/webmcp. Use when exposing application functions through native WebMCP, adding or reviewing Signet tools, migrating direct WebMCP registration to Signet, implementing safe agent-triggered mutations, or testing a Signet/WebMCP integration.
+name: signett-webmcp
+description: Make an existing TypeScript or JavaScript website agent-ready with signett. Use when exposing application functions through native WebMCP, adding or reviewing Signett tools, migrating direct WebMCP registration to Signett, implementing safe agent-triggered mutations, or testing a Signett/WebMCP integration.
 ---
 
-# Build with Signet WebMCP
+# Build with Signett WebMCP
 
-Use application functions the website already owns. Do not inspect Signet's compiled
+Use application functions the website already owns. Do not inspect Signett's compiled
 implementation: the public contract below is sufficient.
 
 ## Workflow
@@ -28,19 +28,19 @@ implementation: the public contract below is sufficient.
 Work token-efficiently: inspect the target business function, session source, lifecycle,
 and relevant tests in one batched pass. Then implement from this contract and run the
 focused test. Do not enumerate or inspect `node_modules`, declaration files, runtime
-exports, or Signet source unless a compiler or test result contradicts this contract.
+exports, or Signett source unless a compiler or test result contradicts this contract.
 
 ## Implementation pattern
 
 ```ts
-import { createSignet } from "@signet/webmcp";
+import { createSignett } from "signett";
 
-const signet = createSignet({
+const signett = createSignett({
   context: ({ signal }) => getSession({ signal }),
   observe: recordLifecycleEvent,
 });
 
-const registration = await signet.expose({
+const registration = await signett.expose({
   name: "cancel_order",
   description: "Cancel one unshipped order for the signed-in account.",
   inputSchema: {
@@ -106,14 +106,14 @@ registration.dispose();
 
 ## Public contract
 
-- `createSignet({ modelContext?, context?, observe?, unsupported? })` creates the
+- `createSignett({ modelContext?, context?, observe?, unsupported? })` creates the
   interface. `context` receives `{ signal }` once per invocation.
 - `expose(tool)` validates the definition and registers it through native WebMCP. It
   returns an idempotent `dispose()` handle. A failed registration remains retryable.
 - Execution order is: cancellation check, input validation, context, authorization,
   optional always-confirmation, idempotency lookup, optional effect-only confirmation
   and execute, optional recovery, output limit, verification, result.
-- Once `execute` resolves, cancellation has lost the race. Signet completes
+- Once `execute` resolves, cancellation has lost the race. Signett completes
   verification and emits `completed_after_abort` when relevant.
 - `authorize({ input, context, signal })` runs before the handler and returns a boolean
   or `{ allowed, reason? }`. It runs before every idempotency lookup, including replay.
@@ -121,21 +121,21 @@ registration.dispose();
   eligibility changed by success, such as `status === "open"`, inside `execute` so a
   valid replay can reach its stored result.
 - `idempotency.store` uses phased `begin`, `complete`, `release`, and `abandon`
-  methods. Signet executes only fresh claims, recovers abandoned in-flight claims, and
+  methods. Signett executes only fresh claims, recovers abandoned in-flight claims, and
   replays completed results. Only a journal-proven pre-effect failure is released;
   ambiguous work is abandoned but retained. The key must include principal, operation
   ID, and every intent-changing argument. A conservative browser adapter ships from
-  `@signet/webmcp/stores`; server applications can adapt the PostgreSQL recipe.
+  `signett/stores`; server applications can adapt the PostgreSQL recipe.
 - A function-valued `confirm` runs on every call before idempotency. Use
   `{ mode: "effect-only", request }` to prompt only when the store will run a new effect.
 - `journal: { store, key? }` supplies a scoped `operation` handle to execute, recover,
   and verify. It reuses the idempotency key when `key` is omitted. The app owns storage.
-- `execute(input, { context, operation?, signal })` is never automatically retried by Signet.
+- `execute(input, { context, operation?, signal })` is never automatically retried by Signett.
 - Expected business failures may throw
   `ToolError({ code, message, retry?, repair? })`. Set `retry` to `never`, `as_is`, or
   `after_repair`; the older `retryable` boolean remains compatible. Use one
   `{ action, tool?, instruction }` for a single next step or
-  `{ steps: [...], preserve: [...], update: [...] }` for a dependent recovery sequence. Signet marks
+  `{ steps: [...], preserve: [...], update: [...] }` for a dependent recovery sequence. Signett marks
   a repairable failure `after_repair`, includes ordered non-parallel guidance in the
   cross-boundary message, and never calls another tool or retries automatically. Use
   bounded instructions authored from trusted application constants only.
@@ -152,8 +152,8 @@ registration.dispose();
   exceeds its budget without discarding a completed operation.
 - `observe(event)` receives metadata, not inputs or outputs. Observer failures do not
   alter registration or execution.
-- `createSignetActivity(signet, { toolName?, maxInvocations? })` and the React
-  `useSignetActivity` hook project lifecycle events into small, metadata-only UI state.
+- `createSignettActivity(signett, { toolName?, maxInvocations? })` and the React
+  `useSignettActivity` hook project lifecycle events into small, metadata-only UI state.
   Use them to render progress in the application's existing interface. A verified
   success may trigger an authoritative state refresh; activity must not authorize an
   action, stand in for business state, render UI, or mutate the DOM.
@@ -163,15 +163,15 @@ registration.dispose();
 The application owns authentication, authorization data, backend enforcement,
 business logic, durable idempotency, and authoritative state.
 
-Return the registration from `await signet.expose(...)` directly. Do not create another
+Return the registration from `await signett.expose(...)` directly. Do not create another
 registration `AbortController`, wrap or mutate `dispose()`, manually emit lifecycle
 events, contain observer failures, validate input again, or verify inside `execute`.
-Those are Signet responsibilities; duplicating them adds defects.
+Those are Signett responsibilities; duplicating them adds defects.
 
 ## Verification
 
-Create a harness with `createWebMcpTestHarness()` from `@signet/webmcp/testing`, pass
-its `modelContext` to `createSignet`, and invoke the tool with
+Create a harness with `createWebMcpTestHarness()` from `signett/testing`, pass
+its `modelContext` to `createSignett`, and invoke the tool with
 `harness.invoke(name, input)`. Prove:
 
 - invalid and unauthorized input causes no effect;

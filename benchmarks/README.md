@@ -1,4 +1,4 @@
-# Signet benchmarks
+# Signett benchmarks
 
 Public benchmark work for structured browser-agent actions and safe execution.
 
@@ -8,11 +8,11 @@ The project evaluates three different questions and keeps their evidence separat
    discover and invoke WebMCP tools.
 2. **Execution safety:** what raw and guarded tool handlers leave behind when retries,
    concurrency, authorization failures, cancellation, or incorrect responses occur.
-3. **Build versus buy:** how a Signet integration compares with independently built
+3. **Build versus buy:** how a Signett integration compares with independently built
    WebMCP controls in implementation time, bespoke code, conformance, and maintenance.
 
-Signet is an evaluated arm, not the benchmark oracle. Task completion is graded from
-application state or an independent evaluator, never from Signet events or a tool's own
+Signett is an evaluated arm, not the benchmark oracle. Task completion is graded from
+application state or an independent evaluator, never from Signett events or a tool's own
 success response.
 
 ## Run a reusable evaluation
@@ -26,13 +26,13 @@ baseline, explicit-metadata, and guided-metadata conditions for hill climbing.
 npm run eval -- --trials 5
 
 # Select a smaller matrix while developing
-npm run eval -- --case find-payment-recipient --condition signet-baseline,signet-guided --trials 5
+npm run eval -- --case find-payment-recipient --condition signett-baseline,signett-guided --trials 5
 
 # Inspect the run count without starting Chrome or an agent
 npm run eval -- --dry-run
 
 # Gate the next run against reviewed evidence
-npm run eval -- --trials 5 --against .signet/baselines/payments.report.json
+npm run eval -- --trials 5 --against .signett/baselines/payments.report.json
 ```
 
 Application, browser, agent, fault, and oracle adapters live outside the core runner.
@@ -40,7 +40,7 @@ This makes the format and local runner reusable while keeping the database oracl
 authoritative. Outputs are written under `evidence/eval/<timestamp>/`; model-backed runs
 may consume paid provider capacity, so CI uses deterministic contract tests instead.
 
-`signet check candidate/report.json --against baseline/report.json` performs the same
+`signett check candidate/report.json --against baseline/report.json` performs the same
 comparison on completed runs. It checks every Case and condition independently, rejects
 new forbidden effects and invalid comparisons, and writes `check.json` plus review-ready
 `check.md`. Regression tolerances and duration/token budgets are explicit command-line
@@ -68,7 +68,7 @@ hill-climbing—not only WebMCP efficiency and execution safety.
 | [`demo/`](./demo/)                               | Customer-ready speed race and fault-injection story                         | Runnable           |
 | [`execution-safety/`](./execution-safety/)       | Deterministic post-commit failure and concurrency suite                     | Runnable v0        |
 | [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies                                       | Runnable P1        |
-| [`build-vs-buy/`](./build-vs-buy/)               | Raw, hand-rolled, and Signet implementation baseline                        | Runnable           |
+| [`build-vs-buy/`](./build-vs-buy/)               | Raw, hand-rolled, and Signett implementation baseline                        | Runnable           |
 | [`integrations/`](./integrations/)               | External-app manifests, patches, task definitions, reset hooks, and oracles | Saleor + Cal.diy   |
 | [`methodology/`](./methodology/)                 | Benchmark contract, coverage audit, ordered roadmap, and publication rules  | Audit + roadmap    |
 | [`../evidence/`](../evidence/)                   | Reviewed summaries and benchmark cards; raw/private traces stay ignored     | Published evidence |
@@ -82,7 +82,7 @@ npm run bench:safety
 ## Run P0
 
 P0 runs the authenticated payment task through the UI, raw WebMCP, and
-Signet-guarded WebMCP; verifies all three against the same database oracle; runs the
+Signett-guarded WebMCP; verifies all three against the same database oracle; runs the
 deterministic safety suite; and prints one KPI scorecard.
 
 ```sh
@@ -101,7 +101,7 @@ planning, and UI interaction are part of the question.
 ## Present the demo
 
 The interactive demo reads the latest P0 evidence and turns it into a two-part story:
-WebMCP removes UI work, then Signet makes consequential execution inspectable and safe.
+WebMCP removes UI work, then Signett makes consequential execution inspectable and safe.
 
 ```sh
 npm run demo
@@ -126,9 +126,9 @@ traces remain under the ignored `evidence/raw/p1/` directory.
 
 ## Test a live agent interface
 
-The same mechanism also provides the first Signet Test Agent vertical slice. It removes
+The same mechanism also provides the first Signett Test Agent vertical slice. It removes
 DOM fallback, runs one saved task against only the live WebMCP registrations, and joins
-agent behavior to Signet lifecycle and authoritative outcome evidence:
+agent behavior to Signett lifecycle and authoritative outcome evidence:
 
 ```sh
 npm run test:agent -- --task=find-payment-recipient
@@ -161,7 +161,7 @@ The proposed public methodology is in
 - derive tools from genuine application capabilities rather than benchmark tasks;
 - report task success, safe task success, time, actions, tokens, and cost separately;
 - publish failures, timeouts, confidence intervals, versions, and evaluator changes;
-- attribute UI-to-tool gains to WebMCP and raw-to-guarded safety gains to Signet.
+- attribute UI-to-tool gains to WebMCP and raw-to-guarded safety gains to Signett.
 
 This repository is experimental. A public release also needs an explicit repository
 license, pinned application provenance, and a benchmark card for each published study.

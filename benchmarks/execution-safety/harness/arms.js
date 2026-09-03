@@ -14,29 +14,29 @@ import {
   SqlitePhasedStore,
 } from "./stores.js";
 import { buildHandrolled } from "./adapters/handrolled.js";
-import { buildWithSignet } from "./adapters/signet.js";
+import { buildWithSignett } from "./adapters/signett.js";
 
 /**
- * `run.js` sets SIGNET_DIST to the absolute entry point of the build its preflight
+ * `run.js` sets SIGNETT_DIST to the absolute entry point of the build its preflight
  * just verified. Resolving anything else here would let the benchmark build one
  * checkout and score another, which is the same silent staleness the preflight
  * exists to prevent. The fallback is only for running this module directly.
  */
 const benchDir = dirname(dirname(fileURLToPath(import.meta.url)));
-export const SIGNET_DIST = resolve(
-  process.env.SIGNET_DIST ?? join(benchDir, "..", "signet", "dist", "index.js"),
+export const SIGNETT_DIST = resolve(
+  process.env.SIGNETT_DIST ?? join(benchDir, "..", "signett", "dist", "index.js"),
 );
 
 let guard;
 let MemoryIdempotencyStore;
 try {
-  ({ guard } = await import(pathToFileURL(SIGNET_DIST).href));
+  ({ guard } = await import(pathToFileURL(SIGNETT_DIST).href));
   ({ MemoryIdempotencyStore } = await import(
-    pathToFileURL(resolve(dirname(SIGNET_DIST), "testing.js")).href
+    pathToFileURL(resolve(dirname(SIGNETT_DIST), "testing.js")).href
   ));
 } catch (error) {
   throw new Error(
-    `Could not load the Signet guard from "${SIGNET_DIST}".\n` +
+    `Could not load the Signett guard from "${SIGNETT_DIST}".\n` +
       `Run the benchmark through ./run.js, which builds it first.\n` +
       `Underlying error: ${error.message}`,
   );
@@ -74,12 +74,12 @@ export const ARMS = {
     label: "A2 hand-rolled controls",
     build: buildHandrolledArm,
   },
-  A3a_signet_memory: {
-    label: "A3a Signet, test-only memory",
+  A3a_signett_memory: {
+    label: "A3a Signett, test-only memory",
     build: (a) => buildGuarded(a, "memory"),
   },
-  A3b_signet_durable: {
-    label: "A3b Signet, phased durable",
+  A3b_signett_durable: {
+    label: "A3b Signett, phased durable",
     build: (a) => buildGuarded(a, "durable"),
   },
 };
@@ -146,7 +146,7 @@ function buildGuarded({ execute, faults, ctx, toolName, validate }, storeKind) {
         }
       : undefined;
 
-  return buildWithSignet({
+  return buildWithSignett({
     handler,
     store,
     journal,

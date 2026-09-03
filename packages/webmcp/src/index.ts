@@ -1,24 +1,24 @@
 export { guard } from "./guard.js";
-export { createSignet } from "./interface.js";
+export { createSignett } from "./interface.js";
 export {
-  createSignetActivity,
-  type SignetActivity,
-  type SignetActivityFeed,
-  type SignetActivityOptions,
-  type SignetActivityPhase,
-  type SignetActivityResolution,
-  type SignetActivitySnapshot,
+  createSignettActivity,
+  type SignettActivity,
+  type SignettActivityFeed,
+  type SignettActivityOptions,
+  type SignettActivityPhase,
+  type SignettActivityResolution,
+  type SignettActivitySnapshot,
 } from "./activity.js";
 export { WebStorageOperationJournal, type WebStorageLike } from "./journal.js";
 export {
   AuthorizationError,
   ConfirmationError,
   OutcomeUnknownError,
-  SignetError,
+  SignettError,
   ToolError,
   ValidationError,
   VerificationError,
-  type SignetErrorCode,
+  type SignettErrorCode,
   type ToolRepairAction,
   type ToolRepairGuidance,
   type ToolRepairPlan,
@@ -50,15 +50,15 @@ export type {
   OperationJournal,
   OperationJournalOptions,
   RecoveryDecision,
-  SignetCallerTelemetry,
+  SignettCallerTelemetry,
   VerificationDecision,
 } from "./types.js";
 export type {
-  CreateSignetOptions,
+  CreateSignettOptions,
   ModelContextLike,
-  SignetInterface,
-  SignetRegistration,
-  SignetTool,
-  SignetToolSnapshot,
+  SignettInterface,
+  SignettRegistration,
+  SignettTool,
+  SignettToolSnapshot,
   ToolAnnotations,
 } from "./interface.js";

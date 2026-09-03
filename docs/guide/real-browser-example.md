@@ -1,7 +1,7 @@
 # Codelab: an authenticated payment app
 
 The repository includes the Cypress Real World App, an existing React and Express
-payment application instrumented with Signet. It is the smallest place to see the
+payment application instrumented with Signett. It is the smallest place to see the
 complete development loop working together: expose a capability, test it
 deterministically, run it through a native browser and real agent, grade the product
 outcome from the database, then retain a baseline that catches regressions while the
@@ -19,7 +19,7 @@ criteria, and oracle first, then derive the tools.
 
 For the deterministic and native-browser lanes, you need:
 
-- a Signet checkout with Node.js 20.19 or newer and npm;
+- a Signett checkout with Node.js 20.19 or newer and npm;
 - network access for the one-time reference-app dependency install; and
 - Google Chrome for the native WebMCP lane.
 
@@ -30,11 +30,11 @@ These lanes prove different boundaries:
 
 | Lane                  | Command                          | Model? | Evidence                                                                        |
 | --------------------- | -------------------------------- | ------ | ------------------------------------------------------------------------------- |
-| Deterministic browser | `npm run test:reference`         | No     | React lifecycle, Signet controls, HTTP, Express policy, and database assertions |
+| Deterministic browser | `npm run test:reference`         | No     | React lifecycle, Signett controls, HTTP, Express policy, and database assertions |
 | Native browser        | `npm run test:reference:native`  | No     | Native Chrome discovery and invocation plus one verified database effect        |
-| Real-agent smoke      | `npm run test:agent -- --task=…` | Yes    | One model run joined to Signet lifecycle and an application oracle              |
+| Real-agent smoke      | `npm run test:agent -- --task=…` | Yes    | One model run joined to Signett lifecycle and an application oracle              |
 | Repeated evaluation   | `npm run eval -- …`              | Yes    | Versioned Trial Evidence and oracle-graded JSON/Markdown Reports                |
-| Change check          | `signet check … --against …`     | No     | Per-Case regression verdict against a reviewed Report                           |
+| Change check          | `signett check … --against …`     | No     | Per-Case regression verdict against a reviewed Report                           |
 
 All runs operate only on the vendored application's seeded local test database. The
 test and native lanes reset that fixture automatically.
@@ -56,15 +56,15 @@ endpoints and session cookie.
 ```text
 browser agent
   -> native document.modelContext
-  -> Signet tool definition and execution controls
+  -> Signett tool definition and execution controls
   -> existing authenticated Express endpoints
   -> application database
   -> authoritative payment read
-  -> Signet verification
+  -> Signett verification
   -> tool result
 ```
 
-Signet owns the agent-facing boundary and execution ordering. The application server
+Signett owns the agent-facing boundary and execution ordering. The application server
 remains responsible for authentication, final authorization, validation, business
 logic, and durable payment records.
 
@@ -82,10 +82,10 @@ useEffect(() => {
 
 This prevents a stale payment capability from remaining discoverable after logout.
 
-## 2. Define raw handlers and Signet wrappers
+## 2. Define raw handlers and Signett wrappers
 
 The fixture keeps raw and guarded callbacks side by side so the benchmark can isolate
-the value of Signet without changing the WebMCP inventory. The payment wrapper resolves
+the value of Signett without changing the WebMCP inventory. The payment wrapper resolves
 authenticated context before policy runs:
 
 ```ts
@@ -211,8 +211,8 @@ lifecycle.signal.addEventListener("abort", () => {
 });
 ```
 
-Normal applications can use `createSignet().expose()` or framework bindings such as
-`useSignetTool()`; the imperative registration here holds the tool contract constant
+Normal applications can use `createSignett().expose()` or framework bindings such as
+`useSignettTool()`; the imperative registration here holds the tool contract constant
 across raw and guarded benchmark arms.
 
 ## 6. Repeat authority on the server
@@ -233,13 +233,13 @@ operation ID and only returns records owned by the signed-in user.
 
 Cypress installs a capture-only `document.modelContext` before React starts. Tests
 then invoke the exact callbacks registered by the application. Everything after that
-boundary is real: cookies, React lifecycle, Signet, HTTP, Express policy, payment
+boundary is real: cookies, React lifecycle, Signett, HTTP, Express policy, payment
 logic, balances, and database writes.
 
 The focused tests prove:
 
 - tools exist only while signed in;
-- production-facing tool metadata passes Signet's readiness diagnostics;
+- production-facing tool metadata passes Signett's readiness diagnostics;
 - invented or unauthorized arguments cause no payment request;
 - concurrent identical calls produce one effect;
 - a reload retry returns the existing durable result;
@@ -255,7 +255,7 @@ npm run test:reference:install
 npm run test:reference
 ```
 
-The install command is needed once. The test command builds Signet and the application,
+The install command is needed once. The test command builds Signett and the application,
 starts the React and Express servers, runs the focused Cypress specs, and stops both
 servers. The expected result is 16 passing tests across two spec files.
 
@@ -303,7 +303,7 @@ there, not in the payment website. These commands reset seeded local fixture dat
 write the latest run evidence under `evidence/test-agent/`.
 
 Read `evidence/test-agent/latest.md` for the outcome and the adjacent JSON for the exact
-tool inventory, arguments, return values, Signet lifecycle, timing, model report, and
+tool inventory, arguments, return values, Signett lifecycle, timing, model report, and
 independent application evidence. The payment is successful only when the database
 oracle agrees—not merely when the agent says it succeeded. `latest.*` describes the
 most recently requested task, so run the discovery and payment tasks separately when
@@ -364,13 +364,13 @@ selection without launching Chrome or consuming model capacity:
 ```sh
 npm run eval -- \
   --case pay-lia-reference \
-  --condition signet-baseline,signet-guided \
+  --condition signett-baseline,signett-guided \
   --trials 5 \
   --dry-run
 ```
 
 The expected matrix is one Case × two conditions × five Trials, or ten agent runs.
-`signet-baseline` exposes concise metadata. `signet-guided` adds workflow and argument
+`signett-baseline` exposes concise metadata. `signett-guided` adds workflow and argument
 guidance while keeping the application, model, prompt policy, and oracle fixed.
 
 For a cheap wiring check, change `--trials 5` to `--trials 1`. Do not draw a product
@@ -385,7 +385,7 @@ Run the selected matrix into an ignored working directory:
 ```sh
 npm run eval -- \
   --case pay-lia-reference \
-  --condition signet-baseline,signet-guided \
+  --condition signett-baseline,signett-guided \
   --trials 5 \
   --output .artifacts/tutorial/payment-baseline
 ```
@@ -403,7 +403,7 @@ The runner resets the application before every Trial and retains all ten results
 
 Review `report.md`, then inspect the Evidence for every failed or unsafe Trial. The
 useful diagnostic question is which boundary failed: registration, selection,
-arguments, application execution, Signet execution control, verification, oracle, or
+arguments, application execution, Signett execution control, verification, oracle, or
 agent provider. Never discard a failed Trial because the remaining majority passed.
 
 Only promote a baseline after reviewing the run, confirming that its Case definition
@@ -432,7 +432,7 @@ exact same matrix against the reviewed baseline:
 ```sh
 npm run eval -- \
   --case pay-lia-reference \
-  --condition signet-baseline,signet-guided \
+  --condition signett-baseline,signett-guided \
   --trials 5 \
   --output .artifacts/tutorial/payment-candidate \
   --against evidence/baselines/pay-lia-reference.report.json
@@ -448,7 +448,7 @@ check.md     review-ready diagnosis for each Case × condition
 The default policy fails on any safe-success regression, new forbidden effect,
 environment-error increase, reduced Trial coverage, missing matrix cell, or changed
 Case definition. Comparisons happen per Case and condition, so a gain in
-`signet-guided` cannot conceal a regression in `signet-baseline`.
+`signett-guided` cannot conceal a regression in `signett-baseline`.
 
 For a probabilistic agent, declare any accepted success-rate variance explicitly.
 Performance gates are opt-in:
@@ -456,7 +456,7 @@ Performance gates are opt-in:
 ```sh
 npm run eval -- \
   --case pay-lia-reference \
-  --condition signet-baseline,signet-guided \
+  --condition signett-baseline,signett-guided \
   --trials 10 \
   --output .artifacts/tutorial/payment-candidate \
   --against evidence/baselines/pay-lia-reference.report.json \
@@ -472,7 +472,7 @@ not merely to turn the check green.
 You can compare completed Reports again without spending provider capacity:
 
 ```sh
-npm exec -- signet check \
+npm exec -- signett check \
   .artifacts/tutorial/payment-candidate/report.json \
   --against evidence/baselines/pay-lia-reference.report.json
 ```
@@ -492,7 +492,7 @@ npm run test:reference
 Repeated real-agent evaluation consumes provider capacity and has statistical variance,
 so run it manually, nightly, or before an agent-interface release rather than on every
 source change. The repository's manual benchmark workflow follows that boundary. In
-GitHub Actions, `signet eval --against …` automatically appends `check.md` to the job
+GitHub Actions, `signett eval --against …` automatically appends `check.md` to the job
 summary, so the exact regressed Case is visible without downloading an artifact.
 
 The retained loop is now:
@@ -508,7 +508,7 @@ declare tools
   -> compare the same matrix and block regressions
 ```
 
-That is the core Signet workflow: not merely registering a tool, but making an agent
+That is the core Signett workflow: not merely registering a tool, but making an agent
 interface measurably better without losing a previously working or safe product
 outcome.
 
@@ -516,16 +516,16 @@ outcome.
 
 | Source                                                                                                                                                    | What to inspect                                       |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| [`paymentTools.ts`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/src/webmcp/paymentTools.ts)                           | Tool definitions, controls, registration, and cleanup |
-| [`PrivateRoutesContainer.tsx`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/src/containers/PrivateRoutesContainer.tsx) | Authenticated React ownership                         |
-| [`webmcp-routes.ts`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/backend/webmcp-routes.ts)                            | Backend context, payment, and authoritative reads     |
-| [`signet-payment.spec.ts`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/cypress/tests/webmcp/signet-payment.spec.ts)   | End-to-end safety assertions                          |
-| [`nativeWebMcpSmoke.mjs`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/scripts/nativeWebMcpSmoke.mjs)                  | Native Chrome discovery and invocation                |
-| [`eval/cases.mjs`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/eval/cases.mjs)                                        | Reusable intents, expectations, and safety properties |
-| [`eval/oracle.mjs`](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/eval/oracle.mjs)                                      | Database snapshots and authoritative Trial grades     |
+| [`paymentTools.ts`](https://github.com/signettai/signett/blob/main/fixtures/cypress-realworld-app/src/webmcp/paymentTools.ts)                           | Tool definitions, controls, registration, and cleanup |
+| [`PrivateRoutesContainer.tsx`](https://github.com/signettai/signett/blob/main/fixtures/cypress-realworld-app/src/containers/PrivateRoutesContainer.tsx) | Authenticated React ownership                         |
+| [`webmcp-routes.ts`](https://github.com/signettai/signett/blob/main/fixtures/cypress-realworld-app/backend/webmcp-routes.ts)                            | Backend context, payment, and authoritative reads     |
+| [`signett-payment.spec.ts`](https://github.com/signettai/signett/blob/main/fixtures/cypress-realworld-app/cypress/tests/webmcp/signett-payment.spec.ts)   | End-to-end safety assertions                          |
+| [`nativeWebMcpSmoke.mjs`](https://github.com/signettai/signett/blob/main/fixtures/cypress-realworld-app/scripts/nativeWebMcpSmoke.mjs)                  | Native Chrome discovery and invocation                |
+| [`eval/cases.mjs`](https://github.com/signettai/signett/blob/main/fixtures/cypress-realworld-app/eval/cases.mjs)                                        | Reusable intents, expectations, and safety properties |
+| [`eval/oracle.mjs`](https://github.com/signettai/signett/blob/main/fixtures/cypress-realworld-app/eval/oracle.mjs)                                      | Database snapshots and authoritative Trial grades     |
 
 The vendored application has a more detailed
-[integration runbook](https://github.com/kartik-hegde/signet/blob/main/fixtures/cypress-realworld-app/SIGNET.md).
+[integration runbook](https://github.com/signettai/signett/blob/main/fixtures/cypress-realworld-app/SIGNETT.md).
 
 Next, run the [Cal.diy booking codelab](../tutorials/cal-diy), then use the
 [patterns from Cal.diy and Saleor](./integration-patterns) to decide which abstractions
