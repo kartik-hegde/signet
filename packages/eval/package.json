@@ -33,6 +33,7 @@
     "url": "git+https://github.com/signettai/signett.git",
     "directory": "packages/eval"
   },
+  "homepage": "https://signett.ai",
   "keywords": [
     "webmcp",
     "agents",

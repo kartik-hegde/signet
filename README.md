@@ -2,6 +2,8 @@
 
 Signett makes website capabilities reliable and agent-ready through WebMCP. This repository keeps the product, its evaluation framework, representative applications, benchmarks, and published evidence together so every claim can be traced to executable code.
 
+[Read the Signett documentation](https://signett.ai).
+
 ## Repository map
 
 - `packages/webmcp` — the open-source `signett` SDK
@@ -11,7 +13,7 @@ Signett makes website capabilities reliable and agent-ready through WebMCP. This
 - `benchmarks` — deterministic safety, headless Signett Agent, agent-effectiveness, build-vs-buy, and integration suites
 - `evidence` — checked-in benchmark reports and their provenance
 - `tooling` — repository automation, report builders, and CI change classification
-- `docs` — Signett documentation
+- `docs` — source for the documentation published at [signett.ai](https://signett.ai)
 
 ## Development
 
@@ -44,6 +46,6 @@ npm run test:reference
 
 See [`packages/webmcp/README.md`](packages/webmcp/README.md) for SDK usage,
 [`packages/chrome-agent/README.md`](packages/chrome-agent/README.md) for the Chrome
-agent, [`docs/tutorials/headless-agent-testing.md`](docs/tutorials/headless-agent-testing.md)
+agent, the [headless-agent testing guide](https://signett.ai/tutorials/headless-agent-testing)
 for the terminal testing workflow, and [`benchmarks/README.md`](benchmarks/README.md)
 for benchmark methodology.
