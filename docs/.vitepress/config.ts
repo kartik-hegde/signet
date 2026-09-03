@@ -1,6 +1,18 @@
-import { defineConfig } from "vitepress";
+import { defineConfig, type HeadConfig } from "vitepress";
 
 const base = process.env.DOCS_BASE ?? "/";
+const webMcpOriginTrialToken = process.env.WEBMCP_ORIGIN_TRIAL_TOKEN;
+const webMcpOriginTrialHead: HeadConfig[] = webMcpOriginTrialToken
+  ? [
+      [
+        "meta",
+        {
+          "http-equiv": "origin-trial",
+          content: webMcpOriginTrialToken,
+        },
+      ],
+    ]
+  : [];
 
 export default defineConfig({
   base,
@@ -10,7 +22,10 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   appearance: false,
-  head: [["meta", { name: "theme-color", content: "#ffffff" }]],
+  head: [
+    ["meta", { name: "theme-color", content: "#ffffff" }],
+    ...webMcpOriginTrialHead,
+  ],
   themeConfig: {
     siteTitle: "Signett",
     nav: [
@@ -36,6 +51,7 @@ export default defineConfig({
             link: "/guide/user-jobs-workflow",
           },
           { text: "Getting started", link: "/guide/getting-started" },
+          { text: "Agent-guided docs", link: "/guide/agent-guided-docs" },
           { text: "Core concepts", link: "/guide/core-concepts" },
           { text: "Production WebMCP", link: "/guide/production-webmcp" },
         ],
