@@ -238,7 +238,25 @@ const state = useSignetTool(signet, searchProductsTool, [shopId]);
 ```
 
 The React entry point handles teardown while asynchronous registration is still in
-flight. During development, `mountSignetInspector(signet)` from
+flight. When agent-triggered work should be visible in the application's existing UI,
+subscribe to its metadata-only activity state:
+
+```tsx
+import { useSignetActivity } from "@signet/webmcp/react";
+
+const { latest } = useSignetActivity(signet, { toolName: "place_order" });
+
+if (latest?.phase === "succeeded" && latest.verified) {
+  // Refresh authoritative application state; do not fabricate success in the DOM.
+}
+```
+
+The hook reports stable presentation phases, not inputs, outputs, authorization, or
+business state. Signet does not render or mutate the DOM. Framework-neutral code can
+use `createSignetActivity(signet)` and subscribe to the same projection. See
+[developer tooling](../../docs/guide/developer-tooling.md#application-activity-state).
+
+During development, `mountSignetInspector(signet)` from
 `@signet/webmcp/inspector` shows exact schemas, annotations, registration state, and
 a privacy-safe per-call latency waterfall. To export the same spans to Jaeger or any
 OTLP backend, add `telemetry: { otlp: "/v1/traces", serviceName: "storefront" }`
@@ -250,6 +268,8 @@ to `createSignet`.
 - **Runtime validation:** JSON Schema validation before application code runs.
 - **State-aware lifecycle:** per-call application context and disposable registrations.
 - **Framework lifecycle:** a StrictMode-safe React binding.
+- **Application activity:** optional metadata-only state for rendering agent-call
+  progress in an application's existing interface.
 - **Expected failures:** `ToolError` carries retry conditions, ordered repair plans,
   and input invariants; validation, authorization, and verification errors remain
   distinguishable from system faults.
@@ -287,7 +307,7 @@ Signet is pre-release and WebMCP is experimental. The current package includes:
 - agent-legible errors, confirmation, authorization, idempotency, recovery,
   verification, output limits, cancellation, and lifecycle observation;
 - deterministic testing, store conformance, readiness, and agent-task evaluation;
-- a React lifecycle binding plus a local Inspector;
+- React lifecycle and activity bindings plus a local Inspector;
 - optional OpenTelemetry mapping;
 - standalone and full-stack reference applications.
 

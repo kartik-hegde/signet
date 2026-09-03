@@ -8,6 +8,57 @@ registration is still in flight. Its dependency list is required so a first-rend
 handler closure cannot be frozen accidentally; include every reactive value used by
 the tool callbacks.
 
+## Application activity state
+
+An agent call begins outside the application's normal button or form event handler.
+Use `useSignetActivity` when the human interface should still show that call's progress:
+
+```tsx
+import { useSignetActivity } from "@signet/webmcp/react";
+
+function AgentOrderStatus({ signet }: { signet: SignetInterface<Session> }) {
+  const { latest } = useSignetActivity(signet, {
+    toolName: "place_order",
+  });
+
+  if (!latest) return null;
+  if (latest.phase === "awaiting_confirmation") return <p>Review your order</p>;
+  if (latest.phase === "verifying") return <p>Confirming with the store…</p>;
+  if (latest.phase === "unknown")
+    return <p>Checking whether the order completed…</p>;
+  if (latest.phase === "succeeded" && latest.verified) {
+    return <p>Order verified. Refreshing your receipt…</p>;
+  }
+  return <p>Updating your order…</p>;
+}
+```
+
+The projection deliberately contains metadata only: tool name, invocation ID, phase,
+timing, verification, and whether the result executed, replayed, or recovered. It does
+not contain inputs, outputs, context, or error details. The six stable phases are
+`running`, `awaiting_confirmation`, `verifying`, `succeeded`, `failed`, and `unknown`.
+
+For framework-neutral code, subscribe to the same projection directly:
+
+```ts
+import { createSignetActivity } from "@signet/webmcp";
+
+const activity = createSignetActivity(signet, { toolName: "place_order" });
+const stopRendering = activity.subscribe(() => {
+  renderOrderActivity(activity.getSnapshot());
+});
+
+// When the application surface unmounts:
+stopRendering();
+activity.dispose();
+```
+
+Activity is best-effort presentation state. Never use it for authorization or as proof
+that application state changed. A successful call without a `verify` hook has
+`verified: false`; after verified success, refresh authoritative application state and
+let the application's normal components render the result. Signet never mutates the
+DOM or renders an activity interface.
+
 ## Readiness checks
 
 `checkToolReadiness(tool)` returns deterministic diagnostics for ambiguous names and
