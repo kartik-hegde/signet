@@ -7,6 +7,9 @@ model choose and call those tools, and renders the complete call/result sequence
 It deliberately has no DOM or screenshot fallback. If a task cannot be completed with
 the page's WebMCP interface, the run makes that gap visible.
 
+See the [Signett documentation](https://signett.ai) for SDK guides, production
+controls, testing workflows, and API reference.
+
 ## Build and load it
 
 ```sh

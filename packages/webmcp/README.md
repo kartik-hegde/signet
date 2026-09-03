@@ -48,10 +48,10 @@ Dispose the registration when the capability is no longer available:
 registration.dispose();
 ```
 
-See the complete [getting-started guide](./docs/guide/getting-started.md), then learn
-how [Signett's core abstractions](./docs/guide/core-concepts.md) map to application code.
+See the complete [getting-started guide](https://signett.ai/guide/getting-started), then learn
+how [Signett's core abstractions](https://signett.ai/guide/core-concepts) map to application code.
 For a runnable React page, Chrome inspection, and a first model-driven call, use the
-[first agent call codelab](./docs/tutorials/first-agent-call.md).
+[first agent call codelab](https://signett.ai/tutorials/first-agent-call).
 
 ## Integrate with a coding agent
 
@@ -254,7 +254,7 @@ if (latest?.phase === "succeeded" && latest.verified) {
 The hook reports stable presentation phases, not inputs, outputs, authorization, or
 business state. Signett does not render or mutate the DOM. Framework-neutral code can
 use `createSignettActivity(signett)` and subscribe to the same projection. See
-[the application activity guide](../../docs/guide/application-activity.md) for a
+[the application activity guide](https://signett.ai/guide/application-activity) for a
 complete React and framework-neutral integration.
 
 During development, `mountSignettInspector(signett)` from
@@ -317,17 +317,17 @@ polyfill, Signett JSON format, or compiler.
 
 ## Explore
 
-- [Getting started](./docs/guide/getting-started.md)
-- [Core concepts](./docs/guide/core-concepts.md)
-- [Tutorials](./docs/tutorials/index.md)
-- [Authenticated payment codelab](./docs/guide/real-browser-example.md)
-- [Cal.diy booking codelab](./docs/tutorials/cal-diy.md)
-- [Patterns from real integrations](./docs/guide/integration-patterns.md)
-- [Interface API](./docs/reference/interface.md)
-- [Production WebMCP](./docs/guide/production-webmcp.md)
-- [Testing](./docs/guide/testing.md)
-- [Reference payment application](../../fixtures/cypress-realworld-app/SIGNETT.md)
-- [Design contract](./docs/design.md)
+- [Getting started](https://signett.ai/guide/getting-started)
+- [Core concepts](https://signett.ai/guide/core-concepts)
+- [Tutorials](https://signett.ai/tutorials/)
+- [Authenticated payment codelab](https://signett.ai/guide/real-browser-example)
+- [Cal.diy booking codelab](https://signett.ai/tutorials/cal-diy)
+- [Patterns from real integrations](https://signett.ai/guide/integration-patterns)
+- [Interface API](https://signett.ai/reference/interface)
+- [Production WebMCP](https://signett.ai/guide/production-webmcp)
+- [Testing](https://signett.ai/guide/testing)
+- [Reference payment application](https://github.com/signettai/signett/blob/main/fixtures/cypress-realworld-app/SIGNETT.md)
+- [Design contract](https://signett.ai/design)
 
 ## Development
 

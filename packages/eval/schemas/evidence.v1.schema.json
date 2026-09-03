@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://signett.dev/schemas/evidence/v1.json",
+  "$id": "https://signett.ai/schemas/evidence/v1.json",
   "title": "Signett Trial Evidence",
   "description": "Portable evidence from one independently graded agent-interface trial.",
   "type": "object",

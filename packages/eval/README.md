@@ -100,8 +100,8 @@ The Chrome extension remains a separate interactive UI. It is not installed by
 
 For a guided setup, authoritative oracle example, automation strategy, and
 troubleshooting, follow the
-[headless-agent codelab](../../docs/tutorials/headless-agent-testing.md). The
-[CLI reference](../../docs/reference/cli.md) lists every option and suite hook.
+[headless-agent codelab](https://signett.ai/tutorials/headless-agent-testing). The
+[CLI reference](https://signett.ai/reference/cli) lists every option and suite hook.
 
 ## Score the interface, not just the outcome
 
@@ -188,4 +188,4 @@ returning a non-zero exit code. In GitHub Actions, the Markdown is also added to
 summary automatically, leaving the developer with the exact Case, condition, metric,
 and reason to fix.
 
-See the [benchmark guide](../../benchmarks/README.md) for adapters, controlled conditions, and evidence publication rules.
+See the [benchmark guide](https://github.com/signettai/signett/tree/main/benchmarks) for adapters, controlled conditions, and evidence publication rules.
