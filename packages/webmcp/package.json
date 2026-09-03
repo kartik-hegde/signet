@@ -1,7 +1,7 @@
 {
   "name": "signett",
-  "version": "0.1.0",
-  "description": "Make website capabilities reliable and agent-ready through WebMCP.",
+  "version": "0.1.1",
+  "description": "Build reliable WebMCP tools that let AI agents use your product safely.",
   "type": "module",
   "sideEffects": false,
   "files": [
@@ -108,6 +108,10 @@
     "type": "git",
     "url": "git+https://github.com/signettai/signett.git",
     "directory": "packages/webmcp"
+  },
+  "homepage": "https://signett.ai",
+  "bugs": {
+    "url": "https://github.com/signettai/signett/issues"
   },
   "keywords": [
     "webmcp",

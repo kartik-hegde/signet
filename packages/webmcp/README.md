@@ -1,6 +1,6 @@
 # Signett
 
-**Make your website agent-ready—in minutes.**
+**Build reliable WebMCP tools that let AI agents use your product safely.**
 
 Signett turns application functions you already own into production-ready tools that
 browser agents can discover and use through native WebMCP.
