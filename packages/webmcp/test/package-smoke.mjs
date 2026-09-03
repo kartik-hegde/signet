@@ -34,6 +34,7 @@ const stores = await import("@signet/webmcp/stores");
 
 assert.equal(typeof core.guard, "function");
 assert.equal(typeof core.createSignet, "function");
+assert.equal(typeof core.createSignetActivity, "function");
 assert.equal(typeof core.ToolError, "function");
 assert.equal(typeof core.ValidationError, "function");
 assert.equal(typeof core.AuthorizationError, "function");
@@ -48,6 +49,7 @@ assert.equal(typeof telemetry.toOtlpJson, "function");
 assert.equal(typeof telemetry.TraceAssembler, "function");
 assert.equal(typeof inspector.mountSignetInspector, "function");
 assert.equal(typeof react.useSignetTool, "function");
+assert.equal(typeof react.useSignetActivity, "function");
 assert.equal(typeof stores.IndexedDbIdempotencyStore, "function");
 
 const execute = core.guard(async ({ value }) => value * 2);

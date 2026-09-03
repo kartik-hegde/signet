@@ -1,5 +1,14 @@
 export { guard } from "./guard.js";
 export { createSignet } from "./interface.js";
+export {
+  createSignetActivity,
+  type SignetActivity,
+  type SignetActivityFeed,
+  type SignetActivityOptions,
+  type SignetActivityPhase,
+  type SignetActivityResolution,
+  type SignetActivitySnapshot,
+} from "./activity.js";
 export { WebStorageOperationJournal, type WebStorageLike } from "./journal.js";
 export {
   AuthorizationError,

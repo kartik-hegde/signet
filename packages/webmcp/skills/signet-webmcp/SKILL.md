@@ -152,6 +152,11 @@ registration.dispose();
   exceeds its budget without discarding a completed operation.
 - `observe(event)` receives metadata, not inputs or outputs. Observer failures do not
   alter registration or execution.
+- `createSignetActivity(signet, { toolName?, maxInvocations? })` and the React
+  `useSignetActivity` hook project lifecycle events into small, metadata-only UI state.
+  Use them to render progress in the application's existing interface. A verified
+  success may trigger an authoritative state refresh; activity must not authorize an
+  action, stand in for business state, render UI, or mutate the DOM.
 - Unsupported browsers retain the human website. Use `unsupported: "throw"` only for
   strict development or test behavior.
 

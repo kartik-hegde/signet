@@ -148,6 +148,13 @@ hooks only when the workflow needs them.
   `recovered`, `outcome_unknown`, `output_validated`, `output_oversized`, `output_unmeasurable`,
   `completed_after_abort`, `verified`, `succeeded`, and `failed`. Observer failure never
   changes application behavior.
+- `createSignetActivity(signet, { toolName?, maxInvocations? })` projects invocation
+  events into metadata-only `running`, `awaiting_confirmation`, `verifying`,
+  `succeeded`, `declined`, `failed`, or `unknown` UI state. `verified` is true only after an
+  application-owned verification hook passes. This feed is best-effort presentation
+  state: never authorize from it or treat it as application state. Refresh the
+  authoritative application state after completion. The React entry point exports
+  `useSignetActivity`; neither API renders or mutates the DOM.
 - `tools()` returns current metadata-only inventory; `observe(listener)` adds a
   removable development observer. The React binding lives at `/react`; the optional
   overlay lives at `/inspector`.

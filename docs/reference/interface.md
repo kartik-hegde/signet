@@ -76,6 +76,13 @@ as a testable design constraint and return a smaller projection.
 returns an unsubscribe function. Inputs, outputs, context, and stack traces are not
 captured implicitly.
 
+`createSignetActivity(signet, options?)` attaches a metadata-only presentation feed to
+those events. Use `toolName` to retain one exact tool and `maxInvocations` to bound the
+newest-first history; the default is 20. `getSnapshot()` returns `latest` plus
+`invocations`, `subscribe(listener)` reports snapshot changes, and `dispose()` stops
+observation. See the [application activity guide](../guide/application-activity) for
+the React hook, phase semantics, refresh pattern, and safety boundaries.
+
 When `telemetry` is configured, `interface.telemetry` exposes `flush()` and
 `shutdown()` for tests and explicit application teardown. Normal browser code can let
 the bounded exporter flush on its configured interval.
