@@ -32,7 +32,9 @@ const suite = defineSuite({
 });
 ```
 
-The package installs a `signett` command. From the Signett monorepo, the complete authenticated-payment evaluation is:
+The package installs a `signett` command. The flagship `signett` package includes this
+toolkit and command; evaluation-only projects can install `@signett/eval` directly.
+From the Signett monorepo, the complete authenticated-payment evaluation is:
 
 ```bash
 signett eval fixtures/cypress-realworld-app/eval/index.mjs --trials 5

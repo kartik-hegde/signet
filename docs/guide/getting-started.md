@@ -23,21 +23,17 @@ website unchanged and reports the tool as `unsupported`.
 npm install signett
 ```
 
-That is the only runtime package required to expose tools. Install `webmcp-types`
-separately only when application code accesses the native `document.modelContext` API
-directly.
-
-To test those tools from a terminal, add the evaluation package as a development
-dependency. Its scoped package installs the `signett` executable:
+That package exposes tools and installs the `signett` executable for terminal tests.
+Install `webmcp-types` separately only when application code accesses the native
+`document.modelContext` API directly.
 
 ```sh
-npm install --save-dev @signett/eval
 npx signett agent --help
 ```
 
-`signett` alone does not install the CLI, and the interactive Chrome extension
-is distributed separately. See [test a WebMCP job from the terminal](../tutorials/headless-agent-testing)
-for the complete workflow.
+The interactive Chrome extension is distributed separately. See
+[test a WebMCP job from the terminal](../tutorials/headless-agent-testing) for the
+complete workflow.
 
 ## Expose one tool
 

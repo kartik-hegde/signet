@@ -60,7 +60,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         if: inputs.package == 'webmcp' || inputs.package == 'both'
-      - run: npm publish --workspace=signett --access public --provenance
-        if: inputs.package == 'webmcp' || inputs.package == 'both'
       - run: npm publish --workspace=@signett/eval --access public --provenance
         if: inputs.package == 'eval' || inputs.package == 'both'
+      - run: npm publish --workspace=signett --access public --provenance
+        if: inputs.package == 'webmcp' || inputs.package == 'both'

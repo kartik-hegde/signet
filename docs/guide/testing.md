@@ -96,12 +96,11 @@ agent:
 
 Model-driven tests complement invariant tests. They do not replace them.
 
-For the complete browser path, install `@signett/eval` and run `signett agent`. It opens
-a fresh headless Chrome profile, discovers the page's exact WebMCP inventory, lets a
+For the complete browser path, use the CLI included with `signett`. It opens a fresh
+headless Chrome profile, discovers the page's exact WebMCP inventory, lets a
 tool-capable model work on a prompt, and records bounded Evidence:
 
 ```sh
-npm install --save-dev @signett/eval
 npx signett agent \
   --url http://127.0.0.1:3000 \
   --prompt "Find the prepared order and report its status." \
