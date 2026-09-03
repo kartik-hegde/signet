@@ -122,7 +122,7 @@ function renderPhase(phase: TracePhase): string {
 }
 
 function shortPhase(name: string): string {
-  return name.startsWith("signett.") ? name.slice(7) : name;
+  return name.startsWith("signett.") ? name.slice(8) : name;
 }
 
 function formatDuration(durationMs: number): string {

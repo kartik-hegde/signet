@@ -253,7 +253,7 @@ function resolveAsset(pathname) {
   if (pathname.startsWith("/fixture/"))
     return safeJoin(fixtureRoot, pathname.slice(9));
   if (pathname.startsWith("/signett/"))
-    return safeJoin(signettRoot, pathname.slice(8));
+    return safeJoin(signettRoot, pathname.slice(9));
   if (pathname.startsWith("/vendor/json-schema/")) {
     return safeJoin(schemaRoot, pathname.slice(20));
   }

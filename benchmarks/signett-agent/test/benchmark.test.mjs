@@ -3,8 +3,23 @@ import test from "node:test";
 
 import { createScriptedProvider } from "../scripted-provider.mjs";
 import { wilson95 } from "../run.mjs";
-import { applyAction, baselineState } from "../server.mjs";
+import {
+  applyAction,
+  baselineState,
+  startFixtureServer,
+} from "../server.mjs";
 import { tasks } from "../tasks.mjs";
+
+test("fixture serves the renamed Signett SDK route", async () => {
+  const fixture = await startFixtureServer();
+  try {
+    const response = await fetch(`${fixture.url}/signett/index.js`);
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /createSignett/);
+  } finally {
+    await fixture.close();
+  }
+});
 
 test("every task has a deterministic smoke workflow", async () => {
   for (const task of tasks) {
