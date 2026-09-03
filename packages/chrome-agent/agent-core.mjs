@@ -17,6 +17,7 @@ export function providerTools(tools) {
 
 export async function runAgent({
   prompt,
+  history = [],
   tools,
   complete,
   invoke,
@@ -27,6 +28,7 @@ export async function runAgent({
   const available = new Map(tools.map((tool) => [tool.name, tool]));
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
+    ...conversationHistory(history),
     { role: "user", content: prompt },
   ];
   const calls = [];
@@ -114,6 +116,15 @@ export async function runAgent({
   error.name = "AgentLimitError";
   error.code = "agent_step_limit";
   throw error;
+}
+
+function conversationHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter((message) =>
+      ["user", "assistant", "tool"].includes(message?.role),
+    )
+    .map((message) => ({ ...message }));
 }
 
 export function normalizeAssistantMessage(value) {

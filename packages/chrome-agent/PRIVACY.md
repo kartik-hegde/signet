@@ -18,7 +18,10 @@ the active page through a model provider the user configures.
   key is kept in in-memory `chrome.storage.session`. If the user explicitly enables
   **Remember on this device**, the key is placed in Chrome's unencrypted local extension
   storage until that option is disabled or the extension is removed.
-- Prompts, conversations, tool calls, and tool results are not persisted by the extension.
+- The active conversation, including prompts, tool calls, and tool results, is retained
+  in `chrome.storage.session` so follow-up turns have context and the transcript survives
+  closing the side panel. It is cleared when the user starts a new conversation or when
+  Chrome or the extension restarts. It is never written to persistent local storage.
 
 Signett does not operate a backend for this extension and does not receive, collect, sell,
 or use this data for advertising. The extension does not read page DOM content, cookies,

@@ -71,6 +71,37 @@ test("runs a tool call and returns the provider's final answer", async () => {
   assert.equal(requests[1].messages.at(-1).role, "tool");
 });
 
+test("includes prior conversation turns in a follow-up request", async () => {
+  const history = [
+    { role: "user", content: "What is in my cart?" },
+    { role: "assistant", content: "The cart is empty.", tool_calls: [] },
+  ];
+  let request;
+
+  const result = await runAgent({
+    prompt: "Add a notebook to it.",
+    history,
+    tools,
+    complete: async (value) => {
+      request = value;
+      return { role: "assistant", content: "I added a notebook." };
+    },
+    invoke: async () => assert.fail("No tool call was expected."),
+  });
+
+  assert.deepEqual(
+    request.messages.map(({ role, content }) => ({ role, content })),
+    [
+      { role: "system", content: request.messages[0].content },
+      { role: "user", content: "What is in my cart?" },
+      { role: "assistant", content: "The cart is empty." },
+      { role: "user", content: "Add a notebook to it." },
+    ],
+  );
+  assert.equal(result.messages.at(-1).content, "I added a notebook.");
+  assert.equal(history.length, 2);
+});
+
 test("returns malformed model arguments to the model without invoking the page", async () => {
   let calls = 0;
   const completions = [

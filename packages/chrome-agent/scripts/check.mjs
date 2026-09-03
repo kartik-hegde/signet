@@ -71,6 +71,7 @@ if (manifest.name !== "Signett Agent") {
 for (const file of [
   "agent-core.mjs",
   "api-key-storage.mjs",
+  "conversation-history.mjs",
   "markdown.mjs",
   "page-bridge.mjs",
   "provider.mjs",

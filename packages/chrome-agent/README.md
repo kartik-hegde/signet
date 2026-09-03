@@ -106,7 +106,9 @@ Each later upload must increment `version` in `manifest.json` before packaging.
 - Calls are sequential, have an emergency ceiling of 1,000 model turns, and time out
   after 45 seconds. Stop remains available throughout a run.
 - Stop aborts the model request and the active page tool call.
-- Conversations and tool results are not persisted.
+- The active conversation, including tool results needed for follow-up context, is kept
+  in `chrome.storage.session`. It survives closing and reopening the side panel, but is
+  cleared by **New conversation** or when Chrome or the extension restarts.
 - This is a developer agent, not a general browser automation or DOM-control product.
 
 Run its deterministic checks with:

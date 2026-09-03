@@ -1,6 +1,12 @@
 import { runAgent } from "./agent-core.mjs";
 import { loadApiKey, saveApiKey } from "./api-key-storage.mjs";
 import {
+  clearConversation,
+  loadConversation,
+  saveConversation,
+  visibleConversation,
+} from "./conversation-history.mjs";
+import {
   abortWebMcpTool,
   executeWebMcpTool,
   inspectWebMcpPage,
@@ -16,8 +22,6 @@ import { renderMarkdown } from "./markdown.mjs";
 import { hasWebsiteAccess, requestWebsiteAccess } from "./website-access.mjs";
 
 const elements = {
-  activity: document.querySelector("#agent-activity"),
-  answer: document.querySelector("#answer-message"),
   apiKey: document.querySelector("#api-key-input"),
   apiKeyField: document.querySelector("#api-key-field"),
   apiKeyStorageNote: document.querySelector("#api-key-storage-note"),
@@ -33,7 +37,6 @@ const elements = {
   newRun: document.querySelector("#new-run-button"),
   prompt: document.querySelector("#prompt-input"),
   promptForm: document.querySelector("#prompt-form"),
-  promptMessage: document.querySelector("#prompt-message"),
   provider: document.querySelector("#provider-input"),
   refresh: document.querySelector("#refresh-button"),
   rememberKey: document.querySelector("#remember-key-input"),
@@ -51,6 +54,7 @@ const elements = {
   trace: document.querySelector("#trace-disclosure"),
   traceList: document.querySelector("#trace-list"),
   websiteAccess: document.querySelector("#website-access-button"),
+  workspace: document.querySelector("#workspace"),
 };
 
 const state = {
@@ -66,10 +70,14 @@ const state = {
   refreshVersion: 0,
   websiteAccess: false,
   pageUrl: undefined,
+  messages: [],
+  currentActivity: undefined,
+  currentAnswer: undefined,
 };
 
 await loadSettings();
 await updateWebsiteAccess();
+await restoreConversation();
 
 elements.settingsButton.addEventListener("click", () => openSettings());
 elements.closeSettings.addEventListener("click", closeSettings);
@@ -83,7 +91,7 @@ elements.apiKey.addEventListener("input", updateModelSummary);
 elements.modelSummary.addEventListener("click", () => openSettings());
 elements.rememberKey.addEventListener("change", updateKeyStorageNote);
 elements.saveSettings.addEventListener("click", () => void saveSettings());
-elements.newRun.addEventListener("click", resetRun);
+elements.newRun.addEventListener("click", () => void resetConversation());
 elements.refresh.addEventListener("click", (event) => {
   event.preventDefault();
   event.stopPropagation();
@@ -229,23 +237,30 @@ async function startRun() {
     state.runController = new AbortController();
     setRunning(true);
     elements.prompt.value = "";
-    await runAgent({
+    const result = await runAgent({
       prompt,
+      history: state.messages,
       tools: state.tools,
       complete,
       signal: state.runController.signal,
       onEvent: handleAgentEvent,
       invoke: invokePageTool,
     });
+    state.messages = result.messages.filter(({ role }) => role !== "system");
+    try {
+      await saveConversation(state.messages);
+    } catch {
+      elements.runStatus.textContent = "Session history could not be saved.";
+    }
   } catch (error) {
     const stopped = error?.name === "AbortError";
     const message = stopped
       ? "The run was stopped."
       : (error?.message ?? String(error));
     if (began) {
-      elements.answer.textContent = message;
-      elements.answer.classList.add("is-error");
-      elements.activity.hidden = true;
+      state.currentAnswer.textContent = message;
+      state.currentAnswer.classList.add("is-error");
+      state.currentActivity.hidden = true;
     } else {
       elements.runStatus.textContent = message;
     }
@@ -270,22 +285,71 @@ function beginRun(prompt) {
   elements.trace.open = false;
   elements.hero.hidden = true;
   elements.conversation.hidden = false;
-  elements.promptMessage.textContent = prompt;
-  elements.answer.textContent = "";
-  elements.answer.className = "answer-message";
+  const turn = createConversationTurn(prompt);
+  state.currentActivity = turn.activity;
+  state.currentAnswer = turn.answer;
+  elements.conversation.append(turn.element);
   setActivity("Planning the next step…");
   elements.newRun.hidden = false;
+  scrollConversation();
 }
 
-function resetRun() {
+async function resetConversation() {
   if (state.runController) return;
+  state.messages = [];
+  state.currentActivity = undefined;
+  state.currentAnswer = undefined;
+  elements.conversation.replaceChildren();
   elements.hero.hidden = false;
   elements.conversation.hidden = true;
   elements.trace.hidden = true;
-  elements.activity.hidden = true;
   elements.newRun.hidden = true;
   elements.runStatus.textContent = "";
+  try {
+    await clearConversation();
+  } catch {
+    elements.runStatus.textContent = "Session history could not be cleared.";
+  }
   elements.prompt.focus();
+}
+
+async function restoreConversation() {
+  try {
+    state.messages = await loadConversation();
+  } catch {
+    state.messages = [];
+  }
+  const turns = visibleConversation(state.messages);
+  if (turns.length === 0) return;
+  for (const turn of turns) {
+    const rendered = createConversationTurn(turn.prompt);
+    rendered.activity.hidden = true;
+    renderMarkdown(rendered.answer, turn.answer, { baseUrl: state.pageUrl });
+    elements.conversation.append(rendered.element);
+  }
+  elements.hero.hidden = true;
+  elements.conversation.hidden = false;
+  elements.newRun.hidden = false;
+  scrollConversation();
+}
+
+function createConversationTurn(prompt) {
+  const element = document.createElement("article");
+  element.className = "conversation-turn";
+  const promptMessage = textElement("div", "prompt-message", prompt);
+  const activity = textElement("div", "agent-activity", "");
+  activity.role = "status";
+  activity.hidden = true;
+  const answer = document.createElement("div");
+  answer.className = "answer-message";
+  element.append(promptMessage, activity, answer);
+  return { element, activity, answer };
+}
+
+function scrollConversation() {
+  requestAnimationFrame(() => {
+    elements.workspace.scrollTop = elements.workspace.scrollHeight;
+  });
 }
 
 async function invokePageTool(call) {
@@ -328,8 +392,11 @@ function handleAgentEvent(event) {
     setActivity(status);
   } else if (event.type === "assistant_completed") {
     elements.runStatus.textContent = "";
-    elements.activity.hidden = true;
-    renderMarkdown(elements.answer, event.content, { baseUrl: state.pageUrl });
+    state.currentActivity.hidden = true;
+    renderMarkdown(state.currentAnswer, event.content, {
+      baseUrl: state.pageUrl,
+    });
+    scrollConversation();
   }
 }
 
@@ -560,8 +627,9 @@ function updateKeyStorageNote() {
 }
 
 function setActivity(message) {
-  elements.activity.textContent = message;
-  elements.activity.hidden = false;
+  state.currentActivity.textContent = message;
+  state.currentActivity.hidden = false;
+  scrollConversation();
 }
 
 function readableToolName(name) {
