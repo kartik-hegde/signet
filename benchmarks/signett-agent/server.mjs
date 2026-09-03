@@ -247,7 +247,7 @@ function cartView(state) {
   };
 }
 
-function resolveAsset(pathname) {
+export function resolveAsset(pathname) {
   if (pathname === "/" || pathname === "/index.html")
     return join(fixtureRoot, "index.html");
   if (pathname.startsWith("/fixture/"))
