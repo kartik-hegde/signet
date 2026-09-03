@@ -35,8 +35,9 @@ function AgentOrderStatus({ signet }: { signet: SignetInterface<Session> }) {
 
 The projection deliberately contains metadata only: tool name, invocation ID, phase,
 timing, verification, and whether the result executed, replayed, or recovered. It does
-not contain inputs, outputs, context, or error details. The six stable phases are
-`running`, `awaiting_confirmation`, `verifying`, `succeeded`, `failed`, and `unknown`.
+not contain inputs, outputs, context, or error details. The seven stable phases are
+`running`, `awaiting_confirmation`, `verifying`, `succeeded`, `declined`, `failed`, and
+`unknown`.
 
 For framework-neutral code, subscribe to the same projection directly:
 

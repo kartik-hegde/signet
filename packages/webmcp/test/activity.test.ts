@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  createSignet,
   createSignetActivity,
   type GuardEvent,
   type GuardObserver,
   type SignetInterface,
 } from "../src/index.js";
 import { createSignetActivityStore } from "../src/activity.js";
+import { createWebMcpTestHarness } from "../src/testing.js";
 
 function event(
   invocationId: string,
@@ -87,6 +89,68 @@ describe("Signet activity", () => {
         resolution: "replayed",
       }),
     ]);
+  });
+
+  it("keeps a user decline distinct from an execution failure", () => {
+    const store = createSignetActivityStore();
+
+    void store.observe(event("declined", "place_order", "declined", 2));
+    void store.observe(event("declined", "place_order", "failed", 3));
+    expect(store.getSnapshot().latest?.phase).toBe("declined");
+
+    void store.observe(event("failed", "place_order", "failed", 3));
+    expect(store.getSnapshot().latest?.phase).toBe("failed");
+  });
+
+  it("retains declined after the guard emits its terminal failure", async () => {
+    const harness = createWebMcpTestHarness();
+    const signet = createSignet({ modelContext: harness.modelContext });
+    const activity = createSignetActivity(signet, {
+      toolName: "place_order",
+    });
+    await signet.expose({
+      name: "place_order",
+      description: "Place one reviewed order.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+      confirm: () => false,
+      execute: () => "placed",
+    });
+
+    await expect(harness.invoke("place_order", {})).rejects.toMatchObject({
+      code: "confirmation_declined",
+    });
+    expect(activity.getSnapshot().latest?.phase).toBe("declined");
+    activity.dispose();
+  });
+
+  it("keeps latest ordered by start and represents later recovery separately", () => {
+    const store = createSignetActivityStore();
+
+    void store.observe(event("order-1", "place_order", "started", 0));
+    void store.observe(event("search-1", "search_products", "started", 1));
+    void store.observe(event("order-1", "place_order", "outcome_unknown", 8));
+
+    expect(store.getSnapshot().latest?.invocationId).toBe("search-1");
+    expect(store.getSnapshot().invocations[1]).toMatchObject({
+      invocationId: "order-1",
+      phase: "unknown",
+    });
+
+    void store.observe(event("order-2", "place_order", "started", 9));
+    void store.observe(event("order-2", "place_order", "recovered", 11));
+    void store.observe(event("order-2", "place_order", "verified", 12));
+    void store.observe(event("order-2", "place_order", "succeeded", 13));
+
+    expect(store.getSnapshot().latest).toMatchObject({
+      invocationId: "order-2",
+      phase: "succeeded",
+      resolution: "recovered",
+      verified: true,
+    });
   });
 
   it("attaches and disposes without changing execution behavior", () => {

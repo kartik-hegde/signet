@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
   useSyncExternalStore,
   type DependencyList,
@@ -45,13 +44,11 @@ export function useSignetActivity<Context>(
   options: SignetActivityOptions = {},
 ): SignetActivitySnapshot {
   const { maxInvocations, toolName } = options;
-  const store = useMemo(
-    () =>
-      createSignetActivityStore({
-        ...(maxInvocations === undefined ? {} : { maxInvocations }),
-        ...(toolName === undefined ? {} : { toolName }),
-      }),
-    [maxInvocations, signet, toolName],
+  const [store] = useState(() =>
+    createSignetActivityStore({
+      ...(maxInvocations === undefined ? {} : { maxInvocations }),
+      ...(toolName === undefined ? {} : { toolName }),
+    }),
   );
   const subscribe = useCallback(
     (listener: () => void) => {

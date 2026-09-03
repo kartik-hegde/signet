@@ -54,7 +54,6 @@ Pass the same stable `signet` instance to `useSignetActivity`. Filter by `toolNa
 the component represents one application action:
 
 ```tsx
-import { useEffect } from "react";
 import type { SignetInterface } from "@signet/webmcp";
 import { useSignetActivity } from "@signet/webmcp/react";
 
@@ -62,24 +61,13 @@ type Session = { userId: string };
 
 type OrderActivityProps = {
   signet: SignetInterface<Session>;
-  refreshOrder(): Promise<void>;
 };
 
-export function OrderActivity({ signet, refreshOrder }: OrderActivityProps) {
+export function OrderActivity({ signet }: OrderActivityProps) {
   const { latest } = useSignetActivity(signet, {
     toolName: "place_order",
     maxInvocations: 5,
   });
-
-  const verifiedInvocation =
-    latest?.phase === "succeeded" && latest.verified
-      ? latest.invocationId
-      : undefined;
-
-  useEffect(() => {
-    if (!verifiedInvocation) return;
-    void refreshOrder();
-  }, [refreshOrder, verifiedInvocation]);
 
   if (!latest) return null;
 
@@ -96,6 +84,8 @@ export function OrderActivity({ signet, refreshOrder }: OrderActivityProps) {
       ) : (
         <p>Order action completed. Refreshing its status…</p>
       );
+    case "declined":
+      return <p>Order placement cancelled.</p>;
     case "failed":
       return <p>The order was not completed.</p>;
     case "unknown":
@@ -104,20 +94,64 @@ export function OrderActivity({ signet, refreshOrder }: OrderActivityProps) {
 }
 ```
 
-The effect keys the refresh by `invocationId`, so ordinary re-renders do not repeatedly
-refresh for one completion. `refreshOrder` should read authoritative application state;
-do not manually set a cart count, order status, or success message that the backend has
-not returned.
+Keep the `signet`, `toolName`, and `maxInvocations` values stable for the component's
+lifetime. The hook retains its activity store across React StrictMode remount checks and
+automatically unsubscribes from the Signet interface when the component unmounts.
 
 For a tool without `verify`, `phase: "succeeded"` means its handler returned, while
-`verified` remains `false`. You may refresh application state on plain success, but let
-that read determine what the UI claims. Add `verify` when authoritative completion is a
-requirement of the tool itself.
+`verified` remains `false`. Add `verify` when authoritative completion is a requirement
+of the tool itself.
 
-## 3. Understand the state
+## 3. Refresh application state only when needed
+
+Do not automatically refetch after every successful activity event. If `execute`
+already writes through the application's normal state layer or adopts an authoritative
+response before returning, that state update will cause the normal UI to rerender.
+Activity is useful there for progress, confirmation, unknown outcomes, and explaining a
+replay or recovery—not as another data-fetch trigger.
+
+For example, a checkout tool may already do this:
+
+```ts
+execute: async (input) => {
+  const updated = await updateCheckout(input);
+  checkoutStore.set(updated); // The ordinary checkout UI rerenders.
+  return updated;
+};
+```
+
+If the operation does not update or invalidate the application's data layer, refresh
+authoritative state after verified completion:
+
+```tsx
+import { useEffect } from "react";
+
+const { latest } = useSignetActivity(signet, { toolName: "place_order" });
+const verifiedInvocation =
+  latest?.phase === "succeeded" && latest.verified
+    ? latest.invocationId
+    : undefined;
+
+useEffect(() => {
+  if (!verifiedInvocation) return;
+  void refreshOrder();
+}, [refreshOrder, verifiedInvocation]);
+```
+
+Keying the effect by `invocationId` prevents ordinary rerenders from repeatedly
+refreshing one completion. For a tool without `verify`, you may refresh on plain
+`succeeded`, but let that authoritative read determine what the UI claims. Never
+manually set a cart count, order status, or success message that the application has
+not returned.
+
+## 4. Understand the state
 
 `useSignetActivity` returns a stable snapshot with `latest` and `invocations`.
-Invocations are newest first and are keyed by `invocationId`.
+Invocations are ordered by when the feed first observes them, newest first, and are
+keyed by `invocationId`. `latest` is the most recently first-observed retained
+invocation—normally the most recently started call—not the invocation with the most
+recent update. Filter by `toolName` when another tool starting should not replace the
+activity shown by a focused component.
 
 | Field                                  | Meaning                                                                                |
 | -------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -130,14 +164,19 @@ Invocations are newest first and are keyed by `invocationId`.
 
 The phases intentionally avoid exposing Signet's lower-level implementation stages:
 
-| Phase                   | What the UI can safely say                                                                                          |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `running`               | The invocation is being validated, authorized, confirmed, or executed.                                              |
-| `awaiting_confirmation` | The application's confirmation hook is waiting for the person.                                                      |
-| `verifying`             | An executed, replayed, or recovered result is being finalized and possibly verified. Do not show success yet.       |
-| `succeeded`             | The invocation returned successfully. Check `verified` before describing it as verified.                            |
-| `failed`                | The invocation was declined or failed ordinarily. Read application state before assuming no external effect exists. |
-| `unknown`               | An effect may have happened, but recovery could not prove its outcome. Do not offer a blind retry.                  |
+| Phase                   | What the UI can safely say                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `running`               | The invocation is being validated, authorized, confirmed, or executed.                                        |
+| `awaiting_confirmation` | The application's confirmation hook is waiting for the person.                                                |
+| `verifying`             | An executed, replayed, or recovered result is being finalized and possibly verified. Do not show success yet. |
+| `succeeded`             | The invocation returned successfully. Check `verified` before describing it as verified.                      |
+| `declined`              | The person declined the application's confirmation. Return to an editable state without presenting an error.  |
+| `failed`                | The invocation failed ordinarily. Read application state before assuming no external effect exists.           |
+| `unknown`               | An effect may have happened, but recovery could not prove its outcome. Do not offer a blind retry.            |
+
+`verifying` is nonterminal. The `verified` field becomes `true` as soon as verification
+passes, immediately before the terminal `succeeded` event, so a subscriber can briefly
+observe `phase: "verifying"` together with `verified: true`.
 
 `resolution` lets the UI explain a safe repeat without changing the success condition:
 
@@ -151,7 +190,7 @@ if (latest.phase === "succeeded" && latest.verified) {
 }
 ```
 
-## 4. Render concurrent activity when needed
+## 5. Render concurrent activity when needed
 
 `latest` is appropriate for a single checkout or booking action. If several calls may
 run concurrently, render `invocations` and key each row by `invocationId`:
@@ -174,7 +213,7 @@ return (
 filter; omit it to observe every tool on the interface. The hook begins observing when
 the component subscribes and is not durable across reloads.
 
-## 5. Use the framework-neutral feed
+## 6. Use the framework-neutral feed
 
 Subscribe directly outside React. Read the initial snapshot, unsubscribe listeners,
 and dispose the feed with the application surface:
@@ -201,7 +240,36 @@ activity.dispose();
 `dispose()` is idempotent. It stops observation but does not cancel an invocation or
 alter its result.
 
-## 6. Test the projection
+### Preserve activity before a component mounts
+
+The hook observes calls only while it is mounted. If a modal or status component may
+mount after the operation starts, create one long-lived feed beside the stable Signet
+interface and render it with React's external-store hook:
+
+```tsx
+import { useSyncExternalStore } from "react";
+import { createSignetActivity } from "@signet/webmcp";
+
+export const orderActivity = createSignetActivity(signet, {
+  toolName: "place_order",
+  maxInvocations: 5,
+});
+
+export function OrderActivity() {
+  const { latest } = useSyncExternalStore(
+    orderActivity.subscribe,
+    orderActivity.getSnapshot,
+    orderActivity.getSnapshot,
+  );
+  return latest ? <p>{latest.phase}</p> : null;
+}
+```
+
+Create the feed at module or application-surface scope, not during render. Dispose it
+when that owning surface shuts down. This retains calls that occur before a particular
+component subscribes; it is still browser-memory state and does not survive a reload.
+
+## 7. Test the projection
 
 The normal WebMCP test harness drives the same lifecycle:
 

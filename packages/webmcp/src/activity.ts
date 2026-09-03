@@ -6,6 +6,7 @@ export type SignetActivityPhase =
   | "awaiting_confirmation"
   | "verifying"
   | "succeeded"
+  | "declined"
   | "failed"
   | "unknown";
 
@@ -25,8 +26,9 @@ export interface SignetActivity {
 }
 
 export interface SignetActivitySnapshot {
-  /** Invocations ordered by when the feed first observed them, newest first. */
+  /** Invocations ordered by when the feed first observes them, newest first. */
   readonly invocations: readonly SignetActivity[];
+  /** The most recently first-observed invocation, not the most recently updated one. */
   readonly latest: SignetActivity | undefined;
 }
 
@@ -57,9 +59,14 @@ const registrationStages = new Set<GuardStage>([
   "unregistered",
 ]);
 
-function phaseFor(stage: GuardStage): SignetActivityPhase {
+function phaseFor(
+  stage: GuardStage,
+  previous: SignetActivityPhase | undefined,
+): SignetActivityPhase {
   if (stage === "confirmation_requested") return "awaiting_confirmation";
-  if (stage === "declined" || stage === "failed") return "failed";
+  if (stage === "declined") return "declined";
+  if (stage === "failed" && previous === "declined") return "declined";
+  if (stage === "failed") return "failed";
   if (stage === "outcome_unknown") return "unknown";
   if (stage === "succeeded") return "succeeded";
   if (
@@ -152,7 +159,7 @@ export function createSignetActivityStore(
       const activity: SignetActivity = {
         invocationId: event.invocationId,
         name: event.name,
-        phase: phaseFor(event.stage),
+        phase: phaseFor(event.stage, previous?.phase),
         startedAt:
           previous?.startedAt ??
           Math.max(0, event.timestamp - Math.max(0, event.durationMs)),

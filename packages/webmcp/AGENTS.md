@@ -150,7 +150,7 @@ hooks only when the workflow needs them.
   changes application behavior.
 - `createSignetActivity(signet, { toolName?, maxInvocations? })` projects invocation
   events into metadata-only `running`, `awaiting_confirmation`, `verifying`,
-  `succeeded`, `failed`, or `unknown` UI state. `verified` is true only after an
+  `succeeded`, `declined`, `failed`, or `unknown` UI state. `verified` is true only after an
   application-owned verification hook passes. This feed is best-effort presentation
   state: never authorize from it or treat it as application state. Refresh the
   authoritative application state after completion. The React entry point exports
