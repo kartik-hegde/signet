@@ -57,7 +57,9 @@ Activity is best-effort presentation state. Never use it for authorization or as
 that application state changed. A successful call without a `verify` hook has
 `verified: false`; after verified success, refresh authoritative application state and
 let the application's normal components render the result. Signet never mutates the
-DOM or renders an activity interface.
+DOM or renders an activity interface. See
+[Show agent activity in your application UI](./application-activity) for the complete
+React and framework-neutral integration, phase semantics, concurrency, and testing.
 
 ## Readiness checks
 

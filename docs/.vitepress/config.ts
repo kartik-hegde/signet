@@ -71,6 +71,10 @@ export default defineConfig({
           { text: "Outcome verification", link: "/guide/verification" },
           { text: "Operation journals", link: "/guide/operation-journal" },
           { text: "Testing", link: "/guide/testing" },
+          {
+            text: "Application activity",
+            link: "/guide/application-activity",
+          },
           { text: "Developer tooling", link: "/guide/developer-tooling" },
           { text: "Performance", link: "/guide/performance" },
         ],

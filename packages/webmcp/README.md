@@ -254,7 +254,8 @@ if (latest?.phase === "succeeded" && latest.verified) {
 The hook reports stable presentation phases, not inputs, outputs, authorization, or
 business state. Signet does not render or mutate the DOM. Framework-neutral code can
 use `createSignetActivity(signet)` and subscribe to the same projection. See
-[developer tooling](../../docs/guide/developer-tooling.md#application-activity-state).
+[the application activity guide](../../docs/guide/application-activity.md) for a
+complete React and framework-neutral integration.
 
 During development, `mountSignetInspector(signet)` from
 `@signet/webmcp/inspector` shows exact schemas, annotations, registration state, and
