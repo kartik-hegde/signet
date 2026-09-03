@@ -121,9 +121,7 @@ export async function runAgent({
 function conversationHistory(history) {
   if (!Array.isArray(history)) return [];
   return history
-    .filter((message) =>
-      ["user", "assistant", "tool"].includes(message?.role),
-    )
+    .filter((message) => ["user", "assistant", "tool"].includes(message?.role))
     .map((message) => ({ ...message }));
 }
 
