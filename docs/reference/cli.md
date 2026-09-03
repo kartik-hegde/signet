@@ -8,9 +8,6 @@ npm install signett
 npx signett --help
 ```
 
-Evaluation-only projects can install `@signett/eval` directly as a development
-dependency; it exposes the same executable.
-
 ## `signett agent`
 
 Run a natural-language task against the exact WebMCP tools exposed by a page.

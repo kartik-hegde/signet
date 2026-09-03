@@ -8,12 +8,9 @@
     "signett": "cli.mjs"
   },
   "files": [
-    "agent.d.mts",
-    "agent.mjs",
     "cli.mjs",
     "dist",
-    "eval.d.mts",
-    "eval.mjs",
+    "eval-runtime",
     "recipes",
     "skills",
     "AGENTS.md",
@@ -46,16 +43,16 @@
       "import": "./dist/react.js"
     },
     "./eval": {
-      "types": "./eval.d.mts",
-      "import": "./eval.mjs"
+      "types": "./eval-runtime/index.d.ts",
+      "import": "./eval-runtime/index.mjs"
     },
     "./agent": {
-      "types": "./agent.d.mts",
-      "import": "./agent.mjs"
+      "types": "./eval-runtime/agent.d.mts",
+      "import": "./eval-runtime/agent.mjs"
     }
   },
   "scripts": {
-    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && node scripts/bundle-declarations.mjs",
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && node scripts/bundle-declarations.mjs && node scripts/copy-eval-runtime.mjs",
     "check": "npm run typecheck && npm test",
     "coverage": "vitest run --coverage",
     "docs:build": "vitepress build ../../docs",
@@ -140,7 +137,7 @@
     "authorization"
   ],
   "dependencies": {
-    "@signett/eval": "0.1.2",
-    "@cfworker/json-schema": "^4.1.1"
+    "@cfworker/json-schema": "^4.1.1",
+    "ws": "^8.18.3"
   }
 }

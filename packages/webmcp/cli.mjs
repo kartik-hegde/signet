@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { main } from "@signett/eval/cli";
+import { main } from "./eval-runtime/cli.mjs";
 
 main().catch((error) => {
   process.stderr.write(

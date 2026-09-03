@@ -34,8 +34,6 @@ npx signett eval --help
 npx signett check --help
 ```
 
-Evaluation-only projects can install `@signett/eval` directly instead.
-
 Evaluation reports are designed for iteration as well as publication. `signett check`
 compares a candidate report with a reviewed baseline per Case and condition, writes a
 PR-ready Markdown diagnosis, and exits unsuccessfully on configured regressions.
