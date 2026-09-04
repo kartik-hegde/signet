@@ -22,10 +22,10 @@ tasks, injected failures, browser, model, and database oracle. Raw errors expose
 generic stale-state message; Signett preserves the typed cause, ordered repair steps,
 input fields to preserve or update, and whether retry is safe.
 
-[Benchmark folder](https://github.com/kartik-hegde/signett-benchmarks/tree/main/agent-effectiveness) ·
-[Benchmark design](https://github.com/kartik-hegde/signett-benchmarks/blob/main/agent-effectiveness/REPAIR_BENCHMARK.md) ·
-[Scaled results](https://github.com/kartik-hegde/signett-benchmarks/blob/main/agent-effectiveness/SCALED_REPAIR_RESULTS.md) ·
-[Evidence summaries](https://github.com/kartik-hegde/signett-benchmarks/tree/main/results/agent-repair)
+[Benchmark folder](https://github.com/signettai/signett/tree/main/benchmarks/agent-effectiveness) ·
+[Benchmark design](https://github.com/signettai/signett/blob/main/benchmarks/agent-effectiveness/REPAIR_BENCHMARK.md) ·
+[Scaled results](https://github.com/signettai/signett/blob/main/benchmarks/agent-effectiveness/SCALED_REPAIR_RESULTS.md) ·
+[Evidence summaries](https://github.com/signettai/signett/tree/main/evidence/agent-repair)
 
 The paired baseline ran three counterbalanced trials across seven cases: four hidden
 single-dependency repairs, two chained repairs, and one lost-response reconciliation.

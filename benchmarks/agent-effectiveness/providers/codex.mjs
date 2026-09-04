@@ -41,6 +41,8 @@ export function createAgentRun({
       "-c",
       'mcp_servers.p1.tools.fill_element.approval_mode="approve"',
       "-c",
+      'mcp_servers.p1.tools.prepare_payment_authorization.approval_mode="approve"',
+      "-c",
       'mcp_servers.p1.tools.send_payment.approval_mode="approve"',
       prompt,
     ],

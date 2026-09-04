@@ -47,6 +47,8 @@
     "bench:p1:rescore": "node benchmarks/agent-effectiveness/run.mjs --rescore",
     "bench:p1:smoke": "P1_TRIALS=1 node benchmarks/agent-effectiveness/run.mjs --smoke",
     "test:agent": "node benchmarks/agent-effectiveness/run.mjs --test-agent",
+    "bench:repair": "node packages/eval/cli.mjs eval fixtures/cypress-realworld-app/eval/repair.mjs --trials 5 --baseline raw-webmcp",
+    "bench:repair:smoke": "node packages/eval/cli.mjs eval fixtures/cypress-realworld-app/eval/repair.mjs --trials 1 --baseline raw-webmcp",
     "bench:safety": "node benchmarks/execution-safety/run.js --no-history",
     "bench:safety:artifact": "node benchmarks/execution-safety/run.js --no-history --output=.artifacts/safety.json",
     "bench:build-vs-buy": "node benchmarks/build-vs-buy/run.mjs",
