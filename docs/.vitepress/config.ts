@@ -29,22 +29,20 @@ export default defineConfig({
   themeConfig: {
     siteTitle: "Signett",
     nav: [
-      { text: "Docs", link: "/guide/getting-started" },
+      { text: "Docs", link: "/guide/what-is-signett" },
       { text: "Tutorials", link: "/tutorials/" },
       {
         text: "Examples",
         link: "https://github.com/signettai/signett/tree/main/fixtures",
       },
       { text: "Resources", link: "/resources" },
-      {
-        text: "Benchmarks",
-        link: "https://github.com/signettai/signett/tree/main/benchmarks",
-      },
+      { text: "Benchmarks", link: "/benchmarks" },
     ],
     sidebar: [
       {
         text: "Start",
         items: [
+          { text: "What is Signett?", link: "/guide/what-is-signett" },
           { text: "Why Signett", link: "/guide/why-signett" },
           {
             text: "User jobs workflow",
@@ -107,7 +105,10 @@ export default defineConfig({
       },
       {
         text: "Case studies",
-        items: [{ text: "Saleor checkout", link: "/case-studies/saleor" }],
+        items: [
+          { text: "Latest benchmark results", link: "/benchmarks" },
+          { text: "Saleor checkout", link: "/case-studies/saleor" },
+        ],
       },
       {
         text: "Project",
