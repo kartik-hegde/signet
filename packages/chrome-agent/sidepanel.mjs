@@ -22,6 +22,7 @@ import { renderMarkdown } from "./markdown.mjs";
 import { hasWebsiteAccess, requestWebsiteAccess } from "./website-access.mjs";
 
 const elements = {
+  appHeader: document.querySelector("#app-header"),
   apiKey: document.querySelector("#api-key-input"),
   apiKeyField: document.querySelector("#api-key-field"),
   apiKeyStorageNote: document.querySelector("#api-key-storage-note"),
@@ -35,6 +36,9 @@ const elements = {
   model: document.querySelector("#model-input"),
   modelSummary: document.querySelector("#model-summary-button"),
   newRun: document.querySelector("#new-run-button"),
+  personalAddress: document.querySelector("#personal-address-input"),
+  personalEmail: document.querySelector("#personal-email-input"),
+  personalName: document.querySelector("#personal-name-input"),
   prompt: document.querySelector("#prompt-input"),
   promptForm: document.querySelector("#prompt-form"),
   provider: document.querySelector("#provider-input"),
@@ -240,6 +244,7 @@ async function startRun() {
     const result = await runAgent({
       prompt,
       history: state.messages,
+      personalInfo: settings.personalInfo,
       tools: state.tools,
       complete,
       signal: state.runController.signal,
@@ -485,6 +490,7 @@ function completeToolCall(call, result) {
 }
 
 function openSettings(message = "") {
+  elements.appHeader.hidden = true;
   elements.main.hidden = true;
   elements.settings.hidden = false;
   elements.settingsStatus.textContent = message;
@@ -493,6 +499,7 @@ function openSettings(message = "") {
 function closeSettings() {
   elements.settings.hidden = true;
   elements.main.hidden = false;
+  elements.appHeader.hidden = false;
   updateModelSummary();
 }
 
@@ -524,6 +531,7 @@ async function saveSettings() {
         provider: settings.provider,
         endpoint: settings.endpoint,
         model: settings.model,
+        personalInfo: settings.personalInfo,
       },
     });
     const keyState = await saveApiKey(settings.apiKey, {
@@ -553,6 +561,9 @@ async function loadSettings() {
   const preset = PROVIDER_PRESETS[provider] ?? PROVIDER_PRESETS.custom;
   elements.endpoint.value = stored.endpoint || preset.endpoint;
   elements.model.value = stored.model || preset.model;
+  elements.personalName.value = stored.personalInfo?.name || "";
+  elements.personalEmail.value = stored.personalInfo?.email || "";
+  elements.personalAddress.value = stored.personalInfo?.address || "";
   elements.apiKey.value = keyState.apiKey;
   elements.rememberKey.checked = keyState.remembered;
   updateKeyStorageNote();
@@ -575,6 +586,11 @@ function settingsFromFields() {
     endpoint: elements.endpoint.value.trim(),
     model: elements.model.value.trim(),
     apiKey: elements.apiKey.value.trim(),
+    personalInfo: {
+      name: elements.personalName.value.trim(),
+      email: elements.personalEmail.value.trim(),
+      address: elements.personalAddress.value.trim(),
+    },
   };
 }
 

@@ -63,6 +63,10 @@ extension restarts. Developers can explicitly choose **Remember on this device**
 store it in Chrome's unencrypted local extension storage. Provider origin access is
 requested only when its endpoint is saved or used.
 
+Optional name, email address, and postal address fields are also stored in
+`chrome.storage.local`. Non-empty fields are added to the system context at the start of
+each chat and sent to the selected model provider with the conversation.
+
 Remote endpoints must use HTTPS. Plain HTTP is accepted only for local loopback providers.
 See [PRIVACY.md](./PRIVACY.md) for the complete disclosure.
 

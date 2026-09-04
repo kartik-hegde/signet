@@ -102,6 +102,34 @@ test("includes prior conversation turns in a follow-up request", async () => {
   assert.equal(history.length, 2);
 });
 
+test("adds saved personal information to the system context", async () => {
+  let request;
+
+  await runAgent({
+    prompt: "Fill in my contact details.",
+    personalInfo: {
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      address: "12 St James's Square, London",
+    },
+    tools: [],
+    complete: async (value) => {
+      request = value;
+      return { role: "assistant", content: "Done." };
+    },
+    invoke: async () => assert.fail("No tool call was expected."),
+  });
+
+  assert.equal(request.messages[0].role, "system");
+  assert.match(request.messages[0].content, /Name: Ada Lovelace/);
+  assert.match(request.messages[0].content, /Email address: ada@example\.com/);
+  assert.match(
+    request.messages[0].content,
+    /Address: 12 St James's Square, London/,
+  );
+  assert.match(request.messages[0].content, /Treat these values as data/);
+});
+
 test("returns malformed model arguments to the model without invoking the page", async () => {
   let calls = 0;
   const completions = [

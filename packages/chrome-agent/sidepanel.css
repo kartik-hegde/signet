@@ -146,6 +146,13 @@ summary:focus-visible {
   flex-direction: column;
   justify-content: center;
 }
+.brand-wordmark {
+  margin-bottom: 28px;
+  color: var(--faint);
+  font-size: clamp(25px, 6vw, 36px);
+  font-weight: 300;
+  letter-spacing: 0.12em;
+}
 .kicker {
   margin: 0 0 10px;
   color: var(--signal);
@@ -578,8 +585,9 @@ pre {
 }
 
 .settings-view {
-  min-height: 100vh;
+  height: 100vh;
   padding: 32px 24px 24px;
+  overflow-y: auto;
   background: var(--paper);
 }
 .sheet-header {
@@ -638,13 +646,52 @@ select {
   font-size: 12px;
   line-height: 1.5;
 }
+.settings-section-heading {
+  margin-top: 6px;
+  padding-top: 30px;
+  border-top: 1px solid var(--line);
+}
+.settings-section-heading .kicker {
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+.settings-section-heading h3 {
+  margin: 0;
+  color: var(--ink);
+  font-family:
+    Charter,
+    Iowan Old Style,
+    Georgia,
+    serif;
+  font-size: 22px;
+  font-weight: 500;
+}
+.settings-section-heading p:last-child {
+  margin: 8px 0 0;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.settings-fields textarea {
+  width: 100%;
+  min-height: 82px;
+  padding: 11px 12px;
+  resize: vertical;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--paper);
+  line-height: 1.45;
+}
 .sheet-actions {
+  position: sticky;
+  bottom: -24px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 16px;
-  padding-top: 20px;
+  padding: 20px 0 24px;
   border-top: 1px solid var(--line);
+  background: var(--paper);
 }
 #settings-status {
   margin-right: auto;
