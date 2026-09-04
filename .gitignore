@@ -14,6 +14,7 @@ docs/.vitepress/dist/
 evidence/raw/
 evidence/private/
 evidence/**/raw/
+evidence/eval/
 fixtures/cypress-realworld-app/build/
 fixtures/cypress-realworld-app/cypress/screenshots/
 fixtures/cypress-realworld-app/cypress/videos/

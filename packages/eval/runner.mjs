@@ -132,19 +132,24 @@ export async function runTrial({
       message: failure.message,
     });
     try {
-      after = await adapters.oracle.snapshot({
-        ...context,
-        phase: "after-error",
-      });
-      grade = await adapters.oracle.grade({
-        ...context,
-        before,
-        after,
-        agent,
-        inventory,
-        events,
-        error,
-      });
+      after = await settleWithin(
+        adapters.oracle.snapshot({ ...context, phase: "after-error" }),
+        10_000,
+        "post-failure oracle snapshot",
+      );
+      grade = await settleWithin(
+        adapters.oracle.grade({
+          ...context,
+          before,
+          after,
+          agent,
+          inventory,
+          events,
+          error,
+        }),
+        10_000,
+        "post-failure oracle grade",
+      );
       validateGrade(grade);
     } catch (oracleError) {
       emit("oracle.error", { message: errorMessage(oracleError) });
@@ -152,7 +157,11 @@ export async function runTrial({
   } finally {
     for (const fault of armedFaults.reverse()) {
       try {
-        await fault.disarm({ ...context, session });
+        await settleWithin(
+          fault.disarm({ ...context, session }),
+          5_000,
+          `cleanup for fault ${fault.id}`,
+        );
         emit("fault.disarmed", { fault: fault.id });
       } catch (error) {
         emit("fault.cleanup-error", {
@@ -163,7 +172,11 @@ export async function runTrial({
     }
     if (session !== undefined) {
       try {
-        await adapters.browser.close?.({ ...context, session });
+        await settleWithin(
+          adapters.browser.close?.({ ...context, session }),
+          10_000,
+          "browser cleanup",
+        );
         emit("browser.closed");
       } catch (error) {
         emit("browser.cleanup-error", { message: errorMessage(error) });
@@ -293,4 +306,18 @@ function abortable(value, signal) {
         signal.removeEventListener("abort", onAbort);
       });
   });
+}
+
+function settleWithin(value, timeoutMs, description) {
+  let timeout;
+  return Promise.race([
+    Promise.resolve(value),
+    new Promise((_, reject) => {
+      timeout = setTimeout(
+        () => reject(new Error(`Timed out waiting for ${description}.`)),
+        timeoutMs,
+      );
+      timeout.unref?.();
+    }),
+  ]).finally(() => clearTimeout(timeout));
 }

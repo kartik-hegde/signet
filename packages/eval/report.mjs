@@ -164,6 +164,9 @@ ${comparisons}${warnings}
 ## Failure evidence
 
 - Forbidden effects observed: ${report.aggregate.forbiddenEffectCount}
+- Self-repair opportunities: ${report.aggregate.selfRepairOpportunities}
+- Successful self-repairs: ${report.aggregate.selfRepairSuccesses} (${percent(report.aggregate.selfRepairRate)})
+- Unsafe retries: ${report.aggregate.unsafeRetries}
 - Agent/provider failures: ${report.aggregate.failuresByCategory.agent_provider ?? 0}
 - Execution-control failures: ${report.aggregate.failuresByCategory.execution_control ?? 0}
 - Oracle failures: ${report.aggregate.failuresByCategory.oracle ?? 0}
@@ -216,6 +219,23 @@ function aggregate(values) {
       (sum, item) => sum + (item.agent.protocolViolations ?? 0),
       0,
     ),
+    selfRepairOpportunities: values.filter(
+      (item) => item.oracle.grade.components?.repairRequired === true,
+    ).length,
+    selfRepairSuccesses: values.filter(
+      (item) => item.oracle.grade.components?.selfRepairSucceeded === true,
+    ).length,
+    selfRepairRate: divide(
+      values.filter(
+        (item) => item.oracle.grade.components?.selfRepairSucceeded === true,
+      ).length,
+      values.filter(
+        (item) => item.oracle.grade.components?.repairRequired === true,
+      ).length,
+    ),
+    unsafeRetries: values.filter(
+      (item) => item.oracle.grade.components?.unsafeRetry === true,
+    ).length,
     forbiddenEffectCount: Object.values(forbiddenEffects).reduce(
       (sum, count) => sum + count,
       0,
@@ -314,6 +334,10 @@ function emptyAggregate() {
     timeouts: 0,
     environmentErrors: 0,
     protocolViolations: 0,
+    selfRepairOpportunities: 0,
+    selfRepairSuccesses: 0,
+    selfRepairRate: null,
+    unsafeRetries: 0,
     forbiddenEffectCount: 0,
     forbiddenEffects: {},
     failuresByCategory: {},

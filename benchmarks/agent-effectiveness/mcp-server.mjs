@@ -286,17 +286,45 @@ async function executeWebMcpTool(name, input) {
   const lifecycleOffset = await cdp.evaluate(
     "(window.__signettGuardEvents || []).length",
   );
-  const nativeTool = nativeTools.get(name);
-  const execution = nativeTool
-    ? await invokeNativeTool(nativeTool, name, input)
-    : await withTimeout(
-        cdp.evaluate(`(async () => {
+  const nativeTool = ["javascript", "callback"].includes(options.invocation)
+    ? undefined
+    : nativeTools.get(name);
+  const execution =
+    options.invocation === "callback"
+      ? await withTimeout(
+          cdp.evaluate(`(async () => {
+            const execute = window.__benchmarkWebMcpCallbacks?.[${JSON.stringify(name)}];
+            if (!execute) throw new Error('Captured WebMCP callback is not registered: ' + ${JSON.stringify(name)});
+            try {
+              return {
+                ok: true,
+                result: await execute(${JSON.stringify(input)}, {
+                  signal: new AbortController().signal
+                })
+              };
+            } catch (error) {
+              return {
+                ok: false,
+                error: error instanceof Error ? error.message : String(error)
+              };
+            }
+          })()`),
+          20_000,
+          `WebMCP callback ${name}`,
+        )
+      : nativeTool
+        ? await invokeNativeTool(nativeTool, name, input)
+        : await withTimeout(
+            cdp.evaluate(`(async () => {
     const tools = await document.modelContext.getTools();
     const tool = tools.find(candidate => candidate.name === ${JSON.stringify(name)});
     if (!tool) throw new Error('Native WebMCP tool is not registered: ' + ${JSON.stringify(name)});
     try {
       return { ok: true, result: await document.modelContext.executeTool(tool, ${JSON.stringify(JSON.stringify(input))}) };
     } catch (stringError) {
+      if (${JSON.stringify(options.invocation === "javascript")}) {
+        return { ok: false, error: String(stringError) };
+      }
       try {
         return { ok: true, result: await document.modelContext.executeTool(tool, ${JSON.stringify(input)}) };
       } catch (objectError) {
@@ -304,9 +332,9 @@ async function executeWebMcpTool(name, input) {
       }
     }
   })()`),
-        20_000,
-        `WebMCP tool ${name}`,
-      );
+            20_000,
+            `WebMCP tool ${name}`,
+          );
   const durationMs = Math.round((performance.now() - started) * 100) / 100;
   const lifecycle = await cdp.evaluate(
     `(window.__signettGuardEvents || []).slice(${lifecycleOffset})`,

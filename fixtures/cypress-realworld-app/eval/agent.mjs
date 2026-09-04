@@ -57,6 +57,7 @@ export function createSignettAgentAdapter({
           `--cdp=${context.session.webSocketDebuggerUrl}`,
           `--condition=${conditionName}`,
           `--trace=${tracePath}`,
+          `--invocation=${context.caseDefinition.parameters.invocation ?? "native"}`,
         ],
         prompt,
       });
@@ -150,21 +151,25 @@ function runProcess(command, args, signal) {
     const abort = () => {
       timedOut = true;
       stopProcessGroup(child);
+      forceKill = setTimeout(() => stopProcessGroup(child, "SIGKILL"), 2_000);
+      forceKill.unref?.();
     };
+    let forceKill;
     signal.addEventListener("abort", abort, { once: true });
     child.on("error", reject);
     child.on("exit", (exitCode) => {
+      if (forceKill) clearTimeout(forceKill);
       signal.removeEventListener("abort", abort);
       resolvePromise({ stdout, stderr, exitCode, timedOut });
     });
   });
 }
 
-function stopProcessGroup(child) {
+function stopProcessGroup(child, signal = "SIGTERM") {
   try {
-    process.kill(-child.pid, "SIGTERM");
+    process.kill(-child.pid, signal);
   } catch {
-    child.kill("SIGTERM");
+    child.kill(signal);
   }
 }
 

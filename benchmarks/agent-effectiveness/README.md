@@ -7,11 +7,11 @@ condition.
 
 ## Conditions
 
-| Condition       | Agent surface                          | Consequential handler   |
-| --------------- | -------------------------------------- | ----------------------- |
-| `ui_dom`        | Semantic DOM snapshot, click, and fill | Existing application UI |
-| `hybrid_raw`    | DOM actions plus native WebMCP tools   | Raw application handler |
-| `hybrid_signett` | DOM actions plus native WebMCP tools   | Signett-guarded handler  |
+| Condition        | Agent surface                          | Consequential handler   |
+| ---------------- | -------------------------------------- | ----------------------- |
+| `ui_dom`         | Semantic DOM snapshot, click, and fill | Existing application UI |
+| `hybrid_raw`     | DOM actions plus native WebMCP tools   | Raw application handler |
+| `hybrid_signett` | DOM actions plus native WebMCP tools   | Signett-guarded handler |
 
 The WebMCP tools are registered by the page through `document.modelContext`. A small
 MCP adapter makes those exact live registrations available to the benchmark agent; it
@@ -64,3 +64,6 @@ confidence intervals sized from the pilot variance, and an independent applicati
 WebMCP deserves credit for replacing UI actuation. Signett should only receive credit
 for changes relative to raw WebMCP, including safe execution, verified outcomes,
 diagnostic evidence, and measured overhead.
+
+For the separate multi-turn failure and self-correction protocol, see the
+[agent error-repair benchmark](./REPAIR_BENCHMARK.md).

@@ -61,17 +61,33 @@ change is to benchmark the complete developer loop—time from an existing websi
 workflow to the first authoritative real-agent success, followed by measurable
 hill-climbing—not only WebMCP efficiency and execution safety.
 
+## Run the agent error-repair lane
+
+The repair lane holds the tool inventory constant and compares generic application
+errors with Signett's typed, ordered repair guidance across stale prerequisites and an
+unknown post-effect outcome:
+
+```sh
+npm run bench:repair:smoke
+npm run bench:repair
+```
+
+The smoke command runs one trial for each of seven cases in both conditions; the full
+command runs five. Both are paid, stochastic real-agent evaluations and stay outside
+pull-request CI. See the [benchmark protocol](./agent-effectiveness/REPAIR_BENCHMARK.md)
+and the reviewed [42-run paired baseline plus 21-run hill climb](./agent-effectiveness/SCALED_REPAIR_RESULTS.md).
+
 ## Repository layout
 
-| Path                                             | Purpose                                                                     | Status             |
-| ------------------------------------------------ | --------------------------------------------------------------------------- | ------------------ |
-| [`demo/`](./demo/)                               | Customer-ready speed race and fault-injection story                         | Runnable           |
-| [`execution-safety/`](./execution-safety/)       | Deterministic post-commit failure and concurrency suite                     | Runnable v0        |
-| [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP studies                                       | Runnable P1        |
-| [`build-vs-buy/`](./build-vs-buy/)               | Raw, hand-rolled, and Signett implementation baseline                        | Runnable           |
-| [`integrations/`](./integrations/)               | External-app manifests, patches, task definitions, reset hooks, and oracles | Saleor + Cal.diy   |
-| [`methodology/`](./methodology/)                 | Benchmark contract, coverage audit, ordered roadmap, and publication rules  | Audit + roadmap    |
-| [`../evidence/`](../evidence/)                   | Reviewed summaries and benchmark cards; raw/private traces stay ignored     | Published evidence |
+| Path                                             | Purpose                                                                     | Status               |
+| ------------------------------------------------ | --------------------------------------------------------------------------- | -------------------- |
+| [`demo/`](./demo/)                               | Customer-ready speed race and fault-injection story                         | Runnable             |
+| [`execution-safety/`](./execution-safety/)       | Deterministic post-commit failure and concurrency suite                     | Runnable v0          |
+| [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP and error-repair studies                      | Runnable P1 + repair |
+| [`build-vs-buy/`](./build-vs-buy/)               | Raw, hand-rolled, and Signett implementation baseline                       | Runnable             |
+| [`integrations/`](./integrations/)               | External-app manifests, patches, task definitions, reset hooks, and oracles | Saleor + Cal.diy     |
+| [`methodology/`](./methodology/)                 | Benchmark contract, coverage audit, ordered roadmap, and publication rules  | Audit + roadmap      |
+| [`../evidence/`](../evidence/)                   | Reviewed summaries and benchmark cards; raw/private traces stay ignored     | Published evidence   |
 
 ## Run the current safety lane
 

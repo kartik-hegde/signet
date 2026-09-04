@@ -6,7 +6,7 @@ cookies, authorization headers, personal data, and model-provider restrictions.
 
 Every published result must identify:
 
-- benchmark, application, task-set, evaluator, and Signet revisions;
+- benchmark, application, task-set, evaluator, and Signett revisions;
 - exact model and parameters;
 - browser, action-set, observation, and WebMCP driver versions;
 - trial count, condition order, timeout, and step budget;
@@ -18,6 +18,6 @@ Every published result must identify:
 Do not publish only a blended score. A headline may summarize a primary preregistered
 metric, but the component outcomes and uncertainty must remain visible.
 
-Reviewed aggregates currently live in `p0/`, `p1/`, `test-agent/`,
+Reviewed aggregates currently live in `p0/`, `p1/`, `test-agent/`, `agent-repair/`,
 `build-vs-buy/`, and `evidence/`. Per-agent event streams, browser traces,
 screenshots, and logs remain under the ignored `raw/` tree.

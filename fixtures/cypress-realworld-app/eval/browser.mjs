@@ -70,14 +70,37 @@ export function createPaymentBrowserAdapter({ chromePath = findChrome() } = {}) 
         await cdp.send("Runtime.enable");
         await cdp.send("Page.enable");
         await waitFor(() => cdp.evaluate('document.readyState === "complete"'), "the sign-in page");
-        const native = await cdp.evaluate(
-          "typeof document.modelContext?.getTools === 'function' && typeof document.modelContext?.executeTool === 'function'"
+        await waitFor(
+          () =>
+            cdp.evaluate(
+              "typeof document.modelContext?.getTools === 'function' && typeof document.modelContext?.executeTool === 'function'"
+            ),
+          "Chrome native WebMCP"
         );
-        if (!native) throw new Error("Chrome did not expose native WebMCP.");
         const metadata = condition.parameters?.metadata ?? "baseline";
         await cdp.evaluate(
           `localStorage.setItem('signett:eval:metadata', ${JSON.stringify(metadata)})`
         );
+        const scenario = caseDefinition.parameters.scenario;
+        await cdp.evaluate(
+          scenario
+            ? `localStorage.setItem('signett:eval:scenario', ${JSON.stringify(scenario)})`
+            : "localStorage.removeItem('signett:eval:scenario')"
+        );
+        if (caseDefinition.parameters.invocation === "callback") {
+          await cdp.evaluate(`(() => {
+            const modelContext = document.modelContext;
+            const original = modelContext.registerTool.bind(modelContext);
+            window.__benchmarkWebMcpCallbacks = Object.create(null);
+            Object.defineProperty(modelContext, 'registerTool', {
+              configurable: true,
+              value(tool, options) {
+                window.__benchmarkWebMcpCallbacks[tool.name] = tool.execute;
+                return original(tool, options);
+              }
+            });
+          })()`);
+        }
         await cdp.evaluate(`(() => {
           const setValue = (selector, value) => {
             const input = document.querySelector(selector);
@@ -96,11 +119,12 @@ export function createPaymentBrowserAdapter({ chromePath = findChrome() } = {}) 
         const runtime = condition.parameters?.runtime ?? "signett";
         await cdp.evaluate(`window.__webMcpBenchmarkMode = ${JSON.stringify(runtime)}`);
         if (condition.parameters?.surface !== "ui") {
+          const expectedToolCount = caseDefinition.parameters.expectedToolCount ?? 3;
           await waitFor(
             () =>
               cdp
                 .evaluate("document.modelContext.getTools().then(tools => tools.length)")
-                .then((count) => count === 3),
+                .then((count) => count === expectedToolCount),
             "payment WebMCP tools"
           );
         }
