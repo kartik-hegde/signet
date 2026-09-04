@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="sidepanel.css" />
   </head>
   <body>
-    <header class="app-header">
+    <header class="app-header" id="app-header">
       <button
         class="icon-button"
         id="new-run-button"
@@ -39,6 +39,7 @@
     <main id="main-view">
       <section class="workspace" id="workspace">
         <div class="hero" id="hero">
+          <div class="brand-wordmark" aria-label="Signett">SIGNETT</div>
           <h1>What do you want to do today?</h1>
         </div>
 
@@ -203,6 +204,37 @@
           Prompts, tool definitions, and tool results are sent directly to this
           provider. Signett does not receive them.
         </p>
+
+        <div class="settings-section-heading">
+          <p class="kicker">Personal information</p>
+          <h3>About you</h3>
+          <p>
+            Saved locally in Chrome and added to the top of every chat context.
+            Only completed fields are sent to your model provider.
+          </p>
+        </div>
+        <label
+          >Name<input
+            id="personal-name-input"
+            type="text"
+            autocomplete="name"
+            placeholder="Your full name"
+        /></label>
+        <label
+          >Email address<input
+            id="personal-email-input"
+            type="email"
+            autocomplete="email"
+            placeholder="you@example.com"
+        /></label>
+        <label
+          >Address<textarea
+            id="personal-address-input"
+            rows="3"
+            autocomplete="street-address"
+            placeholder="Street, city, state, postal code, country"
+          ></textarea>
+        </label>
       </div>
 
       <div class="sheet-actions">

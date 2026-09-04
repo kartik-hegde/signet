@@ -5,8 +5,8 @@ the active page through a model provider the user configures.
 
 ## Data handled
 
-- The active page's title, URL, WebMCP tool definitions, and tool results are processed
-  locally in the extension and are not sent to the model provider.
+- The active page's title and URL are processed locally in the extension and are not
+  sent to the model provider.
 - Website access is optional and requested once from the user. It lets the extension
   check normal HTTP and HTTPS pages for WebMCP tools as the user navigates. Signett does
   not use that permission to read page DOM content, cookies, browsing history, or
@@ -18,6 +18,10 @@ the active page through a model provider the user configures.
   key is kept in in-memory `chrome.storage.session`. If the user explicitly enables
   **Remember on this device**, the key is placed in Chrome's unencrypted local extension
   storage until that option is disabled or the extension is removed.
+- Optional personal information entered in Settings (name, email address, and postal
+  address) is stored in Chrome's local extension storage. Non-empty fields are included
+  in the context sent to the selected model provider at the start of each chat. The user
+  can edit or clear these fields at any time.
 - The active conversation, including prompts, tool calls, and tool results, is retained
   in `chrome.storage.session` so follow-up turns have context and the transcript survives
   closing the side panel. It is cleared when the user starts a new conversation or when
