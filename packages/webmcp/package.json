@@ -1,11 +1,16 @@
 {
   "name": "signett",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Build reliable WebMCP tools that let AI agents use your product safely.",
   "type": "module",
   "sideEffects": false,
+  "bin": {
+    "signett": "cli.mjs"
+  },
   "files": [
+    "cli.mjs",
     "dist",
+    "eval-runtime",
     "recipes",
     "skills",
     "AGENTS.md",
@@ -36,10 +41,18 @@
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js"
+    },
+    "./eval": {
+      "types": "./eval-runtime/index.d.ts",
+      "import": "./eval-runtime/index.mjs"
+    },
+    "./agent": {
+      "types": "./eval-runtime/agent.d.mts",
+      "import": "./eval-runtime/agent.mjs"
     }
   },
   "scripts": {
-    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && node scripts/bundle-declarations.mjs",
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && node scripts/bundle-declarations.mjs && node scripts/copy-eval-runtime.mjs",
     "check": "npm run typecheck && npm test",
     "coverage": "vitest run --coverage",
     "docs:build": "vitepress build ../../docs",
@@ -124,6 +137,7 @@
     "authorization"
   ],
   "dependencies": {
-    "@cfworker/json-schema": "^4.1.1"
+    "@cfworker/json-schema": "^4.1.1",
+    "ws": "^8.18.3"
   }
 }

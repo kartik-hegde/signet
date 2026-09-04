@@ -1,10 +1,10 @@
 {
   "name": "@signett/eval",
-  "version": "0.0.0",
+  "version": "0.1.2",
   "description": "Portable evaluations and headless WebMCP agent testing for agent-ready websites.",
   "type": "module",
   "bin": {
-    "signett": "./cli.mjs"
+    "signett": "cli.mjs"
   },
   "sideEffects": false,
   "exports": {
@@ -25,7 +25,7 @@
     "schemas"
   ],
   "engines": {
-    "node": ">=22.5"
+    "node": ">=20"
   },
   "license": "MIT",
   "repository": {
@@ -34,6 +34,9 @@
     "directory": "packages/eval"
   },
   "homepage": "https://signett.ai",
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "webmcp",
     "agents",
@@ -42,6 +45,7 @@
     "evidence"
   ],
   "dependencies": {
-    "@cfworker/json-schema": "^4.1.1"
+    "@cfworker/json-schema": "^4.1.1",
+    "ws": "^8.18.3"
   }
 }

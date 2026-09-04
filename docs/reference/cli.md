@@ -1,15 +1,12 @@
 # `signett` CLI
 
-`@signett/eval` installs the `signett` executable for headless agent testing, portable
-evaluation suites, and baseline regression checks.
+The flagship `signett` package installs the `signett` executable for headless agent
+testing, portable evaluation suites, and baseline regression checks.
 
 ```sh
-npm install --save-dev @signett/eval
+npm install signett
 npx signett --help
 ```
-
-The package name is scoped, but the executable is `signett`. Installing
-`signett` alone does not provide this command.
 
 ## `signett agent`
 
@@ -29,7 +26,7 @@ signett agent [suite.mjs] [options]
 | `--endpoint URL`     | Chat Completions-compatible model endpoint.                               |
 | `--model name`       | Model identifier sent to the endpoint.                                    |
 | `--api-key-env name` | Environment variable containing the provider key; default is              |
-|                      | `SIGNETT_AGENT_API_KEY`.                                                   |
+|                      | `SIGNETT_AGENT_API_KEY`.                                                  |
 | `--output path`      | Evidence JSON file for one Trial or directory for multiple Trials.        |
 | `--list`             | Print selected task IDs without opening a browser.                        |
 | `-h`, `--help`       | Show command help.                                                        |
@@ -40,7 +37,7 @@ and does not write it to Evidence.
 
 ### Agent suite shape
 
-Use `defineAgentTestSuite()` from `@signett/eval/agent` to validate a JavaScript suite.
+Use `defineAgentTestSuite()` from `signett/agent` to validate a JavaScript suite.
 JSON suites can describe tasks and provider settings but cannot implement lifecycle
 or oracle functions.
 

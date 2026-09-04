@@ -10,7 +10,7 @@ is a separate interactive UI for exploring one open tab.
 
 ## What you need
 
-- Node.js 22.5 or newer;
+- Node.js 20 or newer;
 - Google Chrome or Chromium;
 - a locally reachable page that exposes at least one WebMCP tool; and
 - a Chat Completions-compatible model endpoint that supports tool calls.
@@ -20,17 +20,14 @@ The runner looks for Chrome in the standard macOS and Linux locations. Set
 
 ## 1. Install the terminal runner
 
-Your application uses `signett` at runtime. Add `@signett/eval` as a development
-dependency to get the `signett` terminal command:
+The `signett` package includes both the browser SDK and the terminal command:
 
 ```sh
 npm install signett
-npm install --save-dev @signett/eval
 npx signett agent --help
 ```
 
-Installing `signett` alone does not install the terminal runner. The Chrome
-extension is also installed separately.
+The Chrome extension is installed separately.
 
 ## 2. Run one job
 
@@ -67,7 +64,7 @@ For regression testing, save the task, budgets, reset behavior, and authoritativ
 oracle in `signett.agent.mjs`:
 
 ```js
-import { defineAgentTestSuite } from "@signett/eval/agent";
+import { defineAgentTestSuite } from "signett/agent";
 
 export default defineAgentTestSuite({
   schemaVersion: 1,

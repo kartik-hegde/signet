@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 const root = new URL("../", import.meta.url);
 const distFiles = await readdir(new URL("dist/", root));
@@ -31,6 +33,8 @@ const telemetry = await import("signett/opentelemetry");
 const inspector = await import("signett/inspector");
 const react = await import("signett/react");
 const stores = await import("signett/stores");
+const evaluation = await import("signett/eval");
+const agent = await import("signett/agent");
 
 assert.equal(typeof core.guard, "function");
 assert.equal(typeof core.createSignett, "function");
@@ -51,6 +55,17 @@ assert.equal(typeof inspector.mountSignettInspector, "function");
 assert.equal(typeof react.useSignettTool, "function");
 assert.equal(typeof react.useSignettActivity, "function");
 assert.equal(typeof stores.IndexedDbIdempotencyStore, "function");
+assert.equal(typeof evaluation.defineCase, "function");
+assert.equal(typeof agent.defineAgentTestSuite, "function");
+
+const cli = spawnSync(
+  process.execPath,
+  [fileURLToPath(new URL("cli.mjs", root)), "--help"],
+  { encoding: "utf8" },
+);
+assert.equal(cli.status, 0, cli.stderr);
+assert.match(cli.stdout, /Usage: signett <command>/);
+assert.match(cli.stdout, /agent\s+Run natural-language tasks/);
 
 const execute = core.guard(async ({ value }) => value * 2);
 const result = await execute(

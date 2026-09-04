@@ -89,10 +89,9 @@ in development code so bundlers can exclude the entry point from production.
 
 ## Evaluation change checks
 
-Install `@signett/eval` as a development dependency to get all three terminal workflows:
+The `signett` package includes all three terminal workflows:
 
 ```sh
-npm install --save-dev @signett/eval
 npx signett agent --help
 npx signett eval --help
 npx signett check --help
@@ -104,8 +103,8 @@ is a separate interactive tool. Follow the
 [headless-agent codelab](../tutorials/headless-agent-testing) and use the
 [CLI reference](../reference/cli) for suite hooks and every option.
 
-`@signett/eval` turns application-owned Cases and oracle-graded Trial Evidence into a
-repeatable change check:
+`signett/eval` exports the application-owned Cases and oracle-graded Trial Evidence
+APIs used to build a repeatable change check:
 
 ```sh
 signett eval scenarios/checkout.eval.mjs \

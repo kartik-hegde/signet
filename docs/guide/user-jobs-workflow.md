@@ -136,7 +136,7 @@ product contract; it should describe the intended outcome without scripting an e
 tool transcript.
 
 ```ts
-import { defineCase } from "@signett/eval";
+import { defineCase } from "signett/eval";
 
 export const checkoutCase = defineCase({
   id: "checkout-current-cart",

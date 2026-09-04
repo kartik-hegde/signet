@@ -15,6 +15,17 @@ safe execution, testing, and observability.
 npm install signett
 ```
 
+The same package includes the `signett` terminal workflows:
+
+```sh
+npx signett agent --help
+npx signett eval --help
+npx signett check --help
+```
+
+Evaluation APIs are available from `signett/eval`, and headless agent APIs are
+available from `signett/agent`.
+
 Expose one function from browser code:
 
 ```ts

@@ -1,5 +1,7 @@
 import { createServer } from "node:net";
 
+import WebSocket from "ws";
+
 export const delay = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 

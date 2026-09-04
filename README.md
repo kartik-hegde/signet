@@ -6,8 +6,8 @@ Signett makes website capabilities reliable and agent-ready through WebMCP. This
 
 ## Repository map
 
-- `packages/webmcp` — the open-source `signett` SDK
-- `packages/eval` — reusable Cases, adapters, evidence schema, runner, change checks, and the `signett` CLI
+- `packages/webmcp` — the flagship `signett` package, including the SDK and CLI entry point
+- `packages/eval` — reusable Cases, adapters, evidence schema, runner, change checks, and the modular CLI implementation
 - `packages/chrome-agent` — a Chrome side-panel agent for inspecting and invoking the current page's WebMCP tools
 - `fixtures` — applications used for end-to-end validation; the Cypress Real World App intentionally keeps its own Yarn lockfile and is not an npm workspace
 - `benchmarks` — deterministic safety, headless Signett Agent, agent-effectiveness, build-vs-buy, and integration suites
@@ -25,9 +25,10 @@ npm run validate:chrome-agent
 npm run bench:agent:smoke
 ```
 
-The `@signett/eval` package installs one terminal entry point:
+The `signett` package installs the SDK and one terminal entry point:
 
 ```bash
+npm install signett
 npx signett agent --help
 npx signett eval --help
 npx signett check --help

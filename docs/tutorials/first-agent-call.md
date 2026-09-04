@@ -148,11 +148,11 @@ deliberately disposable.
 
 ## 5. Let the Signett Agent call it
 
-`@signett/eval` installs the `signett` terminal command. Its agent runner launches a
-fresh headless Chrome profile, discovers the page's exact WebMCP inventory, and lets a
-tool-capable model work on your prompt. The repository already includes the package as
-a workspace, so no additional install is needed for this codelab. In your own
-application, install it with `npm install --save-dev @signett/eval`.
+The `signett` package installs the `signett` terminal command. Its agent runner
+launches a fresh headless Chrome profile, discovers the page's exact WebMCP inventory,
+and lets a tool-capable model work on your prompt. The repository already includes the
+package as a workspace, so no additional install is needed for this codelab. In your
+own application, install it with `npm install signett`.
 
 Keep `npm run tutorial:dev` running. In another terminal, put your model provider key
 in an environment variable and run:
@@ -188,7 +188,7 @@ saved multi-Trial suite with reset and authoritative oracle hooks.
 
 If you prefer to drive an already-open tab interactively, install Signett's Chrome
 extension separately. Chrome DevTools MCP is another independent agent-runtime option;
-neither is bundled with `@signett/eval`.
+neither is bundled with the `signett` npm package.
 
 ## 6. Prove it without a model
 
