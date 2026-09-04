@@ -19,5 +19,5 @@ Do not publish only a blended score. A headline may summarize a primary preregis
 metric, but the component outcomes and uncertainty must remain visible.
 
 Reviewed aggregates currently live in `p0/`, `p1/`, `test-agent/`, `agent-repair/`,
-`build-vs-buy/`, and `evidence/`. Per-agent event streams, browser traces,
+`build-vs-buy/`, `developer-productivity/`, and `evidence/`. Per-agent event streams, browser traces,
 screenshots, and logs remain under the ignored `raw/` tree.

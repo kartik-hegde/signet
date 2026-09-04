@@ -1,6 +1,6 @@
 # Benchmark audit and roadmap
 
-Updated: 2026-09-02
+Updated: 2026-09-04
 
 ## Decision
 
@@ -14,11 +14,12 @@ WebMCP interface. The product promise is not just safer execution. It is:
 > Make an existing website agent-ready quickly, prove that a real agent can complete
 > representative tasks, and use the resulting evidence to improve the interface.
 
-The current benchmark captures the last part of consequential execution well. It does
-not yet measure the complete developer loop or the time-to-first-success promise. The
-next benchmark milestone should therefore be a shared headless-browser Test Agent
-runner across applications, followed by an integration-and-improvement study that uses
-that runner as the outcome evaluator.
+The current benchmark captures the last part of consequential execution well. Two
+historical coding-agent pilots now measure implementation conformance, time, and code
+volume, but they do not cover the complete developer loop or time to a real-agent
+success. The next benchmark milestone should therefore be a shared headless-browser
+Test Agent runner across applications, followed by an integration-and-improvement
+study that uses that runner as the outcome evaluator.
 
 ## Current product contract
 
@@ -45,18 +46,18 @@ and execution behavior it adds around that access.
 
 ## Coverage audit
 
-| Product proposition | Evidence today | Assessment | Missing proof |
-| --- | --- | --- | --- |
-| Existing functions become agent-ready quickly | Directional adapter SLOC in `build-vs-buy/` | Weak | End-to-end integration time, total changed code, defects, and time to first real-agent success |
-| Native WebMCP reduces agent work | Repeated UI/raw/Signett payment runs in P1 | Useful ecosystem baseline | More tasks and domains; this is primarily a WebMCP claim, not a Signett runtime claim |
-| Tools are selected with valid arguments and complete the task | Two payment-domain tasks plus one Test Agent run; every Trial scores discovery, selection, and argument validity | Instrument in place, task coverage still thin | Held-out task suites, seeded variants, continuation/fallback classification, and repeated runs across apps |
-| Developers can inspect, test, and hill-climb the interface | Inventory, call, lifecycle, token, and oracle traces exist, and `signett check` gates discovery, selection, and argument regressions per Case and condition | Instrumentation and gates exist; value is unmeasured | Before/after interface revisions and developer time-to-diagnosis or improvement |
-| Consequential actions are reliable and honest under faults | Seven deterministic scenarios, durable-store arm, Saleor and Cal.diy recovery proofs | Strongest current lane | Full shipped-interface path, authorization/cancellation/lifecycle coverage, and real-browser reload/navigation faults |
-| Application state remains authoritative | Independent SQLite, HTTP, and Postgres oracles | Strong | Standardize the oracle contract and failure taxonomy across applications |
-| The workflow transfers across real websites | Cypress RWA, Saleor, and Cal.diy integrations | Promising case-study evidence | One runner, one result schema, comparable tasks, and repeated trials across all apps |
-| Native lifecycle and framework behavior are dependable | Library tests and isolated native smoke scripts | Not benchmarked | Page-state registration, teardown, re-registration, React lifecycle, unsupported-browser, and browser-version matrix |
-| Signett reduces the cost of correct implementation | One benchmark-authored hand-rolled adapter comparison | Directional only | Independent implementers or coding-agent integrations, fixed requirements, hidden conformance tests, and maintenance changes |
-| Observation is useful and private by default | Lifecycle traces in examples | Not benchmarked | Trace completeness, redaction/privacy conformance, observer-failure isolation, and diagnosis utility |
+| Product proposition                                           | Evidence today                                                                                                                                              | Assessment                                           | Missing proof                                                                                                         |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Existing functions become agent-ready quickly                 | Directional adapter SLOC plus historical P2/P3 coding-agent pilots                                                                                          | Pilot evidence                                       | Current-model replication, more applications, human developers, and time to first real-agent success                  |
+| Native WebMCP reduces agent work                              | Repeated UI/raw/Signett payment runs in P1                                                                                                                  | Useful ecosystem baseline                            | More tasks and domains; this is primarily a WebMCP claim, not a Signett runtime claim                                 |
+| Tools are selected with valid arguments and complete the task | Two payment-domain tasks plus one Test Agent run; every Trial scores discovery, selection, and argument validity                                            | Instrument in place, task coverage still thin        | Held-out task suites, seeded variants, continuation/fallback classification, and repeated runs across apps            |
+| Developers can inspect, test, and hill-climb the interface    | Inventory, call, lifecycle, token, and oracle traces exist, and `signett check` gates discovery, selection, and argument regressions per Case and condition | Instrumentation and gates exist; value is unmeasured | Before/after interface revisions and developer time-to-diagnosis or improvement                                       |
+| Consequential actions are reliable and honest under faults    | Seven deterministic scenarios, durable-store arm, Saleor and Cal.diy recovery proofs                                                                        | Strongest current lane                               | Full shipped-interface path, authorization/cancellation/lifecycle coverage, and real-browser reload/navigation faults |
+| Application state remains authoritative                       | Independent SQLite, HTTP, and Postgres oracles                                                                                                              | Strong                                               | Standardize the oracle contract and failure taxonomy across applications                                              |
+| The workflow transfers across real websites                   | Cypress RWA, Saleor, and Cal.diy integrations                                                                                                               | Promising case-study evidence                        | One runner, one result schema, comparable tasks, and repeated trials across all apps                                  |
+| Native lifecycle and framework behavior are dependable        | Library tests and isolated native smoke scripts                                                                                                             | Not benchmarked                                      | Page-state registration, teardown, re-registration, React lifecycle, unsupported-browser, and browser-version matrix  |
+| Signett reduces the cost of correct implementation            | One benchmark-authored adapter comparison plus 5-per-arm P2 and 3-per-arm P3 coding-agent pilots with hidden tests                                          | Directional only                                     | Larger current-model samples, more applications, human implementers, and maintenance changes                          |
+| Observation is useful and private by default                  | Lifecycle traces in examples                                                                                                                                | Not benchmarked                                      | Trace completeness, redaction/privacy conformance, observer-failure isolation, and diagnosis utility                  |
 
 ## What to keep, change, and stop claiming
 
@@ -88,7 +89,8 @@ and execution behavior it adds around that access.
 - That Signett itself improves tool selection when raw and Signett publish the same tool
   metadata.
 - Broad agent-effectiveness gains from two tasks in one repeated application study.
-- A publishable build-versus-buy result from one benchmark-authored implementation.
+- A publishable build-versus-buy result from one benchmark-authored implementation and
+  two small historical coding-agent pilots.
 - A stable safety score while committed reports cover three scenarios and the current
   suite contains seven.
 - Cross-website portability from case studies that use different runners and result

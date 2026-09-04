@@ -2,7 +2,7 @@
 
 Public benchmark work for structured browser-agent actions and safe execution.
 
-The project evaluates three different questions and keeps their evidence separate:
+The project evaluates four different questions and keeps their evidence separate:
 
 1. **Agent effectiveness:** how UI-only browser agents compare with agents that can
    discover and invoke WebMCP tools.
@@ -10,6 +10,8 @@ The project evaluates three different questions and keeps their evidence separat
    concurrency, authorization failures, cancellation, or incorrect responses occur.
 3. **Build versus buy:** how a Signett integration compares with independently built
    WebMCP controls in implementation time, bespoke code, conformance, and maintenance.
+4. **Developer productivity:** how independently isolated coding-agent attempts perform
+   against frozen implementation briefs and hidden conformance suites.
 
 Signett is an evaluated arm, not the benchmark oracle. Task completion is graded from
 application state or an independent evaluator, never from Signett events or a tool's own
@@ -79,21 +81,36 @@ and the reviewed [42-run paired baseline plus 21-run hill climb](./agent-effecti
 
 ## Repository layout
 
-| Path                                             | Purpose                                                                     | Status               |
-| ------------------------------------------------ | --------------------------------------------------------------------------- | -------------------- |
-| [`demo/`](./demo/)                               | Customer-ready speed race and fault-injection story                         | Runnable             |
-| [`execution-safety/`](./execution-safety/)       | Deterministic post-commit failure and concurrency suite                     | Runnable v0          |
-| [`agent-effectiveness/`](./agent-effectiveness/) | Repeated real-agent UI/WebMCP and error-repair studies                      | Runnable P1 + repair |
-| [`build-vs-buy/`](./build-vs-buy/)               | Raw, hand-rolled, and Signett implementation baseline                       | Runnable             |
-| [`integrations/`](./integrations/)               | External-app manifests, patches, task definitions, reset hooks, and oracles | Saleor + Cal.diy     |
-| [`methodology/`](./methodology/)                 | Benchmark contract, coverage audit, ordered roadmap, and publication rules  | Audit + roadmap      |
-| [`../evidence/`](../evidence/)                   | Reviewed summaries and benchmark cards; raw/private traces stay ignored     | Published evidence   |
+| Path                                                   | Purpose                                                                     | Status               |
+| ------------------------------------------------------ | --------------------------------------------------------------------------- | -------------------- |
+| [`demo/`](./demo/)                                     | Customer-ready speed race and fault-injection story                         | Runnable             |
+| [`execution-safety/`](./execution-safety/)             | Deterministic post-commit failure and concurrency suite                     | Runnable v0          |
+| [`agent-effectiveness/`](./agent-effectiveness/)       | Repeated real-agent UI/WebMCP and error-repair studies                      | Runnable P1 + repair |
+| [`build-vs-buy/`](./build-vs-buy/)                     | Raw, hand-rolled, and Signett implementation baseline                       | Runnable             |
+| [`developer-productivity/`](./developer-productivity/) | Model-backed implementation and agent-readiness pilots                      | Runnable P2 + P3     |
+| [`integrations/`](./integrations/)                     | External-app manifests, patches, task definitions, reset hooks, and oracles | Saleor + Cal.diy     |
+| [`methodology/`](./methodology/)                       | Benchmark contract, coverage audit, ordered roadmap, and publication rules  | Audit + roadmap      |
+| [`../evidence/`](../evidence/)                         | Reviewed summaries and benchmark cards; raw/private traces stay ignored     | Published evidence   |
 
 ## Run the current safety lane
 
 ```sh
 npm run bench:safety
 ```
+
+## Run the developer-productivity harnesses
+
+The imported P2 and P3 pilots compare independently isolated coding-agent attempts.
+Their reference implementations and hidden graders are deterministic:
+
+```sh
+npm run test:developer-productivity
+```
+
+Paid model-backed smoke runs are available as `npm run bench:p2:smoke` and
+`npm run bench:p3:smoke`, but do not run in pull-request CI. The August 31 results are
+published separately as
+[`historical directional pilots`](../evidence/developer-productivity/README.md).
 
 ## Run P0
 

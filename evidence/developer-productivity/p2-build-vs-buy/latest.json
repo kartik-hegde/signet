@@ -1,0 +1,1345 @@
+{
+  "benchmark": "p2-build-vs-buy",
+  "version": 1,
+  "generatedAt": "2026-08-31T13:25:00.529Z",
+  "status": "pilot",
+  "provenance": {
+    "model": "gpt-5.4-mini",
+    "reasoning": "low",
+    "trialsPerCondition": 5,
+    "timeoutMs": 180000,
+    "signet": {
+      "srcHash": "bce5cb341ffdfb48",
+      "commit": "e4e04fa",
+      "builtAt": "2026-08-31T13:07:55.339Z",
+      "rebuilt": false
+    },
+    "node": "v26.0.0",
+    "codex": "codex-cli 0.135.0",
+    "sourceRun": "results/raw/p2/2026-08-31T13-13-45-624Z"
+  },
+  "contract": {
+    "conditions": {
+      "native": "direct modelContext.registerTool with hand-built controls",
+      "signet": "@signet/webmcp createSignet with the same app-owned dependencies"
+    },
+    "hiddenCases": [
+      {
+        "id": "registration_contract",
+        "severity": "major"
+      },
+      {
+        "id": "valid_execution",
+        "severity": "critical"
+      },
+      {
+        "id": "schema_enforcement",
+        "severity": "critical"
+      },
+      {
+        "id": "trusted_context_authorization",
+        "severity": "critical"
+      },
+      {
+        "id": "sequential_replay",
+        "severity": "critical"
+      },
+      {
+        "id": "concurrent_replay",
+        "severity": "critical"
+      },
+      {
+        "id": "intent_safe_key",
+        "severity": "critical"
+      },
+      {
+        "id": "failed_attempt_retry",
+        "severity": "critical"
+      },
+      {
+        "id": "post_execution_verification",
+        "severity": "critical"
+      },
+      {
+        "id": "pre_aborted_signal",
+        "severity": "critical"
+      },
+      {
+        "id": "dispose_lifecycle",
+        "severity": "major"
+      },
+      {
+        "id": "observer_isolation_privacy",
+        "severity": "major"
+      },
+      {
+        "id": "semantic_trace",
+        "severity": "major"
+      },
+      {
+        "id": "registration_failure_recovery",
+        "severity": "major"
+      }
+    ],
+    "appOwned": [
+      "session resolution",
+      "business service",
+      "atomic idempotency store"
+    ],
+    "controlled": [
+      "task",
+      "fixture",
+      "model",
+      "reasoning",
+      "timeout",
+      "public tests",
+      "hidden audit"
+    ]
+  },
+  "summaries": {
+    "native": {
+      "attempts": 5,
+      "conforming": 4,
+      "conformanceRatePct": 80,
+      "hiddenCasesPassed": 56,
+      "hiddenCasesTotal": 70,
+      "hiddenCasePassRatePct": 80,
+      "medianImplementationSeconds": 26.47,
+      "medianConformingSeconds": 23.89,
+      "medianProductionLoc": 144,
+      "medianTokens": 64142,
+      "medianPackageReads": 0,
+      "criticalDefects": 9,
+      "majorDefects": 5,
+      "runtimeP50Ms": 2.57,
+      "runtimeP95Ms": 2.598
+    },
+    "signet": {
+      "attempts": 5,
+      "conforming": 4,
+      "conformanceRatePct": 80,
+      "hiddenCasesPassed": 56,
+      "hiddenCasesTotal": 70,
+      "hiddenCasePassRatePct": 80,
+      "medianImplementationSeconds": 20.72,
+      "medianConformingSeconds": 19.19,
+      "medianProductionLoc": 61.5,
+      "medianTokens": 71056,
+      "medianPackageReads": 0,
+      "criticalDefects": 9,
+      "majorDefects": 5,
+      "runtimeP50Ms": 2.458,
+      "runtimeP95Ms": 2.503
+    }
+  },
+  "headline": {
+    "conformanceRateDeltaPoints": 0,
+    "hiddenCasePassRateDeltaPoints": 0,
+    "implementationSpeedup": 1.24,
+    "productionLocReductionPct": 57.29,
+    "tokenReductionPct": -10.78,
+    "runtimeP50OverheadPct": -4.36
+  },
+  "runs": [
+    {
+      "trial": 1,
+      "order": 1,
+      "condition": "native",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 15028.66,
+      "productionLoc": 148,
+      "visibleTestsPassed": true,
+      "hiddenPassed": 14,
+      "hiddenTotal": 14,
+      "conforming": true,
+      "defects": {
+        "critical": 0,
+        "major": 0
+      },
+      "cases": [
+        {
+          "id": "registration_contract",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "valid_execution",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "schema_enforcement",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_context_authorization",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_key",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_retry",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_execution_verification",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_aborted_signal",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "dispose_lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "observer_isolation_privacy",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "registration_failure_recovery",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "runtime": {
+        "invocations": 50,
+        "appLatencyMs": 2,
+        "p50Ms": 2.32,
+        "p95Ms": 2.379
+      },
+      "usage": {
+        "inputTokens": 61958,
+        "cachedInputTokens": 56192,
+        "outputTokens": 2609,
+        "totalTokens": 64567
+      },
+      "agentBehavior": {
+        "commandCount": 7,
+        "packageReadCommands": 0
+      }
+    },
+    {
+      "trial": 1,
+      "order": 2,
+      "condition": "signet",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 20719.54,
+      "productionLoc": 63,
+      "visibleTestsPassed": true,
+      "hiddenPassed": 14,
+      "hiddenTotal": 14,
+      "conforming": true,
+      "defects": {
+        "critical": 0,
+        "major": 0
+      },
+      "cases": [
+        {
+          "id": "registration_contract",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "valid_execution",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "schema_enforcement",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_context_authorization",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_key",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_retry",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_execution_verification",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_aborted_signal",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "dispose_lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "observer_isolation_privacy",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "registration_failure_recovery",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "runtime": {
+        "invocations": 50,
+        "appLatencyMs": 2,
+        "p50Ms": 2.331,
+        "p95Ms": 2.389
+      },
+      "usage": {
+        "inputTokens": 134065,
+        "cachedInputTokens": 119936,
+        "outputTokens": 2954,
+        "totalTokens": 137019
+      },
+      "agentBehavior": {
+        "commandCount": 8,
+        "packageReadCommands": 3
+      }
+    },
+    {
+      "trial": 2,
+      "order": 1,
+      "condition": "signet",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 17664.12,
+      "productionLoc": 64,
+      "visibleTestsPassed": true,
+      "hiddenPassed": 14,
+      "hiddenTotal": 14,
+      "conforming": true,
+      "defects": {
+        "critical": 0,
+        "major": 0
+      },
+      "cases": [
+        {
+          "id": "registration_contract",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "valid_execution",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "schema_enforcement",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_context_authorization",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_key",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_retry",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_execution_verification",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_aborted_signal",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "dispose_lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "observer_isolation_privacy",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "registration_failure_recovery",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "runtime": {
+        "invocations": 50,
+        "appLatencyMs": 2,
+        "p50Ms": 2.329,
+        "p95Ms": 2.378
+      },
+      "usage": {
+        "inputTokens": 116342,
+        "cachedInputTokens": 105088,
+        "outputTokens": 2458,
+        "totalTokens": 118800
+      },
+      "agentBehavior": {
+        "commandCount": 10,
+        "packageReadCommands": 3
+      }
+    },
+    {
+      "trial": 2,
+      "order": 2,
+      "condition": "native",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 29671.83,
+      "productionLoc": 136,
+      "visibleTestsPassed": true,
+      "hiddenPassed": 14,
+      "hiddenTotal": 14,
+      "conforming": true,
+      "defects": {
+        "critical": 0,
+        "major": 0
+      },
+      "cases": [
+        {
+          "id": "registration_contract",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "valid_execution",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "schema_enforcement",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_context_authorization",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_key",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_retry",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_execution_verification",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_aborted_signal",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "dispose_lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "observer_isolation_privacy",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "registration_failure_recovery",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "runtime": {
+        "invocations": 50,
+        "appLatencyMs": 2,
+        "p50Ms": 2.571,
+        "p95Ms": 2.587
+      },
+      "usage": {
+        "inputTokens": 61685,
+        "cachedInputTokens": 48640,
+        "outputTokens": 2457,
+        "totalTokens": 64142
+      },
+      "agentBehavior": {
+        "commandCount": 7,
+        "packageReadCommands": 0
+      }
+    },
+    {
+      "trial": 3,
+      "order": 1,
+      "condition": "native",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 21303.97,
+      "productionLoc": 142,
+      "visibleTestsPassed": true,
+      "hiddenPassed": 14,
+      "hiddenTotal": 14,
+      "conforming": true,
+      "defects": {
+        "critical": 0,
+        "major": 0
+      },
+      "cases": [
+        {
+          "id": "registration_contract",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "valid_execution",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "schema_enforcement",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_context_authorization",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_key",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_retry",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_execution_verification",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_aborted_signal",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "dispose_lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "observer_isolation_privacy",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "registration_failure_recovery",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "runtime": {
+        "invocations": 50,
+        "appLatencyMs": 2,
+        "p50Ms": 2.569,
+        "p95Ms": 2.623
+      },
+      "usage": {
+        "inputTokens": 75037,
+        "cachedInputTokens": 61824,
+        "outputTokens": 2571,
+        "totalTokens": 77608
+      },
+      "agentBehavior": {
+        "commandCount": 8,
+        "packageReadCommands": 0
+      }
+    },
+    {
+      "trial": 3,
+      "order": 2,
+      "condition": "signet",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 14221.73,
+      "productionLoc": 60,
+      "visibleTestsPassed": true,
+      "hiddenPassed": 14,
+      "hiddenTotal": 14,
+      "conforming": true,
+      "defects": {
+        "critical": 0,
+        "major": 0
+      },
+      "cases": [
+        {
+          "id": "registration_contract",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "valid_execution",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "schema_enforcement",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_context_authorization",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_key",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_retry",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_execution_verification",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_aborted_signal",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "dispose_lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "observer_isolation_privacy",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "registration_failure_recovery",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "runtime": {
+        "invocations": 50,
+        "appLatencyMs": 2,
+        "p50Ms": 2.585,
+        "p95Ms": 2.617
+      },
+      "usage": {
+        "inputTokens": 67996,
+        "cachedInputTokens": 60800,
+        "outputTokens": 1537,
+        "totalTokens": 69533
+      },
+      "agentBehavior": {
+        "commandCount": 6,
+        "packageReadCommands": 0
+      }
+    },
+    {
+      "trial": 4,
+      "order": 1,
+      "condition": "signet",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": null,
+      "timedOut": true,
+      "implementationMs": 324896.83,
+      "productionLoc": 9,
+      "visibleTestsPassed": false,
+      "hiddenPassed": 0,
+      "hiddenTotal": 14,
+      "conforming": false,
+      "defects": {
+        "critical": 9,
+        "major": 5
+      },
+      "cases": [
+        {
+          "id": "registration_contract",
+          "severity": "major",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "valid_execution",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "schema_enforcement",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "trusted_context_authorization",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "sequential_replay",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "concurrent_replay",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "intent_safe_key",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "failed_attempt_retry",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "post_execution_verification",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "pre_aborted_signal",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "dispose_lifecycle",
+          "severity": "major",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "observer_isolation_privacy",
+          "severity": "major",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "semantic_trace",
+          "severity": "major",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "registration_failure_recovery",
+          "severity": "major",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  assert.ok(fixture.events.some(({ stage }) => stage === \"registration_failed\"))"
+        }
+      ],
+      "runtime": null,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "agentBehavior": {
+        "commandCount": 1,
+        "packageReadCommands": 0
+      }
+    },
+    {
+      "trial": 4,
+      "order": 2,
+      "condition": "native",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 26473.01,
+      "productionLoc": 146,
+      "visibleTestsPassed": true,
+      "hiddenPassed": 14,
+      "hiddenTotal": 14,
+      "conforming": true,
+      "defects": {
+        "critical": 0,
+        "major": 0
+      },
+      "cases": [
+        {
+          "id": "registration_contract",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "valid_execution",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "schema_enforcement",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_context_authorization",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_key",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_retry",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_execution_verification",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_aborted_signal",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "dispose_lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "observer_isolation_privacy",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "registration_failure_recovery",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "runtime": {
+        "invocations": 50,
+        "appLatencyMs": 2,
+        "p50Ms": 2.575,
+        "p95Ms": 2.609
+      },
+      "usage": {
+        "inputTokens": 61425,
+        "cachedInputTokens": 48128,
+        "outputTokens": 2579,
+        "totalTokens": 64004
+      },
+      "agentBehavior": {
+        "commandCount": 6,
+        "packageReadCommands": 0
+      }
+    },
+    {
+      "trial": 5,
+      "order": 1,
+      "condition": "native",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": null,
+      "timedOut": true,
+      "implementationMs": 180011.6,
+      "productionLoc": 9,
+      "visibleTestsPassed": false,
+      "hiddenPassed": 0,
+      "hiddenTotal": 14,
+      "conforming": false,
+      "defects": {
+        "critical": 9,
+        "major": 5
+      },
+      "cases": [
+        {
+          "id": "registration_contract",
+          "severity": "major",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "valid_execution",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "schema_enforcement",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "trusted_context_authorization",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "sequential_replay",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "concurrent_replay",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "intent_safe_key",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "failed_attempt_retry",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "post_execution_verification",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "pre_aborted_signal",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "dispose_lifecycle",
+          "severity": "major",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "observer_isolation_privacy",
+          "severity": "major",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "semantic_trace",
+          "severity": "major",
+          "passed": false,
+          "error": "Error: TODO: register the cancel_order WebMCP tool"
+        },
+        {
+          "id": "registration_failure_recovery",
+          "severity": "major",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  assert.ok(fixture.events.some(({ stage }) => stage === \"registration_failed\"))"
+        }
+      ],
+      "runtime": null,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "agentBehavior": {
+        "commandCount": 5,
+        "packageReadCommands": 0
+      }
+    },
+    {
+      "trial": 5,
+      "order": 2,
+      "condition": "signet",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 22985.65,
+      "productionLoc": 59,
+      "visibleTestsPassed": true,
+      "hiddenPassed": 14,
+      "hiddenTotal": 14,
+      "conforming": true,
+      "defects": {
+        "critical": 0,
+        "major": 0
+      },
+      "cases": [
+        {
+          "id": "registration_contract",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "valid_execution",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "schema_enforcement",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_context_authorization",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_replay",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_key",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_retry",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_execution_verification",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_aborted_signal",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "dispose_lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "observer_isolation_privacy",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "registration_failure_recovery",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "runtime": {
+        "invocations": 50,
+        "appLatencyMs": 2,
+        "p50Ms": 2.592,
+        "p95Ms": 2.639
+      },
+      "usage": {
+        "inputTokens": 69381,
+        "cachedInputTokens": 46592,
+        "outputTokens": 1675,
+        "totalTokens": 71056
+      },
+      "agentBehavior": {
+        "commandCount": 7,
+        "packageReadCommands": 0
+      }
+    }
+  ]
+}

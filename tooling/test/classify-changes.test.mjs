@@ -58,6 +58,15 @@ test("Signett Agent benchmark changes select the deterministic agent lane", () =
   assert.equal(result.reference, false);
 });
 
+test("developer-productivity benchmarks select their deterministic harness lane", () => {
+  const result = classifyFiles([
+    "benchmarks/developer-productivity/agent-readiness/hidden/audit.mjs",
+  ]);
+  assert.equal(result.eval, true);
+  assert.equal(result.sdk, false);
+  assert.equal(result.reference, false);
+});
+
 test("root and workflow changes conservatively select every lane", () => {
   for (const filename of ["package-lock.json", ".github/workflows/pr.yml"]) {
     const result = classifyFiles([filename]);
