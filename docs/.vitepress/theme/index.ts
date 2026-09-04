@@ -1,5 +1,6 @@
 import DefaultTheme from "vitepress/theme";
 import { inBrowser, type Theme } from "vitepress";
+import SignettOverview from "./SignettOverview.vue";
 import "./signett.css";
 
 let webMcpRegistration:
@@ -8,7 +9,8 @@ let webMcpRegistration:
 
 export default {
   extends: DefaultTheme,
-  enhanceApp({ siteData }) {
+  enhanceApp({ app, siteData }) {
+    app.component("SignettOverview", SignettOverview);
     if (!inBrowser) return;
 
     webMcpRegistration ??= import("./webmcp").then(
