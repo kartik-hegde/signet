@@ -1,0 +1,1137 @@
+{
+  "benchmark": "p3-agent-readiness-journey",
+  "version": 1,
+  "generatedAt": "2026-08-31T14:52:16.686Z",
+  "rescoredAt": "2026-08-31T14:53:33.000Z",
+  "rescoreNote": "Frozen candidates were rescored after the evaluator accepted cancellable as a semantic equivalent of eligible; no implementation was rerun.",
+  "status": "pilot",
+  "provenance": {
+    "model": "gpt-5.4-mini",
+    "reasoning": "low",
+    "trialsPerCondition": 3,
+    "timeoutMs": 300000,
+    "signet": {
+      "srcHash": "b51da07158c455a9",
+      "commit": "3df9bbd",
+      "builtAt": "2026-08-31T14:44:51.924Z",
+      "rebuilt": false
+    },
+    "signetGuidanceHash": "311b28162703475e",
+    "node": "v26.0.0",
+    "codex": "codex-cli 0.135.0",
+    "sourceRun": "results/raw/p3/2026-08-31T14-48-57-950Z"
+  },
+  "contract": {
+    "user": "web developer; a coding agent is the repeatable implementation proxy",
+    "application": "frozen human-only Acme Orders portal",
+    "objective": "discover the signed-in customer's cancellable orders and cancel one exactly once",
+    "conditions": {
+      "native": "direct native WebMCP implementation",
+      "signet": "published @signet/webmcp package with its recommended AGENTS.md contract supplied"
+    },
+    "scoring": {
+      "readiness": "critical hidden cases count twice; major hidden cases count once",
+      "ease": "first-pass ready rate and implementation time",
+      "abstraction": "bespoke LOC, tokens, commands, and readiness points per 100 LOC"
+    },
+    "hiddenCases": [
+      {
+        "id": "native_exposure_contract",
+        "layer": "expose",
+        "severity": "major"
+      },
+      {
+        "id": "agent_facing_affordances",
+        "layer": "expose",
+        "severity": "major"
+      },
+      {
+        "id": "two_capability_outcome",
+        "layer": "outcome",
+        "severity": "critical"
+      },
+      {
+        "id": "trusted_session_context",
+        "layer": "context",
+        "severity": "critical"
+      },
+      {
+        "id": "strict_runtime_validation",
+        "layer": "execute",
+        "severity": "critical"
+      },
+      {
+        "id": "business_rule_errors",
+        "layer": "execute",
+        "severity": "critical"
+      },
+      {
+        "id": "sequential_exactly_once",
+        "layer": "execute",
+        "severity": "critical"
+      },
+      {
+        "id": "concurrent_exactly_once",
+        "layer": "execute",
+        "severity": "critical"
+      },
+      {
+        "id": "intent_safe_request_key",
+        "layer": "execute",
+        "severity": "critical"
+      },
+      {
+        "id": "failed_attempt_is_retryable",
+        "layer": "execute",
+        "severity": "critical"
+      },
+      {
+        "id": "post_commit_recovery",
+        "layer": "execute",
+        "severity": "critical"
+      },
+      {
+        "id": "authoritative_verification",
+        "layer": "verify",
+        "severity": "critical"
+      },
+      {
+        "id": "pre_cancelled_invocation",
+        "layer": "execute",
+        "severity": "critical"
+      },
+      {
+        "id": "privacy_safe_observation",
+        "layer": "observe",
+        "severity": "major"
+      },
+      {
+        "id": "semantic_trace",
+        "layer": "observe",
+        "severity": "major"
+      },
+      {
+        "id": "whole_interface_lifecycle",
+        "layer": "lifecycle",
+        "severity": "major"
+      },
+      {
+        "id": "human_tool_business_parity",
+        "layer": "outcome",
+        "severity": "critical"
+      }
+    ]
+  },
+  "summaries": {
+    "native": {
+      "attempts": 3,
+      "ready": 0,
+      "readyRatePct": 0,
+      "medianReadinessScore": 82.76,
+      "hiddenCasesPassed": 40,
+      "hiddenCasesTotal": 51,
+      "layerScores": {
+        "expose": 66.67,
+        "outcome": 100,
+        "context": 100,
+        "execute": 79.17,
+        "verify": 100,
+        "observe": 33.33,
+        "lifecycle": 100
+      },
+      "medianImplementationSeconds": 36.08,
+      "medianReadySeconds": null,
+      "medianProductionLoc": 230,
+      "medianReadyLoc": null,
+      "medianTokens": 113235,
+      "medianCommands": 7,
+      "medianPackageReads": 0,
+      "readinessPointsPer100Loc": 35.98,
+      "infrastructureFailures": 0
+    },
+    "signet": {
+      "attempts": 3,
+      "ready": 3,
+      "readyRatePct": 100,
+      "medianReadinessScore": 100,
+      "hiddenCasesPassed": 51,
+      "hiddenCasesTotal": 51,
+      "layerScores": {
+        "expose": 100,
+        "outcome": 100,
+        "context": 100,
+        "execute": 100,
+        "verify": 100,
+        "observe": 100,
+        "lifecycle": 100
+      },
+      "medianImplementationSeconds": 31.12,
+      "medianReadySeconds": 31.12,
+      "medianProductionLoc": 117,
+      "medianReadyLoc": 117,
+      "medianTokens": 167091,
+      "medianCommands": 13,
+      "medianPackageReads": 5,
+      "readinessPointsPer100Loc": 85.47,
+      "infrastructureFailures": 0
+    }
+  },
+  "headline": {
+    "readyRateDeltaPoints": 100,
+    "readinessScoreDeltaPoints": 17.24,
+    "readyImplementationSpeedup": null,
+    "allAttemptTimeOverheadPct": -13.75,
+    "productionLocReductionPct": 49.13,
+    "tokenReductionPct": -47.56,
+    "readinessDensityMultiple": 2.38
+  },
+  "runs": [
+    {
+      "trial": 1,
+      "order": 1,
+      "condition": "native",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 26223.49,
+      "productionLoc": 230,
+      "visibleTestsPassed": true,
+      "visibleTestOutput": "public journey checks passed",
+      "hiddenPassed": 12,
+      "hiddenTotal": 17,
+      "readinessScore": 72.41,
+      "ready": false,
+      "layerScores": {
+        "expose": 100,
+        "outcome": 100,
+        "context": 100,
+        "execute": 62.5,
+        "verify": 100,
+        "observe": 0,
+        "lifecycle": 100
+      },
+      "defects": [
+        "strict_runtime_validation",
+        "intent_safe_request_key",
+        "post_commit_recovery",
+        "privacy_safe_observation",
+        "semantic_trace"
+      ],
+      "cases": [
+        {
+          "id": "native_exposure_contract",
+          "layer": "expose",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "agent_facing_affordances",
+          "layer": "expose",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "two_capability_outcome",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_session_context",
+          "layer": "context",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "strict_runtime_validation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: expected operation to reject"
+        },
+        {
+          "id": "business_rule_errors",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_request_key",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: cancellation was not confirmed"
+        },
+        {
+          "id": "failed_attempt_is_retryable",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_commit_recovery",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": false,
+          "error": "Error: connection closed after commit"
+        },
+        {
+          "id": "authoritative_verification",
+          "layer": "verify",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_cancelled_invocation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "privacy_safe_observation",
+          "layer": "observe",
+          "severity": "major",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: trace leaked request-001"
+        },
+        {
+          "id": "semantic_trace",
+          "layer": "observe",
+          "severity": "major",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: trace omits registered"
+        },
+        {
+          "id": "whole_interface_lifecycle",
+          "layer": "lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "human_tool_business_parity",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "usage": {
+        "inputTokens": 109188,
+        "cachedInputTokens": 94848,
+        "outputTokens": 4047,
+        "totalTokens": 113235
+      },
+      "commandCount": 7,
+      "packageReadCommands": 0
+    },
+    {
+      "trial": 1,
+      "order": 2,
+      "condition": "signet",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 27783.29,
+      "productionLoc": 117,
+      "visibleTestsPassed": true,
+      "visibleTestOutput": "public journey checks passed",
+      "hiddenPassed": 17,
+      "hiddenTotal": 17,
+      "readinessScore": 100,
+      "ready": true,
+      "layerScores": {
+        "expose": 100,
+        "outcome": 100,
+        "context": 100,
+        "execute": 100,
+        "verify": 100,
+        "observe": 100,
+        "lifecycle": 100
+      },
+      "defects": [],
+      "cases": [
+        {
+          "id": "native_exposure_contract",
+          "layer": "expose",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "agent_facing_affordances",
+          "layer": "expose",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "two_capability_outcome",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_session_context",
+          "layer": "context",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "strict_runtime_validation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "business_rule_errors",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_request_key",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_is_retryable",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_commit_recovery",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "authoritative_verification",
+          "layer": "verify",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_cancelled_invocation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "privacy_safe_observation",
+          "layer": "observe",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "layer": "observe",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "whole_interface_lifecycle",
+          "layer": "lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "human_tool_business_parity",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "usage": {
+        "inputTokens": 163589,
+        "cachedInputTokens": 142336,
+        "outputTokens": 3502,
+        "totalTokens": 167091
+      },
+      "commandCount": 13,
+      "packageReadCommands": 5
+    },
+    {
+      "trial": 2,
+      "order": 1,
+      "condition": "signet",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 39338.51,
+      "productionLoc": 107,
+      "visibleTestsPassed": true,
+      "visibleTestOutput": "public journey checks passed",
+      "hiddenPassed": 17,
+      "hiddenTotal": 17,
+      "readinessScore": 100,
+      "ready": true,
+      "layerScores": {
+        "expose": 100,
+        "outcome": 100,
+        "context": 100,
+        "execute": 100,
+        "verify": 100,
+        "observe": 100,
+        "lifecycle": 100
+      },
+      "defects": [],
+      "cases": [
+        {
+          "id": "native_exposure_contract",
+          "layer": "expose",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "agent_facing_affordances",
+          "layer": "expose",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "two_capability_outcome",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_session_context",
+          "layer": "context",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "strict_runtime_validation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "business_rule_errors",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_request_key",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_is_retryable",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_commit_recovery",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "authoritative_verification",
+          "layer": "verify",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_cancelled_invocation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "privacy_safe_observation",
+          "layer": "observe",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "layer": "observe",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "whole_interface_lifecycle",
+          "layer": "lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "human_tool_business_parity",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "usage": {
+        "inputTokens": 158804,
+        "cachedInputTokens": 146304,
+        "outputTokens": 3196,
+        "totalTokens": 162000
+      },
+      "commandCount": 13,
+      "packageReadCommands": 5
+    },
+    {
+      "trial": 2,
+      "order": 2,
+      "condition": "native",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 37578.48,
+      "productionLoc": 249,
+      "visibleTestsPassed": true,
+      "visibleTestOutput": "public journey checks passed",
+      "hiddenPassed": 13,
+      "hiddenTotal": 17,
+      "readinessScore": 82.76,
+      "ready": false,
+      "layerScores": {
+        "expose": 0,
+        "outcome": 100,
+        "context": 100,
+        "execute": 87.5,
+        "verify": 100,
+        "observe": 50,
+        "lifecycle": 100
+      },
+      "defects": [
+        "native_exposure_contract",
+        "agent_facing_affordances",
+        "intent_safe_request_key",
+        "semantic_trace"
+      ],
+      "cases": [
+        {
+          "id": "native_exposure_contract",
+          "layer": "expose",
+          "severity": "major",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n"
+        },
+        {
+          "id": "agent_facing_affordances",
+          "layer": "expose",
+          "severity": "major",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n+ actual - expected\n"
+        },
+        {
+          "id": "two_capability_outcome",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_session_context",
+          "layer": "context",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "strict_runtime_validation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "business_rule_errors",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_request_key",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 2"
+        },
+        {
+          "id": "failed_attempt_is_retryable",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_commit_recovery",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "authoritative_verification",
+          "layer": "verify",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_cancelled_invocation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "privacy_safe_observation",
+          "layer": "observe",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "layer": "observe",
+          "severity": "major",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: trace omits registered"
+        },
+        {
+          "id": "whole_interface_lifecycle",
+          "layer": "lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "human_tool_business_parity",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "usage": {
+        "inputTokens": 86345,
+        "cachedInputTokens": 80128,
+        "outputTokens": 6853,
+        "totalTokens": 93198
+      },
+      "commandCount": 7,
+      "packageReadCommands": 0
+    },
+    {
+      "trial": 3,
+      "order": 1,
+      "condition": "native",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 36080.53,
+      "productionLoc": 209,
+      "visibleTestsPassed": true,
+      "visibleTestOutput": "public journey checks passed",
+      "hiddenPassed": 15,
+      "hiddenTotal": 17,
+      "readinessScore": 89.66,
+      "ready": false,
+      "layerScores": {
+        "expose": 100,
+        "outcome": 100,
+        "context": 100,
+        "execute": 87.5,
+        "verify": 100,
+        "observe": 50,
+        "lifecycle": 100
+      },
+      "defects": ["intent_safe_request_key", "semantic_trace"],
+      "cases": [
+        {
+          "id": "native_exposure_contract",
+          "layer": "expose",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "agent_facing_affordances",
+          "layer": "expose",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "two_capability_outcome",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_session_context",
+          "layer": "context",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "strict_runtime_validation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "business_rule_errors",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_request_key",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 2"
+        },
+        {
+          "id": "failed_attempt_is_retryable",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_commit_recovery",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "authoritative_verification",
+          "layer": "verify",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_cancelled_invocation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "privacy_safe_observation",
+          "layer": "observe",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "layer": "observe",
+          "severity": "major",
+          "passed": false,
+          "error": "AssertionError [ERR_ASSERTION]: trace omits registered"
+        },
+        {
+          "id": "whole_interface_lifecycle",
+          "layer": "lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "human_tool_business_parity",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "usage": {
+        "inputTokens": 119016,
+        "cachedInputTokens": 104576,
+        "outputTokens": 5593,
+        "totalTokens": 124609
+      },
+      "commandCount": 9,
+      "packageReadCommands": 0
+    },
+    {
+      "trial": 3,
+      "order": 2,
+      "condition": "signet",
+      "model": "gpt-5.4-mini",
+      "reasoning": "low",
+      "exitCode": 0,
+      "timedOut": false,
+      "implementationMs": 31120.33,
+      "productionLoc": 126,
+      "visibleTestsPassed": true,
+      "visibleTestOutput": "public journey checks passed",
+      "hiddenPassed": 17,
+      "hiddenTotal": 17,
+      "readinessScore": 100,
+      "ready": true,
+      "layerScores": {
+        "expose": 100,
+        "outcome": 100,
+        "context": 100,
+        "execute": 100,
+        "verify": 100,
+        "observe": 100,
+        "lifecycle": 100
+      },
+      "defects": [],
+      "cases": [
+        {
+          "id": "native_exposure_contract",
+          "layer": "expose",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "agent_facing_affordances",
+          "layer": "expose",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "two_capability_outcome",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "trusted_session_context",
+          "layer": "context",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "strict_runtime_validation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "business_rule_errors",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "sequential_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "concurrent_exactly_once",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "intent_safe_request_key",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "failed_attempt_is_retryable",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "post_commit_recovery",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "authoritative_verification",
+          "layer": "verify",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "pre_cancelled_invocation",
+          "layer": "execute",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "privacy_safe_observation",
+          "layer": "observe",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "semantic_trace",
+          "layer": "observe",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "whole_interface_lifecycle",
+          "layer": "lifecycle",
+          "severity": "major",
+          "passed": true,
+          "error": null
+        },
+        {
+          "id": "human_tool_business_parity",
+          "layer": "outcome",
+          "severity": "critical",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "usage": {
+        "inputTokens": 204698,
+        "cachedInputTokens": 165632,
+        "outputTokens": 4395,
+        "totalTokens": 209093
+      },
+      "commandCount": 14,
+      "packageReadCommands": 3
+    }
+  ]
+}

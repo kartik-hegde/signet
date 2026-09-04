@@ -86,6 +86,7 @@ jobs:
       - run: npm run test:eval
       - run: npm run validate:chrome-agent
       - run: npm run test:agent:benchmark
+      - run: npm run test:developer-productivity
       - run: npm run build
       - run: npm run bench:agent:smoke
       - run: npm run format:check:repo

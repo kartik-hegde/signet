@@ -1,6 +1,6 @@
 ---
 title: Latest benchmark results
-description: A high-level summary of Signett's latest agent repair, effectiveness, execution safety, and build-versus-buy results.
+description: A high-level summary of Signett's latest agent repair, effectiveness, execution safety, build-versus-buy, and developer-productivity results.
 ---
 
 # Latest benchmark results
@@ -131,6 +131,55 @@ The directional result is that Signett achieved stronger coverage with less besp
 adapter code, at sub-millisecond measured overhead. This is one benchmark-authored
 comparison, not an independent developer study; a publishable productivity claim still
 requires multiple implementers and elapsed-time measurement.
+
+## Historical developer-productivity pilots
+
+Two August 31 coding-agent pilots are useful as benchmark designs and directional
+evidence, but they are not current Signett performance claims. Both used one synthetic
+order application and `gpt-5.4-mini` at low reasoning. Their runnable fixtures and
+hidden deterministic graders have been ported to the current package; the reviewed
+scorecards remain unchanged historical artifacts.
+
+[Runnable P2/P3 harnesses](https://github.com/signettai/signett/tree/main/benchmarks/developer-productivity) ·
+[Evidence review and integrity hashes](https://github.com/signettai/signett/tree/main/evidence/developer-productivity)
+
+### P2: coding-agent build versus buy
+
+Five attempts per condition implemented the same cancellation contract. Both arms
+produced 4/5 conforming implementations, so this pilot shows no observed conformance
+advantage. Among conforming attempts, the Signet condition was faster and used less
+bespoke code, while consuming more tokens.
+
+| Measure                           | Direct WebMCP | Signet condition |
+| --------------------------------- | ------------: | ---------------: |
+| Conforming attempts               |           4/5 |              4/5 |
+| Wilson 95% interval               |   37.6%–96.4% |      37.6%–96.4% |
+| Median conforming implementation  |       23.89 s |      **19.19 s** |
+| Median conforming production code |     144 lines |   **61.5 lines** |
+| Median tokens                     |    **64,142** |           71,056 |
+
+The implementation-time and code-volume movements are worth replicating. With only
+five attempts per arm and identical conformance intervals, they are not a publishable
+developer-productivity estimate.
+
+### P3: agent-readiness journey
+
+Three attempts per condition converted a working human order portal into a two-tool
+agent journey. The direct arm produced 0/3 fully ready implementations; the Signet arm
+with its recommended `AGENTS.md` guidance produced 3/3.
+
+| Measure                            | Direct WebMCP | Signet + guidance |
+| ---------------------------------- | ------------: | ----------------: |
+| First-pass ready                   |           0/3 |               3/3 |
+| Wilson 95% interval                |      0%–56.1% |        43.9%–100% |
+| Median severity-weighted readiness |        82.76% |          **100%** |
+| Median bespoke production code     |     230 lines |     **117 lines** |
+| Median tokens                      |   **113,235** |           167,091 |
+
+This separation is hypothesis-generating rather than decision-grade: the intervals are
+wide and overlap, and the treatment bundles the runtime with its integration guidance.
+It supports a larger preregistered replication that separates runtime, documentation,
+and skill metadata—not a claim that either component alone caused the difference.
 
 ## Real-application proofs
 
